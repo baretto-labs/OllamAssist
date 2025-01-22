@@ -1,0 +1,11 @@
+package fr.baretto.ollamassist.events;
+
+import com.intellij.util.messages.Topic;
+
+public interface StoreNotifier {
+
+    Topic<StoreNotifier> TOPIC = Topic.create("Clear Embedding store", StoreNotifier.class);
+
+    void clearEmbeddingStore();
+
+}

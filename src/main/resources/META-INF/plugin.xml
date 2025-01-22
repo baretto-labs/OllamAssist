@@ -1,0 +1,73 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>fr.baretto.OllamAssist</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>OllamAssist</name>
+
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="contact@baretto.fr" url="https://www.baretto.fr">Baretto</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+    <description><![CDATA[
+   <div>
+    <h2>OllamAssist Plugin for IntelliJ IDEA</h2>
+    <p>OllamAssist is a plugin designed to integrate seamlessly with IntelliJ IDEA, leveraging the power of <strong>Ollama</strong> to enhance developer productivity. The plugin offers two main features:</p>
+
+    <h3>1. Interactive Chat</h3>
+    <p>
+        The chat feature allows developers to communicate directly with the AI model to get insights, suggestions, or explanations. Additionally, the model has access to your project's indexed sources via <strong>RAG (Retrieval-Augmented Generation)</strong>, enabling context-aware responses based on your codebase.
+    </p>
+
+    <h3>2. Smart Code Autocompletion (Experimental)</h3>
+    <p>
+        The autocompletion feature provides code suggestions when the developer presses <strong>Shift+Space</strong>.
+        <ul>
+            <li>Pressing <strong>Enter</strong> inserts the suggested code.</li>
+            <li>Pressing any other key dismisses the suggestion.</li>
+        </ul>
+        This feature aims to streamline coding by anticipating what you need to write next.
+    </p>
+
+    <h3>Customizable Model Settings</h3>
+    <p>
+        Developers can choose the AI model to be used via the plugin's <strong>Settings</strong> page, ensuring flexibility and alignment with their specific requirements.
+    </p>
+</div>
+  ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.java</depends>
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="OllamAssist"
+                    anchor="right"
+                    icon="/icons/icon.svg"
+                    factoryClass="fr.baretto.ollamassist.chat.OllamaWindowFactory"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.ai.store.LuceneEmbeddingStore" />
+        <applicationService serviceImplementation="fr.baretto.ollamassist.ai.OllamaService" />
+        <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
+
+        <postStartupActivity implementation="fr.baretto.ollamassist.ai.StartupOllamassist">startup ollamassist</postStartupActivity>
+     </extensions>
+
+    <actions>
+        <action id="fr.baretto.ollamassist.MyAutoCompletionAction"
+                class="fr.baretto.ollamassist.completion.InlineCompletionAction"
+                text="Trigger AI Autocompletion"
+                description="Triggers AI-based autocompletion for code.">
+            <add-to-group group-id="EditorActions" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="shift SPACE"/>
+        </action>
+    </actions>
+</idea-plugin>
