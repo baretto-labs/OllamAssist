@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "0.0.6-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()

@@ -15,30 +15,37 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-   <div>
+<div>
     <h2>OllamAssist Plugin for IntelliJ IDEA</h2>
-    <p>OllamAssist is a plugin designed to integrate seamlessly with IntelliJ IDEA, leveraging the power of <strong>Ollama</strong> to enhance developer productivity. The plugin offers two main features:</p>
+    <p>OllamAssist is a plugin designed to integrate seamlessly with IntelliJ IDEA, leveraging the power of <strong>Ollama</strong> to enhance developer productivity. This intelligent assistant offers conversational interactions with your code, insightful discussions, and smart code autocompletion, making it your ultimate coding companion.</p>
 
-    <h3>1. Interactive Chat</h3>
-    <p>
-        The chat feature allows developers to communicate directly with the AI model to get insights, suggestions, or explanations. Additionally, the model has access to your project's indexed sources via <strong>RAG (Retrieval-Augmented Generation)</strong>, enabling context-aware responses based on your codebase.
-    </p>
-
-    <h3>2. Smart Code Autocompletion (Experimental)</h3>
-    <p>
-        The autocompletion feature provides code suggestions when the developer presses <strong>Shift+Space</strong>.
-        <ul>
-            <li>Pressing <strong>Enter</strong> inserts the suggested code.</li>
-            <li>Pressing any other key dismisses the suggestion.</li>
-        </ul>
-        This feature aims to streamline coding by anticipating what you need to write next.
-    </p>
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>In-IDE Chat with Ollama Models:</strong> Engage directly with AI for insights and explanations, all within your JetBrains IDE. The model has access to your project's indexed sources via <strong>RAG (Retrieval-Augmented Generation)</strong>, enabling context-aware responses based on your codebase.</li>
+        <li><strong>Enhanced Context Awareness:</strong> Boost model accuracy by providing your workspace for tailored suggestions.</li>
+        <li><strong>Offline Mode:</strong> Enjoy full functionality offline after loading the model and data.</li>
+        <li><strong>Experimental Smart Code Autocomplete:</strong> Anticipates your next steps in coding, offering intelligent suggestions when pressing <strong>Shift+Space</strong>.
+            <ul>
+                <li>Press <strong>Enter</strong> to insert the suggested code.</li>
+                <li>Press any other key to dismiss the suggestion.</li>
+            </ul>
+        </li>
+    </ul>
 
     <h3>Customizable Model Settings</h3>
-    <p>
-        Developers can choose the AI model to be used via the plugin's <strong>Settings</strong> page, ensuring flexibility and alignment with their specific requirements.
-    </p>
+    <p>Developers can choose the AI model to be used via the plugin's <strong>Settings</strong> page, ensuring flexibility and alignment with their specific requirements.</p>
+
+    <h3>Get Started in 5 Minutes</h3>
+    <ol>
+        <li>Download and start <a href="https://ollama.com/download">Ollama</a>.</li>
+        <li>Open a terminal and download a model using the command: <code>ollama run llama3.1</code>.</li>
+        <li>Start IntelliJ IDEA, go to <strong>Plugins > Marketplace</strong>, and search for "OllamAssist".</li>
+        <li>Install the "OllamAssist" plugin.</li>
+        <li>In the OllamAssist settings window, select the Ollama model if it isn't already set to <code>llama3.1</code>.</li>
+        <li>Start coding with your smart OllamAssist!</li>
+    </ol>
 </div>
+
   ]]></description>
 
     <!-- Product and plugin compatibility requirements.
