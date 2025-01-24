@@ -15,6 +15,8 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -37,6 +39,13 @@ public class OllamaContent {
         contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
 
 
+        contentPanel.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                contentPanel.revalidate();
+                contentPanel.repaint();
+            }
+        });
         MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
                 .connect();
 
@@ -80,11 +89,14 @@ public class OllamaContent {
 
     private JComponent createInputPanel() {
         JPanel submitPanel = new JPanel(new BorderLayout());
-        submitPanel.setMinimumSize(new Dimension(Integer.MAX_VALUE, 100));
-        submitPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 100));
+        submitPanel.setMinimumSize(new Dimension(Integer.MAX_VALUE, contentPanel.getSize().height/8));
+        submitPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, contentPanel.getSize().height/8));
         JPanel promptsPanel = new JPanel();//@TODO add context file management
         submitPanel.add(promptsPanel, BorderLayout.NORTH);
-        submitPanel.add(new JBScrollPane(promptInput), BorderLayout.CENTER);
+        JBScrollPane scrollPane = new JBScrollPane(promptInput);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+        submitPanel.add(scrollPane, BorderLayout.CENTER);
         submitPanel.add(createActionButtonsPanel(), BorderLayout.SOUTH);
         return submitPanel;
     }
@@ -127,6 +139,9 @@ public class OllamaContent {
 
         conversationPanel.setPreferredSize(new Dimension(0, 20));
         JBScrollPane scrollPane = new JBScrollPane(container);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+
         conversationPanel.add(scrollPane, BorderLayout.CENTER);
         return conversationPanel;
     }

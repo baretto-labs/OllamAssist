@@ -6,6 +6,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 public class MessagesPanel extends JPanel {
     private final JPanel container = new JPanel();
@@ -19,10 +21,19 @@ public class MessagesPanel extends JPanel {
         super(new BorderLayout());
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
         scrollPane = new JBScrollPane(container);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+
         add(scrollPane, BorderLayout.CENTER);
         container.add(presentationPanel);
 
-
+        container.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                container.revalidate();
+                container.repaint();
+            }
+        });
         JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
         verticalScrollBar.addAdjustmentListener(new AdjustmentListener() {
             private int lastValue = verticalScrollBar.getValue();

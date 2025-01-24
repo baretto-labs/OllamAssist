@@ -6,6 +6,8 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 public class OllamaMessage extends JPanel {
     private final Context context;
@@ -29,10 +31,20 @@ public class OllamaMessage extends JPanel {
 
         add(headerPanel, BorderLayout.NORTH);
         JScrollPane scrollPane = new JBScrollPane(mainPanel);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+
         add(scrollPane, BorderLayout.CENTER);
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         startNewTextArea();
+        mainPanel.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                mainPanel.revalidate();
+                mainPanel.repaint();
+            }
+        });
     }
 
     public void append(String token) {

@@ -16,11 +16,10 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.store.NoLockFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -38,13 +37,11 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     private IndexWriter indexWriter;
 
     public LuceneEmbeddingStore() throws IOException {
-        Path lockFilePath = Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX + "write.lock");
+        this.directory = new NIOFSDirectory(
+                Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX),
+                NoLockFactory.INSTANCE
+        );
 
-        if (Files.exists(lockFilePath)) {
-            Files.delete(lockFilePath);
-        }
-
-        this.directory = new NIOFSDirectory(Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX));
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
         this.indexWriter = createIndexWriter();
@@ -229,19 +226,15 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 Document doc = searcher.storedFields().document(scoreDoc.doc);
 
-                // Retrieve fields from the document
                 String id = doc.get("id");
                 String lastIndexedDate = doc.get("last_indexed_date");
                 String embeddedText = doc.get("embedded");
 
-                // Add date to metadata
                 Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
                 metadata.put("last_indexed_date", lastIndexedDate);
 
-                // Create the text segment with updated metadata
                 Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
 
-                // Add the result
                 matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
             }
 

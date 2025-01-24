@@ -6,6 +6,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 public class PromptPanel extends JPanel {
 
@@ -19,6 +21,7 @@ public class PromptPanel extends JPanel {
         textArea.setLineWrap(true); // Active le retour à la ligne automatique
         textArea.setWrapStyleWord(true); // Coupe proprement au niveau des mots
         textArea.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+
         // textArea.setFont(new Font("Arial", Font.PLAIN, 14)); // Police lisible
 
         // Ajout dans un JScrollPane sans scrollbars
