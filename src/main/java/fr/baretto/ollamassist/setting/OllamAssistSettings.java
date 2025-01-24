@@ -1,7 +1,7 @@
 package fr.baretto.ollamassist.setting;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;
-import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import lombok.Getter;
@@ -17,7 +17,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
     private State myState = new State();
 
     public static OllamAssistSettings getInstance() {
-        return ServiceManager.getService(OllamAssistSettings.class);
+        return ApplicationManager.getApplication().getService(OllamAssistSettings.class);
     }
 
     @Nullable
