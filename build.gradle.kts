@@ -40,7 +40,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.0-M2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
 
     testImplementation("junit:junit:4.13.2")
 
