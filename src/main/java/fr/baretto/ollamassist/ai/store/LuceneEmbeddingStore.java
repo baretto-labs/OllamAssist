@@ -10,13 +10,13 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
-import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.store.SingleInstanceLockFactory;
 
 import java.io.Closeable;
@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static fr.baretto.ollamassist.ai.store.IndexRegistry.OLLAMASSIST_DIR;
 
+@Slf4j
 public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
 
     public static final String DATABASE_KNOWLEDGE_INDEX = "/database/knowledge_index/";
@@ -186,6 +187,7 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
             for (String id : ids) {
                 builder.add(new TermQuery(new Term("id", id)), BooleanClause.Occur.SHOULD);
             }
+
             indexWriter.deleteDocuments(builder.build());
             indexWriter.commit();
         } catch (IOException e) {
