@@ -17,7 +17,9 @@
     <description><![CDATA[
 <div>
     <h2>OllamAssist Plugin for IntelliJ IDEA</h2>
-    <p>OllamAssist is a plugin designed to integrate seamlessly with IntelliJ IDEA, leveraging the power of <strong>Ollama</strong> to enhance developer productivity. This intelligent assistant offers conversational interactions with your code, insightful discussions, and smart code autocompletion, making it your ultimate coding companion.</p>
+    <p>OllamAssist is a plugin designed to integrate seamlessly with IntelliJ IDEA, leveraging the power of <strong>Ollama</strong> to enhance developer productivity.
+     This intelligent assistant offers conversational interactions with your code, insightful discussions, and smart code autocompletion, making it your ultimate coding companion.
+     <strong>All processing is done locally</strong>, ensuring maximum privacy and allowing you to work without an internet connection.</p>
 
     <h3>Key Features</h3>
     <ul>
@@ -34,6 +36,9 @@
 
     <h3>Customizable Model Settings</h3>
     <p>Developers can choose the AI model to be used via the plugin's <strong>Settings</strong> page, ensuring flexibility and alignment with their specific requirements.</p>
+
+    <h3>Minimum Requirements</h3>
+    <p>For the latest system requirements, please refer to the <a href="https://ollama.com/download#requirements" target="_blank">official Ollama requirements page</a>.</p>
 
     <h3>Get Started in 5 Minutes</h3>
     <ol>
