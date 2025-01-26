@@ -17,6 +17,7 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.NoLockFactory;
+import org.apache.lucene.store.SingleInstanceLockFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     public LuceneEmbeddingStore() throws IOException {
         this.directory = new NIOFSDirectory(
                 Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX),
-                NoLockFactory.INSTANCE
+                new SingleInstanceLockFactory()
         );
 
         this.analyzer = new StandardAnalyzer();
