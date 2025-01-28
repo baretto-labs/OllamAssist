@@ -31,8 +31,8 @@ public class OllamaMessage extends JPanel {
 
         add(headerPanel, BorderLayout.NORTH);
         JScrollPane scrollPane = new JBScrollPane(mainPanel);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED); 
 
         add(scrollPane, BorderLayout.CENTER);
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));

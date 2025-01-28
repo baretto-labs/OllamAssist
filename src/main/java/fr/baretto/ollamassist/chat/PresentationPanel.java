@@ -28,7 +28,6 @@ public class PresentationPanel extends JPanel {
         JLabel descriptionLabel = new JLabel("This plugin allows interaction with Ollama directly within the IntelliJ IDE.");
         descriptionLabel.setFont(new Font("Arial", Font.PLAIN, 12));
         descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        descriptionLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, descriptionLabel.getPreferredSize().height));  // Ajuste la largeur
         mainPanel.add(descriptionLabel);
 
         mainPanel.add(Box.createVerticalStrut(10)); // Espacement
@@ -45,15 +44,6 @@ public class PresentationPanel extends JPanel {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Désactive la barre de défilement horizontale
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         add(scrollPane);
-
-
-        this.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                PresentationPanel.super.invalidate();
-                PresentationPanel.super.repaint();
-            }
-        });
     }
 
     private JPanel createFeaturesPanel() {

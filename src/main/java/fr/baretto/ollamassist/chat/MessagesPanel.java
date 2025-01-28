@@ -22,18 +22,10 @@ public class MessagesPanel extends JPanel {
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
         scrollPane = new JBScrollPane(container);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
 
         add(scrollPane, BorderLayout.CENTER);
         container.add(presentationPanel);
 
-        container.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                container.revalidate();
-                container.repaint();
-            }
-        });
         JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
         verticalScrollBar.addAdjustmentListener(new AdjustmentListener() {
             private int lastValue = verticalScrollBar.getValue();
