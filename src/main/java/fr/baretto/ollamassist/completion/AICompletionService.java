@@ -11,7 +11,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
-import fr.baretto.ollamassist.ai.AutocompleteService;
+import fr.baretto.ollamassist.ai.OllamaService;
+import fr.baretto.ollamassist.ai.autocomplete.AutoCompleteService;
 import org.jetbrains.annotations.NotNull;
 
 public class AICompletionService {
@@ -42,7 +43,11 @@ public class AICompletionService {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     String lineStartContent = getLineStartContent(editor).trim();
-                    final String suggestion = extractCode(AutocompleteService.get().complete(context, getFileExtension(editor)), lineStartContent);
+                    final String suggestion = extractCode(ApplicationManager.getApplication()
+                            .getService(AutoCompleteService.class)
+                            .getService()
+                            .complete(context, getFileExtension(editor)),
+                                lineStartContent);
                     ApplicationManager.getApplication().invokeLater(() -> {
                         suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
                         attachKeyListener(editor, editor.getCaretModel().getOffset());

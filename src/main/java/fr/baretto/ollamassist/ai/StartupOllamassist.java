@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.util.messages.MessageBusConnection;
+import fr.baretto.ollamassist.ai.autocomplete.AutoCompleteService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.UIAvailableNotifier;
 import kotlin.Unit;
@@ -32,7 +33,8 @@ public class StartupOllamassist implements ProjectActivity {
     }
 
     private void loadModelsAndNotify() {
-        AutocompleteService.get();
+
+        ApplicationManager.getApplication().getService(AutoCompleteService.class);
 
         ApplicationManager.getApplication()
                 .getMessageBus()
