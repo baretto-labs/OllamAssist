@@ -33,6 +33,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      # Generate Gradle wrapper if not present
+      - name: Generate Gradle Wrapper
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper
+          fi
+
       # Build the project
       - name: Build with Gradle
         run: ./gradlew build
