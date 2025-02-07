@@ -57,6 +57,7 @@
        <h2>V1.0.3</h2>
         <UL>
             <LI>feat/issue-15 : Add scrollbar if textarea is not enough for showing prompt</LI>
+            <LI>feat/issue-12 : Clean history and start conversation from zero</LI>
         </UL>
         <h2>V1.0.2</h2>
         <UL>

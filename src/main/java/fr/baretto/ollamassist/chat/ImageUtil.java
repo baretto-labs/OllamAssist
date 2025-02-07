@@ -13,6 +13,7 @@ public class ImageUtil {
     public static final Icon OLLAMASSIST_ICON = load("/icons/icon.svg");
     public static final Icon SUBMIT = load("/icons/submit.svg");
     public static final Icon SUBMIT_PRESSED = load("/icons/submit_pressed.svg");
+    public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
 
 
     public static Icon load(String path) {

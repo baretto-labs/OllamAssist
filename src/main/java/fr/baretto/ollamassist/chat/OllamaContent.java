@@ -128,9 +128,11 @@ public class OllamaContent {
         JPanel conversationPanel = new JPanel(new BorderLayout());
         conversationPanel.setLayout(new BoxLayout(conversationPanel, BoxLayout.Y_AXIS));
 
-        conversationPanel.setPreferredSize(new Dimension(0, 20));
+        conversationPanel.setPreferredSize(new Dimension(0, 24));
         JBScrollPane scrollPane = new JBScrollPane(container);
 
+        ConversationSelectorPanel conversationSelectorPanel = new ConversationSelectorPanel();
+        conversationPanel.add(conversationSelectorPanel, BorderLayout.NORTH);
         conversationPanel.add(scrollPane, BorderLayout.CENTER);
         return conversationPanel;
     }

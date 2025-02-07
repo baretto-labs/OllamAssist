@@ -1,13 +1,16 @@
 package fr.baretto.ollamassist.chat;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.messages.MessageBusConnection;
+import fr.baretto.ollamassist.ai.OllamaService;
+import fr.baretto.ollamassist.events.ConversationNotifier;
+import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 
 public class MessagesPanel extends JPanel {
     private final JPanel container = new JPanel();
@@ -45,8 +48,17 @@ public class MessagesPanel extends JPanel {
                 lastValue = currentValue;
             }
         });
+
+        MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
+                .connect();
+        connection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) this::clearAll);
     }
 
+    private void clearAll(){
+        container.removeAll();
+        container.repaint();
+        container.revalidate();
+    }
     public void addUserMessage(final String userMessage) {
         if (presentationPanel != null) {
             container.remove(presentationPanel);
