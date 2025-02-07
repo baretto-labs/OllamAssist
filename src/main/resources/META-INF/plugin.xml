@@ -53,6 +53,24 @@
 
   ]]></description>
 
+    <change-notes><![CDATA[
+       <h2>V1.0.3</h2>
+        <UL>
+            <LI>feat/issue-15 : Add scrollbar if textarea is not enough for showing prompt</LI>
+        </UL>
+        <h2>V1.0.2</h2>
+        <UL>
+            <LI>Fix : fix chat scrollbar</LI>
+        </UL>
+        <h2>V1.0.1</h2>
+        <UL>
+            <LI>Fix : fix chat scrollbar</LI>
+        </UL>
+        <h2>V1.0.O</h2>
+        <UL>
+            <LI>Initial release</LI>
+        </UL>
+    ]]></change-notes>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>

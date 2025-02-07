@@ -22,17 +22,12 @@ public class PromptPanel extends JPanel {
         textArea.setWrapStyleWord(true); // Coupe proprement au niveau des mots
         textArea.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 
-        // textArea.setFont(new Font("Arial", Font.PLAIN, 14)); // Police lisible
-
-        // Ajout dans un JScrollPane sans scrollbars
         JScrollPane scrollPane = new JBScrollPane(textArea);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        // Ajout des marges au panel principal
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        // Ajout du JScrollPane au panel
         add(scrollPane, BorderLayout.CENTER);
     }
 
