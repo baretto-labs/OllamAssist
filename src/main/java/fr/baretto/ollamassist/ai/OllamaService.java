@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.ai;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
@@ -15,6 +16,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import fr.baretto.ollamassist.ai.store.LuceneEmbeddingStore;
 import fr.baretto.ollamassist.ai.store.StoreFileListener;
 import fr.baretto.ollamassist.chat.Context;
+import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Getter;
@@ -53,7 +55,12 @@ public class OllamaService {
 
 
         EmbeddingStoreIngestor.ingest(List.of(Document.from("empty document")), embeddingStore);
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(30);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
+
+
+        MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
+                .connect();
+        connection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
 
         OllamaStreamingChatModel model = OllamaStreamingChatModel
                 .builder()
