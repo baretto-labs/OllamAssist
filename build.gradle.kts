@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    val langchain4jVersion = "1.0.0-alpha1"
+    val langchain4jVersion = "1.0.0-beta1"
     val apacheLuceneVersion = "9.12.1"
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
