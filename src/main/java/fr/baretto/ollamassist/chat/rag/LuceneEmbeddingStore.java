@@ -149,7 +149,6 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
             List<Document> documents = new ArrayList<>(embeddings.size());
             List<String> ids = new ArrayList<>(embeddings.size());
 
-            // Batch document creation
             for (int i = 0; i < embeddings.size(); i++) {
                 Embedded embedded = i < metadataList.size() ? metadataList.get(i) : null;
                 String fileName = getFileName(embedded, UUID.randomUUID().toString());
@@ -294,8 +293,6 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     private Document createDocument(Embedding embedding, Embedded embedded, String fileName, String projectId) {
         Document doc = new Document();
 
-
-
         doc.add(new StringField("id", fileName, Field.Store.YES));
         doc.add(new StringField("projectId", projectId, Field.Store.YES));
 
@@ -318,7 +315,7 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
 
     private String serializeMetadata(Metadata metadata) {
         try {
-            return mapper.writeValueAsString(metadata.asMap());
+            return mapper.writeValueAsString(metadata.toMap());
         } catch (JsonProcessingException e) {
             log.error("Metadata serialization failed", e);
             return "{}";
