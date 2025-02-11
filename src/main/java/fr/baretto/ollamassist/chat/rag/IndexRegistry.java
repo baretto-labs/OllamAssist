@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.ai.store;
+package fr.baretto.ollamassist.chat.rag;
 
 import java.io.*;
 import java.util.HashSet;
@@ -20,7 +20,7 @@ public class IndexRegistry {
         return getIndexedProjects().contains(projectId);
     }
 
-    public void addProject(String projectId) {
+    public void markAsIndexed(String projectId) {
         if (!isIndexed(projectId)) {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(PROJECTS_FILE, true))) {
                 writer.write(projectId);

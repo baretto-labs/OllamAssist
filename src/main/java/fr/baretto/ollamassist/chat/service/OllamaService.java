@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.ai;
+package fr.baretto.ollamassist.chat.service;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -13,9 +13,9 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import fr.baretto.ollamassist.ai.store.LuceneEmbeddingStore;
-import fr.baretto.ollamassist.ai.store.StoreFileListener;
-import fr.baretto.ollamassist.chat.Context;
+import fr.baretto.ollamassist.chat.ui.Context;
+import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
+import fr.baretto.ollamassist.chat.rag.StoreFileListener;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.SettingsListener;
@@ -88,13 +88,6 @@ public class OllamaService {
     }
 
 
-    public interface Assistant {
 
-        @SystemMessage("You are a chatbot designed to assist developers." +
-                " Your goal is to provide accurate and helpful responses to technical questions," +
-                " If a question is ambiguous, ask for clarification rather than making assumptions. " +
-                "Respond clearly, concisely, and in a structured manner, and provide relevant examples or details when necessary.")
-        TokenStream chat(String message);
-    }
 }
 

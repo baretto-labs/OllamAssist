@@ -1,5 +1,6 @@
-package fr.baretto.ollamassist.ai.store;
+package fr.baretto.ollamassist.chat.rag;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
 import dev.langchain4j.data.document.Metadata;
@@ -26,7 +27,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static fr.baretto.ollamassist.ai.store.IndexRegistry.OLLAMASSIST_DIR;
+import static fr.baretto.ollamassist.chat.rag.IndexRegistry.OLLAMASSIST_DIR;
 
 @Slf4j
 public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
@@ -99,35 +100,9 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     public void add(String id, Embedding embedding, Embedded embedded) {
         rwLock.writeLock().lock();
         try {
-            Document doc = new Document();
-
-            // Metadata
             String fileName = Optional.ofNullable(((TextSegment) embedded).metadata().getString("file_name"))
                     .orElse(id);
-
-            String projectId = Optional.ofNullable(((TextSegment) embedded).metadata().getString("project_id"))
-                    .orElse("default");
-
-            // Add fields to the document
-            doc.add(new StringField("id", fileName, Field.Store.YES));
-            doc.add(new StringField("projectId", projectId, Field.Store.YES));
-            doc.add(new StoredField("embedded", ((TextSegment) embedded).text()));
-
-            // Add last_indexed_date field
-            String lastIndexedDate = ZonedDateTime.now().toString();
-            doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
-
-            // Add metadata as JSON
-            String metadata = mapper.writeValueAsString(((TextSegment) embedded).metadata().toMap());
-            doc.add(new StoredField("metadata", metadata));
-
-            // Add vector
-            float[] vector = embedding.vector();
-            FieldType vectorFieldType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
-            doc.add(new KnnFloatVectorField("vector", vector, vectorFieldType));
-
-            // Index or update the document
-            indexWriter.updateDocument(new Term("id", fileName), doc);
+            indexWriter.updateDocument(new Term("id", fileName), toDocument(embedding, embedded, fileName));
             indexWriter.commit();
         } catch (IOException e) {
             throw new RuntimeException("Error adding or updating document in Lucene", e);
@@ -136,30 +111,63 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
         }
     }
 
-    @Override
-    public List<String> addAll(List<Embedding> embeddings) {
-        rwLock.writeLock().lock();
+    private Document toDocument(Embedding embedding, Embedded embedded, String fileName) {
+        Document doc = new Document();
+        String projectId = Optional.ofNullable(((TextSegment) embedded).metadata().getString("project_id"))
+                .orElse("default");
+
+        doc.add(new StringField("id", fileName, Field.Store.YES));
+        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+        doc.add(new StoredField("embedded", ((TextSegment) embedded).text()));
+
+        String lastIndexedDate = ZonedDateTime.now().toString();
+        doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
+
+        String metadata = null;
         try {
-            List<String> ids = new ArrayList<>();
-            for (Embedding embedding : embeddings) {
-                ids.add(add(embedding));
-            }
-            return ids;
-        } finally {
-            rwLock.writeLock().unlock();
+            metadata = mapper.writeValueAsString(((TextSegment) embedded).metadata().toMap());
+        } catch (JsonProcessingException e) {
+            metadata = "";
         }
+        doc.add(new StoredField("metadata", metadata));
+
+        float[] vector = embedding.vector();
+        FieldType vectorFieldType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
+        doc.add(new KnnFloatVectorField("vector", vector, vectorFieldType));
+
+        return doc;
+    }
+
+    public List<String> addAll(List<Embedding> embeddings) {
+        return addAll(embeddings, Collections.emptyList());
     }
 
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<Embedded> metadataList) {
         rwLock.writeLock().lock();
         try {
-            List<String> ids = new ArrayList<>();
+            List<Document> documents = new ArrayList<>(embeddings.size());
+            List<String> ids = new ArrayList<>(embeddings.size());
+
+            // Batch document creation
             for (int i = 0; i < embeddings.size(); i++) {
-                Embedded metadata = (i < metadataList.size()) ? metadataList.get(i) : null;
-                ids.add(add(embeddings.get(i), metadata));
+                Embedded embedded = i < metadataList.size() ? metadataList.get(i) : null;
+                String fileName = getFileName(embedded, UUID.randomUUID().toString());
+                ids.add(fileName);
+
+                documents.add(createDocument(
+                        embeddings.get(i),
+                        embedded,
+                        fileName,
+                        getProjectId(embedded)
+                ));
             }
+
+            indexWriter.addDocuments(documents);
+            indexWriter.commit();
             return ids;
+        } catch (IOException e) {
+            throw new RuntimeException("Bulk add operation failed", e);
         } finally {
             rwLock.writeLock().unlock();
         }
@@ -265,5 +273,55 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     @Override
     public void dispose() {
         close();
+    }
+
+    private String getFileName(Embedded embedded, String defaultName) {
+        if (embedded instanceof TextSegment textSegment) {
+            return  Optional.ofNullable((textSegment).metadata().getString("file_name"))
+                    .orElse(defaultName);
+        }
+        return defaultName;
+    }
+
+    private String getProjectId(Embedded embedded) {
+        if (embedded instanceof TextSegment textSegment) {
+            return Optional.ofNullable((textSegment).metadata().getString("project_id"))
+                    .orElse("default");
+        }
+        return "default";
+    }
+
+    private Document createDocument(Embedding embedding, Embedded embedded, String fileName, String projectId) {
+        Document doc = new Document();
+
+
+
+        doc.add(new StringField("id", fileName, Field.Store.YES));
+        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+
+        if (embedded instanceof TextSegment segment) {
+            doc.add(new StoredField("embedded", segment.text()));
+
+            String lastIndexedDate = ZonedDateTime.now().toString();
+            doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
+
+            String metadata = serializeMetadata(segment.metadata());
+            doc.add(new StoredField("metadata", metadata));
+        }
+
+        float[] vector = embedding.vector();
+        FieldType vectorType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
+        doc.add(new KnnFloatVectorField("vector", vector, vectorType));
+
+        return doc;
+    }
+
+    private String serializeMetadata(Metadata metadata) {
+        try {
+            return mapper.writeValueAsString(metadata.asMap());
+        } catch (JsonProcessingException e) {
+            log.error("Metadata serialization failed", e);
+            return "{}";
+        }
     }
 }

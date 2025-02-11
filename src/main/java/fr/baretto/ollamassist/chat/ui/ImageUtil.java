@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.chat;
+package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.util.IconLoader;
 import lombok.AccessLevel;

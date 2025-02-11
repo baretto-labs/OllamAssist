@@ -1,8 +1,7 @@
-package fr.baretto.ollamassist.chat;
+package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
-import fr.baretto.ollamassist.ai.OllamaService;
-import fr.baretto.ollamassist.ai.store.LuceneEmbeddingStore;
+import fr.baretto.ollamassist.chat.service.OllamaService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.event.ActionEvent;
