@@ -37,7 +37,7 @@ public class OllamaContent {
         contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
 
 
-        MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
+        MessageBusConnection connection = context.project().getMessageBus()
                 .connect();
 
         connection.subscribe(ModelAvailableNotifier.TOPIC, (ModelAvailableNotifier) () -> {
@@ -47,13 +47,14 @@ public class OllamaContent {
                     initUI();
                     contentPanel.revalidate();
                     contentPanel.repaint();
-                    ApplicationManager.getApplication().getService(OllamaService.class).init(context);
                 });
             }
         });
 
         connection
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> ApplicationManager.getApplication().getService(OllamaService.class).forceInit(context));
+                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
+                        .getService(OllamaService.class)
+                        .forceInit(context));
 
         ApplicationManager.getApplication()
                 .getMessageBus()

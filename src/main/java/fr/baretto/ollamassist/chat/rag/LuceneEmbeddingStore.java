@@ -3,6 +3,8 @@ package fr.baretto.ollamassist.chat.rag;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.components.Service;
+import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -19,6 +21,7 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.SingleInstanceLockFactory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -30,7 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static fr.baretto.ollamassist.chat.rag.IndexRegistry.OLLAMASSIST_DIR;
 
 @Slf4j
-public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
+public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
 
     public static final String DATABASE_KNOWLEDGE_INDEX = "/database/knowledge_index/";
     private final Directory directory;
@@ -39,12 +42,11 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     private IndexWriter indexWriter;
 
-    public LuceneEmbeddingStore() throws IOException {
+    public LuceneEmbeddingStore(Project project) throws IOException {
         this.directory = new NIOFSDirectory(
-                Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX),
+                Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX),
                 new SingleInstanceLockFactory()
         );
-
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
         this.indexWriter = createIndexWriter();
@@ -234,20 +236,19 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
 
             List<EmbeddingMatch<Embedded>> matches = new ArrayList<>();
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-                Document doc = searcher.storedFields().document(scoreDoc.doc);
+                    Document doc = searcher.storedFields().document(scoreDoc.doc);
 
-                String id = doc.get("id");
-                String lastIndexedDate = doc.get("last_indexed_date");
-                String embeddedText = doc.get("embedded");
+                    String id = doc.get("id");
+                    String lastIndexedDate = doc.get("last_indexed_date");
+                    String embeddedText = doc.get("embedded");
 
-                Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
-                metadata.put("last_indexed_date", lastIndexedDate);
+                    Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
+                    metadata.put("last_indexed_date", lastIndexedDate);
 
-                Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
+                    Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
 
-                matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
+                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
             }
-
             return new EmbeddingSearchResult<>(matches);
         } catch (IOException e) {
             throw new RuntimeException("Error searching Lucene index", e);
@@ -276,7 +277,7 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
 
     private String getFileName(Embedded embedded, String defaultName) {
         if (embedded instanceof TextSegment textSegment) {
-            return  Optional.ofNullable((textSegment).metadata().getString("file_name"))
+            return Optional.ofNullable((textSegment).metadata().getString("file_name"))
                     .orElse(defaultName);
         }
         return defaultName;
@@ -321,4 +322,5 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
             return "{}";
         }
     }
+
 }

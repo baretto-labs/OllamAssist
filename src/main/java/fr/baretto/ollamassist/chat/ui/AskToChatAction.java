@@ -1,6 +1,5 @@
 package fr.baretto.ollamassist.chat.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +28,7 @@ public class AskToChatAction implements ActionListener {
         outputPanel.addUserMessage(userMessage);
         outputPanel.addNewAIMessage();
 
-        new Thread(() -> ApplicationManager.getApplication()
+        new Thread(() -> context.project()
                 .getService(OllamaService.class)
                 .getAssistant()
                 .chat(userMessage)

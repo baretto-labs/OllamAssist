@@ -72,8 +72,8 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
     }
 
     private PathMatcher createPathMatcher(List<String> sources) {
-        return path -> Files.isRegularFile(path) &&
-                sources.stream().anyMatch(s -> path.toString().contains(s));
+        boolean matchAll = sources.isEmpty() || sources.stream().allMatch(String::isBlank);
+        return path -> Files.isRegularFile(path) && (matchAll || sources.stream().anyMatch(s -> path.toString().contains(s)));
     }
 
     private void countTotalFiles(ProgressIndicator indicator) throws Exception {

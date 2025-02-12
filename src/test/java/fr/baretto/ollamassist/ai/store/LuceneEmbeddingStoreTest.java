@@ -26,7 +26,7 @@ class LuceneEmbeddingStoreTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        store = new LuceneEmbeddingStore<>();
+        store = new LuceneEmbeddingStore<>(null);
     }
 
     @AfterEach

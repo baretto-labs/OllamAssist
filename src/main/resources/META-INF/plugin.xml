@@ -58,6 +58,7 @@
         <UL>
             <LI>feat/issue-15 : Add scrollbar if textarea is not enough for showing prompt</LI>
             <LI>feat/issue-12 : Clean history and start conversation from zero</LI>
+            <LI>feat/issue-9 : Refactor indexation and RAG configuration</LI>
         </UL>
         <h2>V1.0.2</h2>
         <UL>
@@ -85,10 +86,9 @@
                     icon="/icons/icon.svg"
                     factoryClass="fr.baretto.ollamassist.chat.ui.OllamaWindowFactory"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
-        <applicationService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore" />
-        <applicationService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService" />
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
-
         <postStartupActivity implementation="fr.baretto.ollamassist.ai.StartupOllamassist">startup ollamassist</postStartupActivity>
      </extensions>
 

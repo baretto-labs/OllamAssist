@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.setting;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
@@ -16,9 +17,11 @@ public class ConfigurationPanel extends JPanel {
     private final JBTextField chatModel = new JBTextField();
     private final JBTextField completionModel = new JBTextField();
     private final JBTextField sources = new JBTextField();
+    private final Project project;
 
 
-    public ConfigurationPanel() {
+    public ConfigurationPanel(Project project) {
+        this.project = project;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(JBUI.Borders.empty(10)); // Ajouter des marges globales
 
@@ -78,10 +81,9 @@ public class ConfigurationPanel extends JPanel {
             );
             if (result == Messages.YES) {
                 sources.setText("");
-                ApplicationManager.getApplication()
-                        .getMessageBus()
+                ApplicationManager.getApplication().getMessageBus()
                         .syncPublisher(StoreNotifier.TOPIC)
-                        .clearEmbeddingStore();
+                        .clear();
             }
         });
 
