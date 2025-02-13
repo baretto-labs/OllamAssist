@@ -3,11 +3,11 @@
      xmlns="http://www.w3.org/2000/svg">
   <desc/>
     <g>
-    <circle cx="32" cy="32" fill="none" r="30" stroke="#808080" stroke-linejoin="round" stroke-miterlimit="10"
+    <circle cx="32" cy="32" fill="none" r="30" stroke="#FFFFFF" stroke-linejoin="round" stroke-miterlimit="10"
             stroke-width="2"/>
-        <path d="M52,54L52,54 c0-11.046-8.954-20-20-20h0c-11.046,0-20,8.954-20,20v0" fill="none" stroke="#808080"
+        <path d="M52,54L52,54 c0-11.046-8.954-20-20-20h0c-11.046,0-20,8.954-20,20v0" fill="none" stroke="#FFFFFF"
               stroke-linejoin="round" stroke-miterlimit="10" stroke-width="2"/>
-        <circle cx="32" cy="22" fill="none" r="12" stroke="#808080" stroke-linejoin="round" stroke-miterlimit="10"
+        <circle cx="32" cy="22" fill="none" r="12" stroke="#FFFFFF" stroke-linejoin="round" stroke-miterlimit="10"
                 stroke-width="2"/>
   </g>
 </svg>
