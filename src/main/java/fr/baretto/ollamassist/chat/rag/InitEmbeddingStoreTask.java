@@ -122,12 +122,18 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
                     progress * 100,
                     batchSize
             );
-
             indicator.setText2(progressText);
-
             if (totalProcessed > 0 && totalFiles > 0) {
                 estimateRemainingTime(indicator, totalProcessed);
             }
+        }else{
+            String progressText = String.format(
+                    "Indexing: %d/%d files (%.1f%%)",
+                    totalProcessed,
+                    totalFiles,
+                    progress * 100
+            );
+            indicator.setText2(progressText);
         }
     }
 

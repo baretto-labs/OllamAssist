@@ -1,15 +1,22 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Set;
 
 //@TODO replace by a service
+@Slf4j
 public class IndexRegistry {
 
     private static final String USER_HOME = System.getProperty("user.home");
     public static final String OLLAMASSIST_DIR = USER_HOME + File.separator + ".ollamassist";
-    private static final String PROJECTS_FILE = OLLAMASSIST_DIR + File.separator + "projects.txt";
+    private static final String PROJECTS_FILE = OLLAMASSIST_DIR + File.separator + "indexed_projects.txt";
 
     public IndexRegistry() {
         ensureDirectoryExists();
@@ -22,24 +29,24 @@ public class IndexRegistry {
 
     public void markAsIndexed(String projectId) {
         if (!isIndexed(projectId)) {
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(PROJECTS_FILE, true))) {
+            try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(PROJECTS_FILE), StandardOpenOption.APPEND)) {
                 writer.write(projectId);
                 writer.newLine();
             } catch (IOException e) {
-                throw new RuntimeException("Error adding project to indexed list", e);
+                log.error("Error adding project to indexed list", e);
             }
         }
     }
 
     public Set<String> getIndexedProjects() {
         Set<String> projects = new HashSet<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(PROJECTS_FILE))) {
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(PROJECTS_FILE))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 projects.add(line.trim());
             }
         } catch (IOException e) {
-            throw new RuntimeException("Error reading indexed projects file", e);
+            log.error("Error reading indexed projects file", e);
         }
         return projects;
     }
@@ -47,32 +54,33 @@ public class IndexRegistry {
     public void removeProject(String projectId) {
         Set<String> projects = getIndexedProjects();
         if (projects.remove(projectId)) {
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(PROJECTS_FILE))) {
+            try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(PROJECTS_FILE))) {
                 for (String project : projects) {
                     writer.write(project);
                     writer.newLine();
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Error updating indexed projects file", e);
+                log.error("Error updating indexed projects file", e);
             }
         }
     }
 
     private void ensureDirectoryExists() {
-        File dir = new File(OLLAMASSIST_DIR);
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw new RuntimeException("Error creating .ollamassist directory");
+        try {
+            Files.createDirectories(Paths.get(OLLAMASSIST_DIR));
+        } catch (IOException e) {
+            log.error("Error creating .ollamassist directory", e);
         }
     }
 
     private void ensureFileExists() {
-        File file = new File(PROJECTS_FILE);
         try {
-            if (!file.exists()) {
-                file.createNewFile();
+            Path path = Paths.get(PROJECTS_FILE);
+            if (Files.notExists(path)) {
+                Files.createFile(path);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Error creating indexed projects file", e);
+            log.error("Error creating indexed projects file", e);
         }
     }
 }
