@@ -80,8 +80,7 @@ public class ConfigurationPanel extends JPanel {
                     Messages.getWarningIcon()
             );
             if (result == Messages.YES) {
-                sources.setText("");
-                ApplicationManager.getApplication().getMessageBus()
+                project.getMessageBus()
                         .syncPublisher(StoreNotifier.TOPIC)
                         .clear();
             }

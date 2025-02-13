@@ -3,7 +3,6 @@ package fr.baretto.ollamassist.chat.rag;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -21,7 +20,6 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.SingleInstanceLockFactory;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -49,10 +47,10 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
         );
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
-        this.indexWriter = createIndexWriter();
+        this.indexWriter = retrieveIndexWriter();
     }
 
-    private synchronized IndexWriter createIndexWriter() throws IOException {
+    private synchronized IndexWriter retrieveIndexWriter() throws IOException {
         if (indexWriter == null) {
             indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
         }
@@ -102,6 +100,9 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
     public void add(String id, Embedding embedding, Embedded embedded) {
         rwLock.writeLock().lock();
         try {
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             String fileName = Optional.ofNullable(((TextSegment) embedded).metadata().getString("file_name"))
                     .orElse(id);
             indexWriter.updateDocument(new Term("id", fileName), toDocument(embedding, embedded, fileName));
@@ -163,7 +164,9 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
                         getProjectId(embedded)
                 ));
             }
-
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             indexWriter.addDocuments(documents);
             indexWriter.commit();
             return ids;
@@ -178,6 +181,9 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
     public void removeAll() {
         rwLock.writeLock().lock();
         try {
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             Query query = new MatchAllDocsQuery();
             indexWriter.deleteDocuments(query);
             indexWriter.commit();
@@ -196,7 +202,9 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
             for (String id : ids) {
                 builder.add(new TermQuery(new Term("id", id)), BooleanClause.Occur.SHOULD);
             }
-
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             indexWriter.deleteDocuments(builder.build());
             indexWriter.commit();
         } catch (IOException e) {
@@ -211,6 +219,9 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
         rwLock.writeLock().lock();
         try {
             if (filter instanceof IdEqualsFilter idEqualsFilter) {
+                if (indexWriter == null) {
+                    indexWriter = retrieveIndexWriter();
+                }
                 indexWriter.deleteDocuments(idEqualsFilter.toLuceneQuery());
                 indexWriter.commit();
             } else {
