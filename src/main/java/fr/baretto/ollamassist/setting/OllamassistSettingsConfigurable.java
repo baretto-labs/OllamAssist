@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.setting;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,13 +11,16 @@ import javax.swing.*;
 
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
-    private ConfigurationPanel configurationPanel = new ConfigurationPanel();
+    private ConfigurationPanel configurationPanel;
 
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
         return "OllamAssist Settings";
     }
 
+    public OllamassistSettingsConfigurable(Project project){
+        configurationPanel = new ConfigurationPanel(project);
+    }
     @Nullable
     @Override
     public JComponent createComponent() {

@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.chat;
+package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
@@ -6,7 +6,7 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
-import fr.baretto.ollamassist.ai.OllamaService;
+import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.UIAvailableNotifier;
 import fr.baretto.ollamassist.setting.SettingsListener;
@@ -37,7 +37,7 @@ public class OllamaContent {
         contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
 
 
-        MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
+        MessageBusConnection connection = context.project().getMessageBus()
                 .connect();
 
         connection.subscribe(ModelAvailableNotifier.TOPIC, (ModelAvailableNotifier) () -> {
@@ -47,13 +47,14 @@ public class OllamaContent {
                     initUI();
                     contentPanel.revalidate();
                     contentPanel.repaint();
-                    ApplicationManager.getApplication().getService(OllamaService.class).init(context);
                 });
             }
         });
 
         connection
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> ApplicationManager.getApplication().getService(OllamaService.class).forceInit(context));
+                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
+                        .getService(OllamaService.class)
+                        .forceInit(context));
 
         ApplicationManager.getApplication()
                 .getMessageBus()

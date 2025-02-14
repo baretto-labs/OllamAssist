@@ -1,9 +1,8 @@
-package fr.baretto.ollamassist.chat;
+package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.events.ConversationNotifier;
-import fr.baretto.ollamassist.events.StoreNotifier;
 
 import javax.swing.*;
 import java.awt.*;

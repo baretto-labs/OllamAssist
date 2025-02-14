@@ -23,6 +23,9 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
     @Nullable
     @Override
     public State getState() {
+        if (myState == null) {
+            myState = new State();
+        }
         return myState;
     }
 

@@ -6,6 +6,8 @@ import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15Quantize
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import fr.baretto.ollamassist.chat.rag.FilesUtil;
+import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +26,7 @@ class LuceneEmbeddingStoreTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        store = new LuceneEmbeddingStore<>();
+        store = new LuceneEmbeddingStore<>(new DummyProject());
     }
 
     @AfterEach

@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.ai.store;
+package fr.baretto.ollamassist.chat.rag;
 
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Getter;

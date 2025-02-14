@@ -1,7 +1,9 @@
-package fr.baretto.ollamassist.ai.store;
+package fr.baretto.ollamassist.chat.rag;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -26,10 +28,10 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static fr.baretto.ollamassist.ai.store.IndexRegistry.OLLAMASSIST_DIR;
+import static fr.baretto.ollamassist.chat.rag.IndexRegistry.OLLAMASSIST_DIR;
 
 @Slf4j
-public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
+public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
 
     public static final String DATABASE_KNOWLEDGE_INDEX = "/database/knowledge_index/";
     private final Directory directory;
@@ -38,18 +40,17 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     private IndexWriter indexWriter;
 
-    public LuceneEmbeddingStore() throws IOException {
+    public LuceneEmbeddingStore(Project project) throws IOException {
         this.directory = new NIOFSDirectory(
-                Paths.get(OLLAMASSIST_DIR + DATABASE_KNOWLEDGE_INDEX),
+                Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX),
                 new SingleInstanceLockFactory()
         );
-
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
-        this.indexWriter = createIndexWriter();
+        this.indexWriter = retrieveIndexWriter();
     }
 
-    private synchronized IndexWriter createIndexWriter() throws IOException {
+    private synchronized IndexWriter retrieveIndexWriter() throws IOException {
         if (indexWriter == null) {
             indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
         }
@@ -99,35 +100,12 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     public void add(String id, Embedding embedding, Embedded embedded) {
         rwLock.writeLock().lock();
         try {
-            Document doc = new Document();
-
-            // Metadata
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             String fileName = Optional.ofNullable(((TextSegment) embedded).metadata().getString("file_name"))
                     .orElse(id);
-
-            String projectId = Optional.ofNullable(((TextSegment) embedded).metadata().getString("project_id"))
-                    .orElse("default");
-
-            // Add fields to the document
-            doc.add(new StringField("id", fileName, Field.Store.YES));
-            doc.add(new StringField("projectId", projectId, Field.Store.YES));
-            doc.add(new StoredField("embedded", ((TextSegment) embedded).text()));
-
-            // Add last_indexed_date field
-            String lastIndexedDate = ZonedDateTime.now().toString();
-            doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
-
-            // Add metadata as JSON
-            String metadata = mapper.writeValueAsString(((TextSegment) embedded).metadata().toMap());
-            doc.add(new StoredField("metadata", metadata));
-
-            // Add vector
-            float[] vector = embedding.vector();
-            FieldType vectorFieldType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
-            doc.add(new KnnFloatVectorField("vector", vector, vectorFieldType));
-
-            // Index or update the document
-            indexWriter.updateDocument(new Term("id", fileName), doc);
+            indexWriter.updateDocument(new Term("id", fileName), toDocument(embedding, embedded, fileName));
             indexWriter.commit();
         } catch (IOException e) {
             throw new RuntimeException("Error adding or updating document in Lucene", e);
@@ -136,30 +114,64 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
         }
     }
 
-    @Override
-    public List<String> addAll(List<Embedding> embeddings) {
-        rwLock.writeLock().lock();
+    private Document toDocument(Embedding embedding, Embedded embedded, String fileName) {
+        Document doc = new Document();
+        String projectId = Optional.ofNullable(((TextSegment) embedded).metadata().getString("project_id"))
+                .orElse("default");
+
+        doc.add(new StringField("id", fileName, Field.Store.YES));
+        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+        doc.add(new StoredField("embedded", ((TextSegment) embedded).text()));
+
+        String lastIndexedDate = ZonedDateTime.now().toString();
+        doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
+
+        String metadata = null;
         try {
-            List<String> ids = new ArrayList<>();
-            for (Embedding embedding : embeddings) {
-                ids.add(add(embedding));
-            }
-            return ids;
-        } finally {
-            rwLock.writeLock().unlock();
+            metadata = mapper.writeValueAsString(((TextSegment) embedded).metadata().toMap());
+        } catch (JsonProcessingException e) {
+            metadata = "";
         }
+        doc.add(new StoredField("metadata", metadata));
+
+        float[] vector = embedding.vector();
+        FieldType vectorFieldType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
+        doc.add(new KnnFloatVectorField("vector", vector, vectorFieldType));
+
+        return doc;
+    }
+
+    public List<String> addAll(List<Embedding> embeddings) {
+        return addAll(embeddings, Collections.emptyList());
     }
 
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<Embedded> metadataList) {
         rwLock.writeLock().lock();
         try {
-            List<String> ids = new ArrayList<>();
+            List<Document> documents = new ArrayList<>(embeddings.size());
+            List<String> ids = new ArrayList<>(embeddings.size());
+
             for (int i = 0; i < embeddings.size(); i++) {
-                Embedded metadata = (i < metadataList.size()) ? metadataList.get(i) : null;
-                ids.add(add(embeddings.get(i), metadata));
+                Embedded embedded = i < metadataList.size() ? metadataList.get(i) : null;
+                String fileName = getFileName(embedded, UUID.randomUUID().toString());
+                ids.add(fileName);
+
+                documents.add(createDocument(
+                        embeddings.get(i),
+                        embedded,
+                        fileName,
+                        getProjectId(embedded)
+                ));
             }
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
+            indexWriter.addDocuments(documents);
+            indexWriter.commit();
             return ids;
+        } catch (IOException e) {
+            throw new RuntimeException("Bulk add operation failed", e);
         } finally {
             rwLock.writeLock().unlock();
         }
@@ -169,6 +181,9 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     public void removeAll() {
         rwLock.writeLock().lock();
         try {
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             Query query = new MatchAllDocsQuery();
             indexWriter.deleteDocuments(query);
             indexWriter.commit();
@@ -187,7 +202,9 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
             for (String id : ids) {
                 builder.add(new TermQuery(new Term("id", id)), BooleanClause.Occur.SHOULD);
             }
-
+            if (indexWriter == null) {
+                indexWriter = retrieveIndexWriter();
+            }
             indexWriter.deleteDocuments(builder.build());
             indexWriter.commit();
         } catch (IOException e) {
@@ -202,6 +219,9 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
         rwLock.writeLock().lock();
         try {
             if (filter instanceof IdEqualsFilter idEqualsFilter) {
+                if (indexWriter == null) {
+                    indexWriter = retrieveIndexWriter();
+                }
                 indexWriter.deleteDocuments(idEqualsFilter.toLuceneQuery());
                 indexWriter.commit();
             } else {
@@ -227,20 +247,19 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
 
             List<EmbeddingMatch<Embedded>> matches = new ArrayList<>();
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-                Document doc = searcher.storedFields().document(scoreDoc.doc);
+                    Document doc = searcher.storedFields().document(scoreDoc.doc);
 
-                String id = doc.get("id");
-                String lastIndexedDate = doc.get("last_indexed_date");
-                String embeddedText = doc.get("embedded");
+                    String id = doc.get("id");
+                    String lastIndexedDate = doc.get("last_indexed_date");
+                    String embeddedText = doc.get("embedded");
 
-                Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
-                metadata.put("last_indexed_date", lastIndexedDate);
+                    Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
+                    metadata.put("last_indexed_date", lastIndexedDate);
 
-                Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
+                    Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
 
-                matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
+                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
             }
-
             return new EmbeddingSearchResult<>(matches);
         } catch (IOException e) {
             throw new RuntimeException("Error searching Lucene index", e);
@@ -266,4 +285,53 @@ public class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>,
     public void dispose() {
         close();
     }
+
+    private String getFileName(Embedded embedded, String defaultName) {
+        if (embedded instanceof TextSegment textSegment) {
+            return Optional.ofNullable((textSegment).metadata().getString("file_name"))
+                    .orElse(defaultName);
+        }
+        return defaultName;
+    }
+
+    private String getProjectId(Embedded embedded) {
+        if (embedded instanceof TextSegment textSegment) {
+            return Optional.ofNullable((textSegment).metadata().getString("project_id"))
+                    .orElse("default");
+        }
+        return "default";
+    }
+
+    private Document createDocument(Embedding embedding, Embedded embedded, String fileName, String projectId) {
+        Document doc = new Document();
+
+        doc.add(new StringField("id", fileName, Field.Store.YES));
+        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+
+        if (embedded instanceof TextSegment segment) {
+            doc.add(new StoredField("embedded", segment.text()));
+
+            String lastIndexedDate = ZonedDateTime.now().toString();
+            doc.add(new StringField("last_indexed_date", lastIndexedDate, Field.Store.YES));
+
+            String metadata = serializeMetadata(segment.metadata());
+            doc.add(new StoredField("metadata", metadata));
+        }
+
+        float[] vector = embedding.vector();
+        FieldType vectorType = KnnFloatVectorField.createFieldType(vector.length, VectorSimilarityFunction.COSINE);
+        doc.add(new KnnFloatVectorField("vector", vector, vectorType));
+
+        return doc;
+    }
+
+    private String serializeMetadata(Metadata metadata) {
+        try {
+            return mapper.writeValueAsString(metadata.toMap());
+        } catch (JsonProcessingException e) {
+            log.error("Metadata serialization failed", e);
+            return "{}";
+        }
+    }
+
 }
