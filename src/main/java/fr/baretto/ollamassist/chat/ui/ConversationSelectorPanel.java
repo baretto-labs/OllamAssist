@@ -12,7 +12,7 @@ import java.awt.event.MouseEvent;
 public class ConversationSelectorPanel extends JPanel {
 
     private static final String OLLAM_ASSIST_HISTORIC = "Conversation";
-    private static final String NEW_CONVERSATION = "New conversation";
+    private static final String NEW_CONVERSATION = "Clear current conversation";
 
     public ConversationSelectorPanel() {
         super(new BorderLayout());
