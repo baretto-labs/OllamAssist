@@ -7,6 +7,7 @@ import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.UIAvailableNotifier;
 import fr.baretto.ollamassist.setting.SettingsListener;
@@ -15,8 +16,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 
 public class OllamaContent {
@@ -35,7 +34,6 @@ public class OllamaContent {
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
         contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
-
 
         MessageBusConnection connection = context.project().getMessageBus()
                 .connect();
@@ -89,38 +87,8 @@ public class OllamaContent {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
         submitPanel.add(scrollPane, BorderLayout.CENTER);
-        submitPanel.add(createActionButtonsPanel(), BorderLayout.SOUTH);
         return submitPanel;
     }
-
-    private JPanel createActionButtonsPanel() {
-        JPanel buttonsPanel = new JPanel(new BorderLayout());
-        buttonsPanel.setPreferredSize(new Dimension(30, 30));
-        JButton executePrompt = new JButton(ImageUtil.SUBMIT);
-        executePrompt.setOpaque(true);
-        executePrompt.setBorderPainted(false);
-        executePrompt.addActionListener(askToChatAction);
-        executePrompt.setContentAreaFilled(false);
-
-        executePrompt.setPressedIcon(ImageUtil.SUBMIT_PRESSED);
-
-        executePrompt.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                executePrompt.setLocation(executePrompt.getX() + 2, executePrompt.getY() + 2);
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                executePrompt.setLocation(executePrompt.getX() - 2, executePrompt.getY() - 2);
-            }
-        });
-
-
-        buttonsPanel.add(executePrompt, BorderLayout.EAST);
-        return buttonsPanel;
-    }
-
 
     private JPanel createConversationPanel() {
         JPanel container = new JPanel();

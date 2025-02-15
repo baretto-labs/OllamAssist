@@ -6,11 +6,10 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.util.messages.MessageBusConnection;
+import fr.baretto.ollamassist.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.UIAvailableNotifier;
-import fr.baretto.ollamassist.setting.ConfigurationPanel;
-import fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +24,7 @@ public class StartupOllamassist implements ProjectActivity {
 
     @Override
     public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super Unit> continuation) {
+        EditorListener.attachListeners();
         new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {

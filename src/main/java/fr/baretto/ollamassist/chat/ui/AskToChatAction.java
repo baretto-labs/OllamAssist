@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.component.PromptPanel;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.event.ActionEvent;
