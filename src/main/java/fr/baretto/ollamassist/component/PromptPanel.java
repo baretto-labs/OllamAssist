@@ -9,6 +9,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 public class PromptPanel extends JPanel {
 
@@ -79,9 +81,10 @@ public class PromptPanel extends JPanel {
         });
 
         sendButton.addActionListener(e -> triggerAction(listener));
+
     }
 
-    private void triggerAction(ActionListener listener) {
+    public void triggerAction(ActionListener listener) {
         listener.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, null));
     }
 

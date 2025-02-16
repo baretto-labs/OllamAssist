@@ -51,7 +51,7 @@ public class SelectionGutterIcon {
                 return new AnAction() {
                     @Override
                     public void actionPerformed(@NotNull AnActionEvent e) {
-                        OverlayPopup.showPopup(editor, lineNumber);
+                        OverlayPromptPanel.showOverlayPromptPanel(editor, lineNumber);
                     }
                 };
             }
@@ -71,7 +71,7 @@ public class SelectionGutterIcon {
         addCaretListener(editor);
     }
 
-    private static void removeGutterIcon(@NotNull Editor editor) {
+    public static void removeGutterIcon(@NotNull Editor editor) {
         RangeHighlighter previousHighlighter = activeHighlighters.remove(editor);
         if (previousHighlighter != null) {
             editor.getMarkupModel().removeHighlighter(previousHighlighter);

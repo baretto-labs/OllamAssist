@@ -9,15 +9,18 @@ import com.intellij.util.messages.MessageBusConnection;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
+import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.events.UIAvailableNotifier;
 import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
 
 
+@Slf4j
 public class OllamaContent {
 
     private final Context context;
@@ -30,11 +33,15 @@ public class OllamaContent {
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
-        askToChatAction = new AskToChatAction(promptInput, outputPanel, context);
+        askToChatAction = new AskToChatAction(promptInput, context.project());
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
         contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
 
+        subscribeEvents(toolWindow);
+    }
+
+    private void subscribeEvents(@NotNull ToolWindow toolWindow) {
         MessageBusConnection connection = context.project().getMessageBus()
                 .connect();
 
@@ -49,10 +56,25 @@ public class OllamaContent {
             }
         });
 
-        connection
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
-                        .getService(OllamaService.class)
-                        .forceInit(context));
+        connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) (message) -> {
+            outputPanel.addUserMessage(message);
+            outputPanel.addNewAIMessage();
+
+            new Thread(() -> context.project()
+                    .getService(OllamaService.class)
+                    .getAssistant()
+                    .chat(message)
+                    .onNext(outputPanel::appendToken)
+                    .onError(throwable-> log.error(throwable.getMessage()) )
+                    .start()
+            ).start();
+            promptInput.clear();
+        });
+
+
+        connection.subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
+                .getService(OllamaService.class)
+                .forceInit(context));
 
         ApplicationManager.getApplication()
                 .getMessageBus()
