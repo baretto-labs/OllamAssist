@@ -56,9 +56,10 @@ public class OverlayPromptPanel {
             @Override
             public void selectionChanged(@NotNull SelectionEvent e) {
                 panel.setVisible(false);
+                panel.dispose();
             }
-        });
-  overrideEditorEnterHandler(editor, panel);
+        }, panel);
+        overrideEditorEnterHandler(editor, panel);
 
     }
 
@@ -70,24 +71,21 @@ public class OverlayPromptPanel {
             @Override
             public void execute(@NotNull Editor editor, DataContext dataContext) {
                 if (isHandlingEnter) {
-                    return; // Évite la récursion
+                    return;
                 }
 
                 isHandlingEnter = true;
                 try {
                     Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
 
-                    if (focusOwner instanceof PromptPanel && panel.isVisible()) {
-                        // Exécuter l'action personnalisée avant suppression
+                    if (SwingUtilities.isDescendingFrom(focusOwner, panel) && panel.isVisible()) {
                         String selectedText = editor.getSelectionModel().getSelectedText();
                         panel.triggerAction(new AskFromCodeAction(editor, panel, selectedText));
 
-                        // Suppression différée après capture
                         SwingUtilities.invokeLater(() ->
                                 editor.getSelectionModel().removeSelection()
                         );
                     } else {
-                        // Comportement normal
                         originalEnterHandler.execute(editor, dataContext);
                     }
                 } finally {
@@ -107,26 +105,7 @@ public class OverlayPromptPanel {
         Dimension dimension = panel.getPreferredSize();
         dimension.setSize(editorDimension.width * 0.6, dimension.height);
         panel.setPreferredSize(dimension);
-        panel.requestFocusInWindow();
 
-
-
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
-            @Override
-            public boolean dispatchKeyEvent(KeyEvent e) {
-                if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
-                    if (focusOwner instanceof JTextComponent && SwingUtilities.getWindowAncestor(focusOwner) == SwingUtilities.getWindowAncestor(panel)) {
-                        e.consume();
-                        editor.getSelectionModel().removeSelection();
-                        SwingUtilities.invokeLater(() -> panel.triggerAction(askFromCodeAction));
-
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
 
         return panel;
     }

@@ -35,7 +35,6 @@ public class SelectionGutterIcon {
             return;
         }
 
-
         RangeHighlighter highlighter = markupModel.addLineHighlighter(
                 lineNumber, 5000, new TextAttributes()
         );
@@ -83,7 +82,7 @@ public class SelectionGutterIcon {
         editor.getSelectionModel().addSelectionListener(new SelectionListener() {
             @Override
             public void selectionChanged(@NotNull SelectionEvent e) {
-                if (e.getNewRange().getLength() == 0) { // Plus de sélection
+                if (e.getNewRange().getLength() == 0) {
                     removeGutterIcon(editor);
                 }
             }

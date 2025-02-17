@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.component;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.UIUtil;
@@ -10,11 +11,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 
 @Getter
-public class PromptPanel extends JPanel {
+public class PromptPanel extends JPanel implements Disposable {
 
     private JTextArea textArea;
     private  JButton sendButton;
@@ -96,5 +95,10 @@ public class PromptPanel extends JPanel {
 
     public String getUserPrompt() {
         return textArea.getText();
+    }
+
+    @Override
+    public void dispose() {
+
     }
 }
