@@ -16,10 +16,7 @@ import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import javax.swing.text.JTextComponent;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class OverlayPromptPanel {
@@ -59,11 +56,11 @@ public class OverlayPromptPanel {
                 panel.setVisible(false);
             }
         }, panel);
-        overrideEditorEnterHandler(editor, panel);
+        overrideEditorEnterHandler(panel);
 
     }
 
-    private static void overrideEditorEnterHandler(Editor editor, PromptPanel panel) {
+    private static void overrideEditorEnterHandler(PromptPanel panel) {
         EditorActionManager actionManager = EditorActionManager.getInstance();
         originalEnterHandler = actionManager.getActionHandler(IdeActions.ACTION_EDITOR_ENTER);
 

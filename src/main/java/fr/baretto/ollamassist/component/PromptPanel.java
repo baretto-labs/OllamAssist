@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.component;
 import com.intellij.openapi.Disposable;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.chat.ui.ImageUtil;
 import lombok.Getter;
@@ -16,7 +17,7 @@ import java.awt.event.ActionListener;
 public class PromptPanel extends JPanel implements Disposable {
 
     private JTextArea textArea;
-    private  JButton sendButton;
+    private JButton sendButton;
 
     public PromptPanel() {
         super(new BorderLayout());
@@ -35,7 +36,6 @@ public class PromptPanel extends JPanel implements Disposable {
         textArea.setWrapStyleWord(true);
         textArea.setBackground(UIUtil.getTextFieldBackground());
         textArea.setForeground(UIUtil.getTextFieldForeground());
-
         textArea.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
 
         JBScrollPane scrollPane = new JBScrollPane(textArea);
@@ -46,13 +46,15 @@ public class PromptPanel extends JPanel implements Disposable {
         JPanel overlayPanel = new JPanel(new BorderLayout());
         overlayPanel.add(scrollPane, BorderLayout.CENTER);
 
-        JPanel buttonContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        JPanel buttonContainer = new JPanel(new BorderLayout());
         buttonContainer.setOpaque(false);
-        buttonContainer.add(sendButton);
-        buttonContainer.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 5));
 
+        JPanel buttonWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        buttonWrapper.setOpaque(false);
+        buttonWrapper.add(sendButton);
+
+        buttonContainer.add(buttonWrapper, BorderLayout.EAST);
         overlayPanel.add(buttonContainer, BorderLayout.SOUTH);
-
         add(overlayPanel, BorderLayout.CENTER);
     }
 
@@ -63,6 +65,7 @@ public class PromptPanel extends JPanel implements Disposable {
         btn.setBorder(null);
         btn.setFocusPainted(false);
         btn.setOpaque(true);
+        btn.setMargin(JBUI.insets(2));
         return btn;
     }
 
@@ -82,7 +85,6 @@ public class PromptPanel extends JPanel implements Disposable {
         });
 
         sendButton.addActionListener(e -> triggerAction(listener));
-
     }
 
     public void triggerAction(ActionListener listener) {
