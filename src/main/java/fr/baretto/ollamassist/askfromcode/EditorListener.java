@@ -31,6 +31,7 @@ public class EditorListener {
                 editor.getSelectionModel().addSelectionListener(new OllamAssistSelectionListener());
             }
         }, PLUGIN_DISPOSABLE);
+
         initializeEditors();
     }
 
