@@ -55,8 +55,8 @@ public class OverlayPromptPanel {
         editor.getSelectionModel().addSelectionListener(new SelectionListener() {
             @Override
             public void selectionChanged(@NotNull SelectionEvent e) {
+                editor.getSelectionModel().removeSelectionListener(this);
                 panel.setVisible(false);
-                panel.dispose();
             }
         }, panel);
         overrideEditorEnterHandler(editor, panel);
