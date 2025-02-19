@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
 import javax.swing.*;
@@ -100,4 +101,7 @@ public class MessagesPanel extends JPanel {
     }
 
 
+    public void finalizeMessage(ChatResponse chatResponse) {
+        latestOllamaMessage.stopAnimatingCurrentHeaderPanel();
+    }
 }

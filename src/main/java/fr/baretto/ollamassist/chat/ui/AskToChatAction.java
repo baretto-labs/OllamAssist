@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,9 +35,14 @@ public class AskToChatAction implements ActionListener {
                 .chat(userMessage)
                 .onNext(this::publish)
                 .onError(AskToChatAction::logException)
+                .onCompleteResponse(this::done)
                 .start()
         ).start();
         promptPanel.clear();
+    }
+
+    private void done(ChatResponse chatResponse) {
+        outputPanel.finalizeMessage(chatResponse);
     }
 
     private void publish(String token) {
