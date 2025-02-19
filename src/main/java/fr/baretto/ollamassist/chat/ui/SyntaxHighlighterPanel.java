@@ -7,6 +7,7 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.ui.JBColor;
+import com.intellij.util.ui.JBUI;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class SyntaxHighlighterPanel extends JPanel {
+    private static final String INSERT = "Insert";
+    private static final String COPY_TO_CLIPBOARD = "Copy to clipboard";
     private final RSyntaxTextArea codeBlock;
     private final JPanel parentPanel;
     private final Context context;
@@ -43,15 +46,14 @@ public class SyntaxHighlighterPanel extends JPanel {
         headerPanel.add(languageLabel, BorderLayout.WEST);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        JButton insertButton = new JButton("Insérer");
-        JButton copyButton = new JButton("Copier");
+        JButton insertButton = createButton(IconUtils.INSERT, INSERT);
+        JButton copyButton = createButton(IconUtils.COPY, COPY_TO_CLIPBOARD);
 
         buttonPanel.add(insertButton);
         buttonPanel.add(copyButton);
         headerPanel.add(buttonPanel, BorderLayout.EAST);
 
         insertButton.addActionListener(e -> insertCode());
-
         copyButton.addActionListener(e -> copyToClipboard());
 
         add(headerPanel, BorderLayout.NORTH);
@@ -116,5 +118,17 @@ public class SyntaxHighlighterPanel extends JPanel {
     public void applyStyle(String syntaxtStyle) {
         languageLabel.setText(syntaxtStyle.split("/")[1]);
         codeBlock.setSyntaxEditingStyle(syntaxtStyle);
+    }
+
+
+    private JButton createButton(Icon icon, String toolTipText) {
+        JButton newButton = new JButton(icon);
+        newButton.setPreferredSize(new Dimension(16, 16));
+        newButton.setMargin(JBUI.insets(2));
+        newButton.setFocusPainted(false);
+        newButton.setBorderPainted(false);
+        newButton.setContentAreaFilled(false);
+        newButton.setToolTipText(toolTipText);
+        return newButton;
     }
 }

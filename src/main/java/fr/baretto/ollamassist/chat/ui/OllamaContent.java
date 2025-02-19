@@ -96,13 +96,13 @@ public class OllamaContent {
     private JPanel createActionButtonsPanel() {
         JPanel buttonsPanel = new JPanel(new BorderLayout());
         buttonsPanel.setPreferredSize(new Dimension(30, 30));
-        JButton executePrompt = new JButton(ImageUtil.SUBMIT);
+        JButton executePrompt = new JButton(IconUtils.SUBMIT);
         executePrompt.setOpaque(true);
         executePrompt.setBorderPainted(false);
         executePrompt.addActionListener(askToChatAction);
         executePrompt.setContentAreaFilled(false);
 
-        executePrompt.setPressedIcon(ImageUtil.SUBMIT_PRESSED);
+        executePrompt.setPressedIcon(IconUtils.SUBMIT_PRESSED);
 
         executePrompt.addMouseListener(new MouseAdapter() {
             @Override
