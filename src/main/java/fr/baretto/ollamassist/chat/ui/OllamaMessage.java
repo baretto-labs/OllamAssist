@@ -127,7 +127,7 @@ public class OllamaMessage extends JPanel {
     }
 
     private JLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("OllamaAsist", ImageUtil.OLLAMASSIST_ICON, SwingConstants.RIGHT);
+        JBLabel header = new JBLabel("OllamaAsist", IconUtils.OLLAMASSIST_ICON, SwingConstants.RIGHT);
         header.setFont(header.getFont().deriveFont(10f));
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         return header;

@@ -35,7 +35,7 @@ public class UserMessage extends JPanel {
     }
 
     private @NotNull JBLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("User", ImageUtil.USER_ICON, SwingConstants.LEFT);
+        JBLabel header = new JBLabel("User", IconUtils.USER_ICON, SwingConstants.LEFT);
         header.setFont(header.getFont().deriveFont(10f));
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
         return header;
