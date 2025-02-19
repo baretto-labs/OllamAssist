@@ -43,8 +43,8 @@ public class SyntaxHighlighterPanel extends JPanel {
         headerPanel.add(languageLabel, BorderLayout.WEST);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        JButton insertButton = new JButton("Insérer");
-        JButton copyButton = new JButton("Copier");
+        JButton insertButton = new JButton("Insert");
+        JButton copyButton = new JButton("Copy");
 
         buttonPanel.add(insertButton);
         buttonPanel.add(copyButton);
