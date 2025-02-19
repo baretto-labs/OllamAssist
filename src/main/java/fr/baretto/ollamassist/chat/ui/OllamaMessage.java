@@ -129,7 +129,7 @@ public class OllamaMessage extends JPanel {
     }
 
     private JLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("OllamaAsist", ImageUtil.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
+        JBLabel header = new JBLabel("OllamaAsist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
         header.setFont(header.getFont().deriveFont(10f));
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         return header;
@@ -137,7 +137,7 @@ public class OllamaMessage extends JPanel {
 
     public void stopAnimatingCurrentHeaderPanel() {
         if (currentHeaderPanel != null) {
-            currentHeaderPanel.setIcon(ImageUtil.OLLAMASSIST_ICON);
+            currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
         }
     }
 }
