@@ -27,6 +27,11 @@ public class IconUtils {
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");
+    public static final Icon VALIDATE = load("/icons/checkmark.svg");
+    public static final Icon ERROR = load("/icons/error.svg");
+    public static final Icon INFORMATION = load("/icons/information.svg");
+    public static final Icon RESTART = load("/icons/restart.svg");
+    public static final Icon LOADING = load("/icons/loading.svg");
 
     public static Icon load(String path) {
         return IconLoader.getIcon(path, IconUtils.class);

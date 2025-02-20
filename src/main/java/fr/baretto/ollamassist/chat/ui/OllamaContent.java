@@ -1,6 +1,5 @@
 package fr.baretto.ollamassist.chat.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.OnePixelSplitter;
@@ -8,7 +7,7 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
-import fr.baretto.ollamassist.events.UIAvailableNotifier;
+import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -26,16 +25,17 @@ public class OllamaContent {
     private final JPanel contentPanel = new JPanel();
     private final PromptPanel promptInput = new PromptPanel();
     private final MessagesPanel outputPanel = new MessagesPanel();
+    private final PrerequisitesPanel prerequisitesPanel;
     private final AskToChatAction askToChatAction;
     private boolean isAvailable = false;
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
+        prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
         askToChatAction = new AskToChatAction(promptInput, outputPanel, context);
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
-        contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
-
+        contentPanel.add(prerequisitesPanel);
 
         MessageBusConnection connection = context.project().getMessageBus()
                 .connect();
@@ -55,11 +55,6 @@ public class OllamaContent {
                 .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
                         .getService(OllamaService.class)
                         .forceInit(context));
-
-        ApplicationManager.getApplication()
-                .getMessageBus()
-                .syncPublisher(UIAvailableNotifier.TOPIC)
-                .onUIAvailable();
 
         Disposer.register(toolWindow.getDisposable(), connection);
     }
