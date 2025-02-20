@@ -12,6 +12,7 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -60,7 +61,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = JBUI.insets(2, 5);
 
-        // Titre
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
@@ -68,7 +68,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         title.setFont(UIUtil.getLabelFont().deriveFont(Font.BOLD, 14f));
         contentPanel.add(title, gbc);
 
-        // Section Ollama
         gbc.gridy++;
         gbc.gridwidth = 1;
         contentPanel.add(new JBLabel("Ollama:"), gbc);
@@ -82,7 +81,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         ollamaHelpPanel.add(ollamaDownloadLink);
         contentPanel.add(ollamaHelpPanel, gbc);
 
-        // Modèle de chat
         String chatModelName = OllamAssistSettings.getInstance().getChatModelName();
         gbc.gridy++;
         gbc.insets.top = 15;
@@ -98,7 +96,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         chatModelHelpPanel.add(chatCommandPanel);
         contentPanel.add(chatModelHelpPanel, gbc);
 
-        // Modèle d'autocomplétion
         String autocompleteModelName = OllamAssistSettings.getInstance().getCompletionModelName();
         gbc.gridy++;
         gbc.insets.top = 15;
@@ -114,7 +111,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         autocompleteModelHelpPanel.add(autocompleteCommandPanel);
         contentPanel.add(autocompleteModelHelpPanel, gbc);
 
-        // Section Redémarrage
         gbc.gridy++;
         gbc.insets.top = 30;
         restartPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 0));
@@ -127,7 +123,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         restartPanel.add(restartButton);
         contentPanel.add(restartPanel, gbc);
 
-        // Image de chargement
         gbc.gridy++;
         loadingLabel.setIcon(IconUtils.LOADING);
         loadingLabel.setVisible(false);
@@ -162,8 +157,11 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         ollamaDownloadLink.setText("<html><a href=''>Download Ollama</a></html>");
         ollamaDownloadLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         ollamaDownloadLink.setForeground(JBColor.BLUE);
+        ollamaDownloadLink.addMouseListener(downLoadLinkMouseAdapter());
+    }
 
-        ollamaDownloadLink.addMouseListener(new MouseAdapter() {
+    private @NotNull MouseAdapter downLoadLinkMouseAdapter() {
+        return new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 BrowserUtil.browse("https://ollama.ai/download");
@@ -178,7 +176,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
             public void mouseExited(MouseEvent e) {
                 ollamaDownloadLink.setText("<html><a>Download Ollama</a></html>");
             }
-        });
+        };
     }
 
     private void styleComponents() {
