@@ -23,13 +23,14 @@ import java.util.stream.Stream;
 @Slf4j
 public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
-    private static final String SEPARATOR = ";";
+
     private static final int PROGRESS_UPDATE_THRESHOLD = 50;
     private final EmbeddingStore<TextSegment> store;
     private final AtomicInteger processedFiles = new AtomicInteger(0);
     private long totalFiles;
     private PathMatcher pathMatcher;
     private long startTime;
+
     public InitEmbeddingStoreTask(@Nullable Project project, EmbeddingStore<TextSegment> store) {
         super(project, "OllamAssist - Knowledge Indexing", true);
         this.store = store;
@@ -45,11 +46,10 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
             indicator.setIndeterminate(false);
             indicator.setText("Preparing indexing...");
 
-            List<String> sources = getSourcePatterns();
-            pathMatcher = createPathMatcher(sources);
+
+            pathMatcher = new ShouldBeIndexed();
 
             countTotalFiles(indicator);
-
             if (totalFiles == 0) {
                 indicator.setText2("No files to index");
                 return;
@@ -63,17 +63,6 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
-    }
-
-    private List<String> getSourcePatterns() {
-        return Arrays.stream(OllamAssistSettings.getInstance().getSources().split(SEPARATOR))
-                .filter(s -> !s.isBlank())
-                .toList();
-    }
-
-    private PathMatcher createPathMatcher(List<String> sources) {
-        boolean matchAll = sources.isEmpty() || sources.stream().allMatch(String::isBlank);
-        return path -> Files.isRegularFile(path) && (matchAll || sources.stream().anyMatch(s -> path.toString().contains(s)));
     }
 
     private void countTotalFiles(ProgressIndicator indicator) throws Exception {
@@ -126,7 +115,7 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
             if (totalProcessed > 0 && totalFiles > 0) {
                 estimateRemainingTime(indicator, totalProcessed);
             }
-        }else{
+        } else {
             String progressText = String.format(
                     "Indexing: %d/%d files (%.1f%%)",
                     totalProcessed,

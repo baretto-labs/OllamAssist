@@ -115,7 +115,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         gbc.insets.top = 30;
         restartPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 0));
         restartMessage.setIcon(IconUtils.INFORMATION);
-        restartMessage.setText("<html>Please restart IntelliJ after installing prerequisites</html>");
+        restartMessage.setText("<html>Please rerun check  after installing prerequisites</html>");
         restartMessage.setForeground(JBColor.ORANGE);
         restartButton.setIcon(IconUtils.RESTART);
         restartButton.addActionListener(e -> checkPrerequisitesAsync());
