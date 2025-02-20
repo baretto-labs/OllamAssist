@@ -86,11 +86,12 @@
                     anchor="right"
                     icon="/icons/icon.svg"
                     factoryClass="fr.baretto.ollamassist.chat.ui.OllamaWindowFactory"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.prerequiste.PrerequisiteService"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
-        <postStartupActivity implementation="fr.baretto.ollamassist.ai.StartupOllamassist">startup ollamassist</postStartupActivity>
+
      </extensions>
 
     <actions>
