@@ -54,6 +54,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.0.5</h2>
+        <UL>
+            <LI>feat/issue-33 : Fix loading panel during OllamAssist starting</LI>
+        </UL>
         <h2>V1.0.4</h2>
         <UL>
             <LI>feat/issue-31 : Add filter for incremental indexation</LI>

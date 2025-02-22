@@ -3,10 +3,17 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.AnimatedIcon;
+import com.intellij.util.ui.ImageUtil;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
+import com.intellij.util.ui.UIUtilities;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.jdesktop.swingx.icon.EmptyIcon;
 
 import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class IconUtils {
@@ -31,9 +38,33 @@ public class IconUtils {
     public static final Icon ERROR = load("/icons/error.svg");
     public static final Icon INFORMATION = load("/icons/information.svg");
     public static final Icon RESTART = load("/icons/restart.svg");
-    public static final Icon LOADING = load("/icons/loading.svg");
+    public static final Icon LOADING = new AnimatedIcon(100,
+            AllIcons.Process.Big.Step_1,
+            AllIcons.Process.Big.Step_2,
+            AllIcons.Process.Big.Step_3,
+            AllIcons.Process.Big.Step_4,
+            AllIcons.Process.Big.Step_5,
+            AllIcons.Process.Big.Step_6,
+            AllIcons.Process.Big.Step_7,
+            AllIcons.Process.Big.Step_8);
 
     public static Icon load(String path) {
         return IconLoader.getIcon(path, IconUtils.class);
+    }
+
+    private static Icon resizeIcon(Icon original, int width, int height) {
+        if (original == null) return null;
+
+        Image image = ImageUtil.createImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = (Graphics2D) image.getGraphics();
+
+        try {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            Image originalImage = ((ImageIcon) original).getImage();
+            g.drawImage(originalImage, 0, 0, width, height, null);
+        } finally {
+            g.dispose();
+        }
+        return new ImageIcon(image);
     }
 }
