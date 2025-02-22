@@ -37,7 +37,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private final JPanel ollamaHelpPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
     private final JPanel chatModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel autocompleteModelHelpPanel = new JPanel(new BorderLayout(5, 0));
-    private final JBLabel loadingLabel = new JBLabel();
+    private final JPanel loadingLabel = new LoadingPanel("OllamAssist starting ... ");
     private final Project project;
 
     public PrerequisitesPanel(Project project) {
@@ -124,7 +124,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         contentPanel.add(restartPanel, gbc);
 
         gbc.gridy++;
-        loadingLabel.setIcon(IconUtils.LOADING);
         loadingLabel.setVisible(false);
         contentPanel.add(loadingLabel, gbc);
 
