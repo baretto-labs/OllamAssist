@@ -8,12 +8,15 @@ import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
+
 @State(
         name = "OllamAssist",
         storages = {@Storage("OllamAssist.xml")}
 )
 public class OllamAssistSettings implements PersistentStateComponent<OllamAssistSettings.State> {
 
+    public static final String DEFAULT_URL = "http://localhost:11434";
     private State myState = new State();
 
     public static OllamAssistSettings getInstance() {
@@ -34,6 +37,14 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState = state;
     }
 
+    public String getOllamaUrl() {
+        return myState.ollamaUrl;
+    }
+
+    public void setOllamaUrl(String url) {
+        myState.ollamaUrl = url;
+    }
+
     public String getChatModelName() {
         return myState.chatModelName;
     }
@@ -50,6 +61,22 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.completionModelName = modelName;
     }
 
+    public Duration getTimeoutDuration() {
+        try {
+            return Duration.ofSeconds(Long.parseLong(myState.timeout));
+        } catch (NumberFormatException e) {
+            return Duration.ofSeconds(300);
+        }
+    }
+
+    public String getTimeout() {
+        return myState.timeout;
+    }
+
+    public void setTimeout(String timeout) {
+        myState.timeout = timeout;
+    }
+
     public String getSources() {
         return myState.sources;
     }
@@ -60,8 +87,10 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
     @Getter
     public static class State {
+        public String ollamaUrl = DEFAULT_URL;
         public String chatModelName = "llama3.1";
         public String completionModelName = "llama3.1";
+        public String timeout = "300";
         public String sources = "src/";
     }
 

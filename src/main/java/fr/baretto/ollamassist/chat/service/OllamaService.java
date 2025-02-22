@@ -62,13 +62,13 @@ public final class OllamaService implements Disposable, SettingsListener {
 
             ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
             messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
-
             OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
                     .temperature(0.3)
                     .topK(40)
                     .topP(0.9)
-                    .baseUrl("http://localhost:11434")
+                    .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
+                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                     .build();
 
 
