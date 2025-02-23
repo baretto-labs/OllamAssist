@@ -34,6 +34,8 @@ public class IconUtils {
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");
+    public static final Icon OLLAMASSIST_WARN_ICON = AllIcons.General.Warning;
+    public static final Icon OLLAMASSIST_ERROR_ICON = AllIcons.General.Error;
     public static final Icon VALIDATE = load("/icons/checkmark.svg");
     public static final Icon ERROR = load("/icons/error.svg");
     public static final Icon INFORMATION = load("/icons/information.svg");

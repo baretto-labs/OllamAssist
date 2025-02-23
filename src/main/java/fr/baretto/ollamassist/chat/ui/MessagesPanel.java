@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
+import com.intellij.util.ui.components.BorderLayoutPanel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
@@ -12,7 +13,7 @@ import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 
 public class MessagesPanel extends JPanel {
-    private final JPanel container = new JPanel();
+    private final JPanel container = new JPanel(new GridBagLayout());
     private final JBScrollPane scrollPane;
     private OllamaMessage latestOllamaMessage;
     private Context context;
@@ -21,12 +22,13 @@ public class MessagesPanel extends JPanel {
 
     public MessagesPanel() {
         super(new BorderLayout());
-        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-        scrollPane = new JBScrollPane(container);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        BorderLayoutPanel blc = new BorderLayoutPanel();
+        scrollPane = new JBScrollPane(blc);
+        blc.addToTop(container);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         add(scrollPane, BorderLayout.CENTER);
-        container.add(presentationPanel);
+        container.add(presentationPanel, createGbc(0));
 
         JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
         verticalScrollBar.addAdjustmentListener(new AdjustmentListener() {
@@ -58,13 +60,14 @@ public class MessagesPanel extends JPanel {
         container.repaint();
         container.revalidate();
     }
+
     public void addUserMessage(final String userMessage) {
         if (presentationPanel != null) {
             container.remove(presentationPanel);
             presentationPanel = null;
         }
         UserMessage userMessagePanel = new UserMessage(userMessage);
-        container.add(userMessagePanel);
+        container.add(userMessagePanel, createGbc(container.getComponentCount()));
         scrollToBottom();
         container.revalidate();
         container.repaint();
@@ -72,7 +75,7 @@ public class MessagesPanel extends JPanel {
 
     public void addNewAIMessage() {
         latestOllamaMessage = new OllamaMessage(context);
-        container.add(latestOllamaMessage);
+        container.add(latestOllamaMessage, createGbc(container.getComponentCount()));
         scrollToBottom();
         container.revalidate();
         container.repaint();
@@ -100,8 +103,25 @@ public class MessagesPanel extends JPanel {
         });
     }
 
+    public void cancelMessage() {
+        if (latestOllamaMessage != null) {
+            latestOllamaMessage.cancel();
+        }
+    }
 
     public void finalizeMessage(ChatResponse chatResponse) {
-        latestOllamaMessage.stopAnimatingCurrentHeaderPanel();
+        latestOllamaMessage.finalize(chatResponse);
     }
+
+    private GridBagConstraints createGbc(int gridy) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = gridy;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0;
+        gbc.anchor = GridBagConstraints.NORTH;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        return gbc;
+    }
+
 }

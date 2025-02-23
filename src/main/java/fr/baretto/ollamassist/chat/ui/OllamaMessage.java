@@ -2,6 +2,8 @@ package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
@@ -34,9 +36,12 @@ public class OllamaMessage extends JPanel {
         add(headerPanel, BorderLayout.NORTH);
         JScrollPane scrollPane = new JBScrollPane(mainPanel);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED); 
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        add(scrollPane, BorderLayout.CENTER);
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+        panel.add(scrollPane, BorderLayout.NORTH);
+        add(panel, BorderLayout.CENTER);
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         startNewTextArea();
@@ -129,15 +134,35 @@ public class OllamaMessage extends JPanel {
     }
 
     private JLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("OllamaAsist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
+        JBLabel header = new JBLabel("OllamAssist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
         header.setFont(header.getFont().deriveFont(10f));
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         return header;
     }
 
-    public void stopAnimatingCurrentHeaderPanel() {
+    public void finalize(ChatResponse chatResponse) {
         if (currentHeaderPanel != null) {
-            currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
+            if (chatResponse.finishReason() == FinishReason.OTHER) {
+                currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ERROR_ICON);
+                currentTextArea.append("...");
+                endCodeBlock();
+                append("There was an error processing your request. Please try again.");
+                if (chatResponse.aiMessage() != null) {
+                    currentHeaderPanel.setToolTipText(chatResponse.aiMessage().text());
+                }
+            } else {
+                currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
+                currentHeaderPanel.setToolTipText("Input Tokens: %s<br/>Output Tokens: %s".formatted(chatResponse.tokenUsage().inputTokenCount(), chatResponse.tokenUsage().outputTokenCount()));
+            }
+        }
+    }
+
+    public void cancel() {
+        if (currentHeaderPanel != null) {
+            currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_WARN_ICON);
+            currentTextArea.append("...");
+            endCodeBlock();
+            append("The request was interrupted.");
         }
     }
 }

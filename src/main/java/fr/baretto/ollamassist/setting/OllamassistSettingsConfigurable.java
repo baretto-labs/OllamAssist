@@ -26,8 +26,10 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     public JComponent createComponent() {
 
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
+        configurationPanel.setOllamaUrl(settings.getOllamaUrl());
         configurationPanel.setChatModelName(settings.getChatModelName());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName());
+        configurationPanel.setTimeout(settings.getTimeout());
         configurationPanel.setSources(settings.getSources());
         return configurationPanel;
     }
@@ -35,8 +37,10 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Override
     public boolean isModified() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        return !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
+        return !configurationPanel.getOllamaUrl().equalsIgnoreCase(settings.getOllamaUrl()) ||
+                !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
                 !configurationPanel.getCompletionModel().equalsIgnoreCase(settings.getCompletionModelName()) ||
+                !configurationPanel.getTimeout().equalsIgnoreCase(settings.getTimeout()) ||
                 !configurationPanel.getSources().equalsIgnoreCase(settings.getSources());
     }
 
@@ -48,8 +52,10 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
         if (modified) {
 
+            settings.setOllamaUrl(configurationPanel.getOllamaUrl());
             settings.setChatModelName(configurationPanel.getChatModel());
             settings.setCompletionModelName(configurationPanel.getCompletionModel());
+            settings.setTimeout(configurationPanel.getTimeout());
             settings.setSources(configurationPanel.getSources());
 
 
@@ -62,8 +68,10 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Override
     public void reset() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
+        configurationPanel.setOllamaUrl(settings.getOllamaUrl().trim());
         configurationPanel.setChatModelName(settings.getChatModelName().trim());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName().trim());
+        configurationPanel.setTimeout(settings.getTimeout().trim());
         configurationPanel.setSources(settings.getSources().trim());
     }
 
