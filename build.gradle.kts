@@ -1,11 +1,11 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.23"
+    id("org.jetbrains.kotlin.jvm") version "2.1.10"
     id("org.jetbrains.intellij") version "1.17.2"
 }
 
 group = "fr.baretto"
-version = "1.0.3"
+version = "1.0.4"
 
 repositories {
     mavenCentral()
@@ -15,6 +15,7 @@ repositories {
 dependencies {
     val langchain4jVersion = "1.0.0-alpha1"
     val apacheLuceneVersion = "9.12.1"
+    val mockitoVersion = "5.15.2"
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
@@ -40,9 +41,8 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
 
     testImplementation("junit:junit:4.13.2")
-
+    testImplementation("org.mockito:mockito-core:$mockitoVersion")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.11.0-M2")
-
     testImplementation("org.assertj:assertj-core:3.26.0")
 }
 

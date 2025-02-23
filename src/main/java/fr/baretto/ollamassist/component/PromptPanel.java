@@ -5,7 +5,7 @@ import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import fr.baretto.ollamassist.chat.ui.ImageUtil;
+import fr.baretto.ollamassist.chat.ui.IconUtils;
 import lombok.Getter;
 
 import javax.swing.*;
@@ -33,6 +33,7 @@ public class PromptPanel extends JPanel implements Disposable {
 
         textArea = new JTextArea();
         textArea.setLineWrap(true);
+        textArea.setFocusable(true);
         textArea.setWrapStyleWord(true);
         textArea.setBackground(UIUtil.getTextFieldBackground());
         textArea.setForeground(UIUtil.getTextFieldForeground());
@@ -59,7 +60,7 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     private JButton createStyledButton() {
-        JButton btn = new JButton(ImageUtil.SUBMIT);
+        JButton btn = new JButton(IconUtils.SUBMIT);
         btn.setBackground(UIUtil.getPanelBackground());
         btn.setForeground(UIUtil.getLabelForeground());
         btn.setBorder(null);

@@ -12,6 +12,7 @@ import java.awt.event.ComponentEvent;
 public class OllamaMessage extends JPanel {
     private final Context context;
     private final JPanel mainPanel;
+    private final JLabel currentHeaderPanel;
     private boolean inCodeBlock = false;
     private SyntaxHighlighterPanel latestCodeBlock;
     private JTextArea currentTextArea;
@@ -22,7 +23,8 @@ public class OllamaMessage extends JPanel {
         this.context = context;
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-        headerPanel.add(createHeaderLabel(), BorderLayout.WEST);
+        currentHeaderPanel = createHeaderLabel();
+        headerPanel.add(currentHeaderPanel, BorderLayout.WEST);
         //headerPanel.add(createDeleteButton(), BorderLayout.EAST);
 
         mainPanel = new JPanel();
@@ -127,9 +129,15 @@ public class OllamaMessage extends JPanel {
     }
 
     private JLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("OllamaAssist", ImageUtil.OLLAMASSIST_ICON, SwingConstants.RIGHT);
+        JBLabel header = new JBLabel("OllamaAssist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
         header.setFont(header.getFont().deriveFont(10f));
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         return header;
+    }
+
+    public void stopAnimatingCurrentHeaderPanel() {
+        if (currentHeaderPanel != null) {
+            currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
+        }
     }
 }

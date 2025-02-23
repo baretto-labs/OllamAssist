@@ -1,6 +1,5 @@
 package fr.baretto.ollamassist.chat.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.OnePixelSplitter;
@@ -10,7 +9,8 @@ import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
-import fr.baretto.ollamassist.events.UIAvailableNotifier;
+import fr.baretto.ollamassist.prerequiste.LoadingPanel;
+import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +18,8 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 
 @Slf4j
@@ -28,6 +30,7 @@ public class OllamaContent {
     private final JPanel contentPanel = new JPanel();
     private final PromptPanel promptInput = new PromptPanel();
     private final MessagesPanel outputPanel = new MessagesPanel();
+    private final PrerequisitesPanel prerequisitesPanel;
     private final AskToChatAction askToChatAction;
     private boolean isAvailable = false;
 
@@ -36,7 +39,12 @@ public class OllamaContent {
         askToChatAction = new AskToChatAction(promptInput, context.project());
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
-        contentPanel.add(new LoadingPanel(contentPanel.getPreferredSize()));
+
+
+        prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
+        promptInput.addActionMap(askToChatAction);
+        outputPanel.addContexte(context);
+        contentPanel.add(prerequisitesPanel);
 
         subscribeEvents(toolWindow);
     }
@@ -75,11 +83,6 @@ public class OllamaContent {
         connection.subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
                 .getService(OllamaService.class)
                 .forceInit(context));
-
-        ApplicationManager.getApplication()
-                .getMessageBus()
-                .syncPublisher(UIAvailableNotifier.TOPIC)
-                .onUIAvailable();
 
         Disposer.register(toolWindow.getDisposable(), connection);
     }

@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.project.Project;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
@@ -24,5 +25,4 @@ public class AskToChatAction implements ActionListener {
         String userMessage = promptPanel.getUserPrompt();
         project.getMessageBus().syncPublisher(NewUserMessageNotifier.TOPIC).newUserMessage(userMessage);
     }
-
 }

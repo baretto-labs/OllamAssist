@@ -14,7 +14,7 @@ import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import fr.baretto.ollamassist.chat.ui.ImageUtil;
+import fr.baretto.ollamassist.chat.ui.IconUtils;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -36,7 +36,6 @@ public class SelectionGutterIcon {
             return;
         }
 
-        // Création d'un disposable parent pour cet éditeur
         Disposable parentDisposable = getOrCreateEditorDisposable(editor);
 
         RangeHighlighter highlighter = markupModel.addLineHighlighter(
@@ -48,12 +47,11 @@ public class SelectionGutterIcon {
         highlighter.setGutterIconRenderer(createIconRenderer(editor, lineNumber));
         activeHighlighters.put(editor, highlighter);
 
-        // Lier le highlighter au disposable
         Disposer.register(parentDisposable, () -> {
             markupModel.removeHighlighter(highlighter);
             activeHighlighters.remove(editor);
+            editor.getContentComponent().requestFocus();
         });
-
         setupListeners(editor, parentDisposable);
     }
 
@@ -61,16 +59,12 @@ public class SelectionGutterIcon {
         return editorDisposables.computeIfAbsent(editor, k -> {
             Disposable disposable = Disposer.newDisposable("GutterIconCleanup");
 
-            // Nettoyage quand l'éditeur est fermé
             Disposer.register(getProjectDisposable(editor), disposable);
 
-            // Détection visuelle de fermeture
             editor.getComponent().addHierarchyListener(e -> {
-                if ((e.getChangeFlags() & HierarchyEvent.PARENT_CHANGED) != 0) {
-                    if (editor.getComponent().getParent() == null) {
+                if ((e.getChangeFlags() & HierarchyEvent.PARENT_CHANGED) != 0 && editor.getComponent().getParent() == null) {
                         Disposer.dispose(disposable);
                     }
-                }
             });
 
             return disposable;
@@ -96,7 +90,6 @@ public class SelectionGutterIcon {
                 editor.getSelectionModel().removeSelectionListener(selectionListener)
         );
 
-        // Listener de caret
         CaretListener caretListener = new CaretListener() {
             @Override
             public void caretPositionChanged(@NotNull CaretEvent event) {
@@ -129,7 +122,7 @@ public class SelectionGutterIcon {
         return new GutterIconRenderer() {
             @Override
             public @NotNull Icon getIcon() {
-                return ImageUtil.OLLAMASSIST_ICON;
+                return IconUtils.OLLAMASSIST_ICON;
             }
 
             @Override
@@ -137,7 +130,7 @@ public class SelectionGutterIcon {
                 return new AnAction() {
                     @Override
                     public void actionPerformed(@NotNull AnActionEvent e) {
-                        OverlayPromptPanel.showOverlayPromptPanel(editor, lineNumber);
+                        OverlayPromptPanelFatory.showOverlayPromptPanel(editor, lineNumber);
                     }
                 };
             }

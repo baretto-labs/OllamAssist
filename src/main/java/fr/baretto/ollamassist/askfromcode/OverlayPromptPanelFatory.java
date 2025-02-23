@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.askfromcode;
 
+import com.intellij.codeInsight.hints.InlayHintsFactory;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.editor.Editor;
@@ -17,9 +18,11 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class OverlayPromptPanel {
+public class OverlayPromptPanelFatory {
 
     private static EditorActionHandler originalEnterHandler;
     private static boolean isHandlingEnter = false;
@@ -28,16 +31,24 @@ public class OverlayPromptPanel {
         int offset = editor.getDocument().getLineStartOffset(startOffset);
 
         PromptPanel panel = createOverlayPromptPanel(editor);
-
+        panel.getTextArea().addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER && !e.isShiftDown()) {
+                    panel.getSendButton().doClick();
+                    e.consume();
+                }
+            }
+        });
 
         Properties properties = new Properties(
                 EditorEmbeddedComponentManager.ResizePolicy.any(),
                 null,
-                true,
+                false,
                 true,
                 false,
                 false,
-                0,
+                1000,
                 offset
         );
 
@@ -46,8 +57,6 @@ public class OverlayPromptPanel {
                 panel,
                 properties
         );
-
-        EditorEmbeddedComponentManager.getInstance().addComponent((EditorEx) editor, panel, properties);
 
         editor.getSelectionModel().addSelectionListener(new SelectionListener() {
             @Override
@@ -70,11 +79,9 @@ public class OverlayPromptPanel {
                 if (isHandlingEnter) {
                     return;
                 }
-
                 isHandlingEnter = true;
                 try {
                     Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
-
                     if (SwingUtilities.isDescendingFrom(focusOwner, panel) && panel.isVisible()) {
                         String selectedText = editor.getSelectionModel().getSelectedText();
                         panel.triggerAction(new AskFromCodeAction(editor, panel, selectedText));
