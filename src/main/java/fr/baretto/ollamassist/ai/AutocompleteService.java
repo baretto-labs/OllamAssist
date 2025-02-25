@@ -35,8 +35,9 @@ public class AutocompleteService {
                 .temperature(0.2)
                 .topK(30)
                 .topP(0.7)
-                .baseUrl("http://localhost:11434")
+                .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
+                .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                 .build();
 
         return AiServices.builder(Service.class)

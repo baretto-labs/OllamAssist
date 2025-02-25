@@ -21,7 +21,6 @@ import java.util.function.Predicate;
 @NoArgsConstructor
 public class PrerequisiteService {
 
-    private static final String OLLAMA_HOST = "http://localhost:11434";
     public static final String PATH_TO_VERSION = "/api/version";
     public static final String PATH_TO_TAGS = "/api/tags";
 
@@ -40,7 +39,7 @@ public class PrerequisiteService {
     private CompletableFuture<Boolean> isOllamaAttributeExists(String endpoint, Predicate<String> check) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String response = HttpRequests.request(OLLAMA_HOST + endpoint)
+                String response = HttpRequests.request(OllamAssistSettings.getInstance().getOllamaUrl() + endpoint)
                         .connectTimeout(3000)
                         .readTimeout(3000)
                         .readString();

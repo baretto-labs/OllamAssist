@@ -7,6 +7,7 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -23,6 +24,7 @@ public class SyntaxHighlighterPanel extends JPanel {
     private static final String INSERT = "Insert";
     private static final String COPY_TO_CLIPBOARD = "Copy to clipboard";
     private final RSyntaxTextArea codeBlock;
+    private final JScrollPane scrollPane;
     private final JPanel parentPanel;
     private final Context context;
     private final JLabel languageLabel = new JLabel();
@@ -39,6 +41,8 @@ public class SyntaxHighlighterPanel extends JPanel {
         codeBlock.setAutoIndentEnabled(true);
         codeBlock.setEditable(false);
         updateTheme();
+
+        scrollPane = new JBScrollPane(codeBlock, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         JPanel headerPanel = new JPanel(new BorderLayout());
 
@@ -57,7 +61,7 @@ public class SyntaxHighlighterPanel extends JPanel {
         copyButton.addActionListener(e -> copyToClipboard());
 
         add(headerPanel, BorderLayout.NORTH);
-        add(codeBlock, BorderLayout.CENTER);
+        add(scrollPane, BorderLayout.CENTER);
     }
 
     private void copyToClipboard() {
@@ -96,13 +100,10 @@ public class SyntaxHighlighterPanel extends JPanel {
     }
 
     public void adjustSizeToContent() {
-        FontMetrics fontMetrics = codeBlock.getFontMetrics(codeBlock.getFont());
-        String[] lines = codeBlock.getText().split("\n");
-        int maxWidth = (int) (parentPanel.getWidth() * 0.9);
-        int lineHeight = fontMetrics.getHeight();
-        int preferredHeight = lineHeight * lines.length + 10;
+        codeBlock.setPreferredSize(null);
+        scrollPane.setMinimumSize(new Dimension(0, 0));
+        scrollPane.setPreferredSize(null);
 
-        codeBlock.setPreferredSize(new Dimension(maxWidth, preferredHeight));
         revalidate();
         repaint();
     }
