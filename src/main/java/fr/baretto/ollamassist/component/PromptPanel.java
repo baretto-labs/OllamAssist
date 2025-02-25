@@ -50,7 +50,7 @@ public class PromptPanel extends JPanel implements Disposable {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
 
-        sendButton = createStyledButton();
+        sendButton = createSubmitButton();
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         buttonPanel.setAlignmentX(RIGHT_ALIGNMENT);
@@ -66,15 +66,16 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
 
-    private JButton createStyledButton() {
-        JButton btn = new JButton(IconUtils.SUBMIT);
-        btn.setBackground(UIUtil.getPanelBackground());
-        btn.setForeground(UIUtil.getLabelForeground());
-        btn.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 12)); // Augmentation du padding gauche/droit
-        btn.setFocusPainted(false);
-        btn.setOpaque(true);
-        btn.setMargin(JBUI.emptyInsets());
-        return btn;
+    private JButton createSubmitButton() {
+        JButton submit = new JButton(IconUtils.SUBMIT);
+        submit.setBackground(UIUtil.getPanelBackground());
+        submit.setForeground(UIUtil.getLabelForeground());
+        submit.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 12));
+        submit.setFocusPainted(false);
+        submit.setOpaque(true);
+        submit.setMargin(JBUI.emptyInsets());
+        submit.setToolTipText("Submit user message");
+        return submit;
     }
 
     public void addActionMap(ActionListener listener) {

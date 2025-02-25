@@ -22,7 +22,6 @@ public class AskToChatAction implements ActionListener {
     private final PromptPanel promptPanel;
     private final MessagesPanel outputPanel;
     private final Context context;
-    private ChatThread currentChatThread;
 
     public AskToChatAction(PromptPanel promptInput, MessagesPanel outputPanel, Context context) {
         this.promptPanel = promptInput;

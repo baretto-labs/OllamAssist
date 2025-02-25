@@ -28,7 +28,9 @@ public class AskFromCodeAction implements ActionListener {
             toolWindow.show();
         }
         String userMessage = promptPanel.getUserPrompt();
-
+        if (userMessage.isEmpty()) {
+            return;
+        }
         editor.getSelectionModel().removeSelection();
         SelectionGutterIcon.removeGutterIcon(editor);
         promptPanel.setVisible(false);
