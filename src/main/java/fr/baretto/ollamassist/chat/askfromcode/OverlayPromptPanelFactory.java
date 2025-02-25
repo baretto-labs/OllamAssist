@@ -1,6 +1,5 @@
-package fr.baretto.ollamassist.askfromcode;
+package fr.baretto.ollamassist.chat.askfromcode;
 
-import com.intellij.codeInsight.hints.InlayHintsFactory;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.editor.Editor;
@@ -22,16 +21,16 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class OverlayPromptPanelFatory {
+public class OverlayPromptPanelFactory {
 
     private static EditorActionHandler originalEnterHandler;
     private static boolean isHandlingEnter = false;
 
-    public static void showOverlayPromptPanel(Editor editor, int startOffset) {
+    public static PromptPanel showOverlayPromptPanel(Editor editor, int startOffset) {
         int offset = editor.getDocument().getLineStartOffset(startOffset);
 
         PromptPanel panel = createOverlayPromptPanel(editor);
-        panel.getTextArea().addKeyListener(new KeyAdapter() {
+        panel.getEditorTextField().addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER && !e.isShiftDown()) {
@@ -65,8 +64,8 @@ public class OverlayPromptPanelFatory {
                 panel.setVisible(false);
             }
         }, panel);
-        overrideEditorEnterHandler(panel);
-
+       // overrideEditorEnterHandler(panel);
+        return panel;
     }
 
     private static void overrideEditorEnterHandler(PromptPanel panel) {
@@ -107,10 +106,10 @@ public class OverlayPromptPanelFatory {
 
         Dimension editorDimension = editor.getComponent().getSize();
         Dimension dimension = panel.getPreferredSize();
-        dimension.setSize(editorDimension.width * 0.6, dimension.height);
+        dimension.setSize(editorDimension.width * 0.6, dimension.height * 2);
         panel.setPreferredSize(dimension);
-
 
         return panel;
     }
+
 }

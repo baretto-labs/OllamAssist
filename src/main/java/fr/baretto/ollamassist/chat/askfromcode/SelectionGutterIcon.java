@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.askfromcode;
+package fr.baretto.ollamassist.chat.askfromcode;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -15,6 +15,8 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -22,9 +24,12 @@ import java.awt.event.HierarchyEvent;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class SelectionGutterIcon {
     private static final Map<Editor, Disposable> editorDisposables = new WeakHashMap<>();
     private static final Map<Editor, RangeHighlighter> activeHighlighters = new WeakHashMap<>();
+
+
 
     public static void addGutterIcon(@NotNull Editor editor, int startOffset) {
         MarkupModel markupModel = editor.getMarkupModel();
@@ -52,6 +57,7 @@ public class SelectionGutterIcon {
             activeHighlighters.remove(editor);
             editor.getContentComponent().requestFocus();
         });
+
         setupListeners(editor, parentDisposable);
     }
 
@@ -130,7 +136,7 @@ public class SelectionGutterIcon {
                 return new AnAction() {
                     @Override
                     public void actionPerformed(@NotNull AnActionEvent e) {
-                        OverlayPromptPanelFatory.showOverlayPromptPanel(editor, lineNumber);
+                        OverlayPromptPanelFactory.showOverlayPromptPanel(editor, lineNumber);
                     }
                 };
             }

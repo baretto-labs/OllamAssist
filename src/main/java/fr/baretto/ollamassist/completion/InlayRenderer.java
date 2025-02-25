@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.*;
 import java.util.List;
 
-record InlayRenderer(List<String> suggestion, Editor editor) implements EditorCustomElementRenderer {
+public record InlayRenderer(List<String> suggestion, Editor editor) implements EditorCustomElementRenderer {
 
     @Override
     public int calcWidthInPixels(@NotNull Inlay inlay) {

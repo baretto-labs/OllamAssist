@@ -7,7 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.io.HttpRequests;
 import fr.baretto.ollamassist.ai.AutocompleteService;
-import fr.baretto.ollamassist.askfromcode.EditorListener;
+import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;

@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.askfromcode;
+package fr.baretto.ollamassist.chat.askfromcode;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Editor;

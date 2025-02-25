@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.askfromcode;
+package fr.baretto.ollamassist.chat.askfromcode;
 
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.wm.ToolWindow;
@@ -33,14 +33,10 @@ public class AskFromCodeAction implements ActionListener {
         SelectionGutterIcon.removeGutterIcon(editor);
         promptPanel.setVisible(false);
 
-
         editor.getProject().getMessageBus()
                 .syncPublisher(NewUserMessageNotifier.TOPIC)
-                .newUserMessage("Apply the user request: '"
-                        .concat(userMessage)
-                        .concat("' to : ")
+                .newUserMessage(userMessage
+                        .concat(": ")
                         .concat(selectedText));
-
-
     }
 }
