@@ -3,7 +3,6 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
-import com.intellij.util.ui.components.BorderLayoutPanel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
@@ -22,13 +21,12 @@ public class MessagesPanel extends JPanel {
 
     public MessagesPanel() {
         super(new BorderLayout());
-        BorderLayoutPanel blc = new BorderLayoutPanel();
-        scrollPane = new JBScrollPane(blc);
-        blc.addToTop(container);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        scrollPane = new JBScrollPane(container);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
 
         add(scrollPane, BorderLayout.CENTER);
-        container.add(presentationPanel, createGbc(0));
+        container.add(presentationPanel);
 
         JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
         verticalScrollBar.addAdjustmentListener(new AdjustmentListener() {

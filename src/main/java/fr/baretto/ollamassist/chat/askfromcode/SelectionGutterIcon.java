@@ -18,6 +18,7 @@ import fr.baretto.ollamassist.chat.ui.IconUtils;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.event.HierarchyEvent;
@@ -26,6 +27,7 @@ import java.util.WeakHashMap;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class SelectionGutterIcon {
+
     private static final Map<Editor, Disposable> editorDisposables = new WeakHashMap<>();
     private static final Map<Editor, RangeHighlighter> activeHighlighters = new WeakHashMap<>();
 
@@ -149,6 +151,11 @@ public class SelectionGutterIcon {
             @Override
             public int hashCode() {
                 return getIcon().hashCode();
+            }
+
+            @Override
+            public @Nullable String getTooltipText() {
+                return "OllamAssist inline chat";
             }
         };
     }
