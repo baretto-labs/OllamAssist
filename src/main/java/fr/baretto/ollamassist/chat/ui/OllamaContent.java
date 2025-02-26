@@ -43,7 +43,7 @@ public class OllamaContent {
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
         prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
-        askToChatAction = new AskToChatAction(promptInput, outputPanel, context);
+        askToChatAction = new AskToChatAction(promptInput, context);
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
         contentPanel.add(prerequisitesPanel);

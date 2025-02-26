@@ -111,6 +111,7 @@ public class MessagesPanel extends JPanel {
 
     public void finalizeMessage(ChatResponse chatResponse) {
         latestOllamaMessage.finalize(chatResponse);
+        latestOllamaMessage = null;
     }
 
     private GridBagConstraints createGbc(int gridy) {
