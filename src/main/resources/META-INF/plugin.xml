@@ -26,6 +26,8 @@
         <li><strong>In-IDE Chat with Ollama Models:</strong> Engage directly with AI for insights and explanations, all within your JetBrains IDE. The model has access to your project's indexed sources via <strong>RAG (Retrieval-Augmented Generation)</strong>, enabling context-aware responses based on your codebase.</li>
         <li><strong>Enhanced Context Awareness:</strong> Boost model accuracy by providing your workspace for tailored suggestions.</li>
         <li><strong>Offline Mode:</strong> Enjoy full functionality offline after loading the model and data.</li>
+        <li><strong>Inline chat:</strong> Select code, and start conversation directly from editor to chat.</li>
+
         <li><strong>Experimental Smart Code Autocomplete:</strong> Anticipates your next steps in coding, offering intelligent suggestions when pressing <strong>Shift+Space</strong>.
             <ul>
                 <li>Press <strong>Enter</strong> to insert the suggested code.</li>
@@ -56,6 +58,7 @@
     <change-notes><![CDATA[
         <h2>V1.0.5</h2>
         <UL>
+            <LI>feat/issue-38: Configure OllamAssist for all jetbrains products</LI>
             <LI>feat/issue-26: Add inline prompt panel after code selection</LI>
             <LI>feat: Ollama url are configurable in settings panel</LI>
             <LI>feat: Fetch available models and autocomplete in configuration dialog</LI>
