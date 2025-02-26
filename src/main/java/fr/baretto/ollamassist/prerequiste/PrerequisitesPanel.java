@@ -208,7 +208,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                     prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
                         ApplicationManager.getApplication().invokeLater(() ->
                                 updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
-                        if (allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
+                        if (prerequisiteService.allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
                             prerequisiteService.loadModels(project);
                         }
                     });
@@ -217,9 +217,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         );
     }
 
-    private static boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
-        return ollamaReady && chatModelReady && Boolean.TRUE.equals(autocompleteModelReady);
-    }
 
     private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady) {
         updateLabel(ollamaLabel, ollamaReady, ollamaReady ? "Ollama running" : "Ollama unavailable");

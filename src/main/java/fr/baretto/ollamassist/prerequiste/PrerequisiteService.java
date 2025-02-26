@@ -66,4 +66,8 @@ public class PrerequisiteService {
             }
         }.queue();
     }
+
+    public boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
+        return ollamaReady && chatModelReady && Boolean.TRUE.equals(autocompleteModelReady);
+    }
 }

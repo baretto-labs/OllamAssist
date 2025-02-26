@@ -109,6 +109,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
+        <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 
      </extensions>
 
