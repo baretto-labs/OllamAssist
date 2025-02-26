@@ -9,7 +9,6 @@ version = "1.0.4"
 
 repositories {
     mavenCentral()
-    gradlePluginPortal()
 }
 
 dependencies {
@@ -49,7 +48,7 @@ dependencies {
 intellij {
     version.set("2024.3")
     type.set("IC")
-    plugins.set(listOf("java"))
+    plugins.set(listOf())
 }
 
 tasks {
