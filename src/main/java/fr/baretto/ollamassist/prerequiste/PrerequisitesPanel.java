@@ -22,6 +22,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class PrerequisitesPanel extends SimpleToolWindowPanel {
+
     private final PrerequisiteService prerequisiteService = ApplicationManager.getApplication().getService(PrerequisiteService.class);
     private final JBLabel ollamaLabel = new JBLabel();
     private final JBLabel chatModelLabel = new JBLabel();
@@ -207,7 +208,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                     prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
                         ApplicationManager.getApplication().invokeLater(() ->
                                 updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
-                        if (allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
+                        if (prerequisiteService.allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
                             prerequisiteService.loadModels(project);
                         }
                     });
@@ -216,9 +217,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         );
     }
 
-    private static boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
-        return ollamaReady && chatModelReady && Boolean.TRUE.equals(autocompleteModelReady);
-    }
 
     private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady) {
         updateLabel(ollamaLabel, ollamaReady, ollamaReady ? "Ollama running" : "Ollama unavailable");

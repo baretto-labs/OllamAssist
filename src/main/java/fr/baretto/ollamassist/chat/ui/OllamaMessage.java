@@ -12,6 +12,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 
 public class OllamaMessage extends JPanel {
+
     private final Context context;
     private final JPanel mainPanel;
     private final JLabel currentHeaderPanel;

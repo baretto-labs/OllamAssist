@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.io.HttpRequests;
 import fr.baretto.ollamassist.ai.AutocompleteService;
+import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -53,6 +54,8 @@ public class PrerequisiteService {
         new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
+                EditorListener.attachListeners();
+
                 project.getService(OllamaService.class).init();
                 AutocompleteService.get();
 
@@ -62,5 +65,9 @@ public class PrerequisiteService {
                         .onModelAvailable();
             }
         }.queue();
+    }
+
+    public boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
+        return ollamaReady && chatModelReady && Boolean.TRUE.equals(autocompleteModelReady);
     }
 }

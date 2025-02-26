@@ -3,17 +3,10 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.AnimatedIcon;
-import com.intellij.util.ui.ImageUtil;
-import com.intellij.util.ui.JBUI;
-import com.intellij.util.ui.UIUtil;
-import com.intellij.util.ui.UIUtilities;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.jdesktop.swingx.icon.EmptyIcon;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class IconUtils {
@@ -21,16 +14,15 @@ public class IconUtils {
     public static final Icon USER_ICON = load("/icons/user.svg");
     public static final Icon OLLAMASSIST_ICON = load("/icons/icon.svg");
     public static final Icon OLLAMASSIST_THINKING_ICON = new AnimatedIcon(100,
-        AllIcons.Process.Step_1,
-        AllIcons.Process.Step_2,
-        AllIcons.Process.Step_3,
-        AllIcons.Process.Step_4,
-        AllIcons.Process.Step_5,
-        AllIcons.Process.Step_6,
-        AllIcons.Process.Step_7,
-        AllIcons.Process.Step_8);
+            AllIcons.Process.Step_1,
+            AllIcons.Process.Step_2,
+            AllIcons.Process.Step_3,
+            AllIcons.Process.Step_4,
+            AllIcons.Process.Step_5,
+            AllIcons.Process.Step_6,
+            AllIcons.Process.Step_7,
+            AllIcons.Process.Step_8);
     public static final Icon SUBMIT = load("/icons/submit.svg");
-    public static final Icon SUBMIT_PRESSED = load("/icons/submit_pressed.svg");
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");
@@ -52,21 +44,5 @@ public class IconUtils {
 
     public static Icon load(String path) {
         return IconLoader.getIcon(path, IconUtils.class);
-    }
-
-    private static Icon resizeIcon(Icon original, int width, int height) {
-        if (original == null) return null;
-
-        Image image = ImageUtil.createImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = (Graphics2D) image.getGraphics();
-
-        try {
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            Image originalImage = ((ImageIcon) original).getImage();
-            g.drawImage(originalImage, 0, 0, width, height, null);
-        } finally {
-            g.dispose();
-        }
-        return new ImageIcon(image);
     }
 }

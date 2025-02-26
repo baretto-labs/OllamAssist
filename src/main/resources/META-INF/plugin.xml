@@ -56,29 +56,36 @@
     <change-notes><![CDATA[
         <h2>V1.0.5</h2>
         <UL>
-            <LI>feat/issue-33 : Fix loading panel during OllamAssist starting</LI>
+            <LI>feat/issue-26: Add inline prompt panel after code selection</LI>
+            <LI>feat: Ollama url are configurable in settings panel</LI>
+            <LI>feat: Fetch available models and autocomplete in configuration dialog</LI>
+            <LI>feat: Suppress displaying more tokens from a canceled request </LI>
+            <LI>feat: Distinguish completed, canceled and erroneous (e.g. timed-out) requests with different icons and add informational tooltips </LI>
+            <LI>fix: Add horizontal scrollbar (when necessary) to code output (SyntaxHighlighterPanel)</>
+            <LI>feat/issue-26: Add inline prompt panel after selection</LI>
+            <LI>fix/issue-33: Fix loading panel during OllamAssist starting</LI>
         </UL>
         <h2>V1.0.4</h2>
         <UL>
-            <LI>feat/issue-31 : Add filter for incremental indexation</LI>
-            <LI>feat/issue-27 : Check prerequisites before execute plugin</LI>
-            <LI>fix/issue-25 : Replace french words by icons and tooltips</LI>
-            <LI>fix/issue-24 : improve UI</LI>
+            <LI>feat/issue-31: Add filter for incremental indexation</LI>
+            <LI>feat/issue-27: Check prerequisites before execute plugin</LI>
+            <LI>fix/issue-25: Replace french words by icons and tooltips</LI>
+            <LI>fix/issue-24: improve UI</LI>
         </UL>
        <h2>V1.0.3</h2>
         <UL>
-            <LI>fix/issue-12 : Add icon for light theme</LI>
-            <LI>fix/issue-15 : Add scrollbar if textarea is not enough for showing prompt</LI>
-            <LI>feat/issue-12 : Clean history and start conversation from zero</LI>
-            <LI>feat/issue-9 : Refactor indexation and RAG configuration</LI>
+            <LI>fix/issue-12: Add icon for light theme</LI>
+            <LI>fix/issue-15: Add scrollbar if textarea is not enough for showing prompt</LI>
+            <LI>feat/issue-12: Clean history and start conversation from zero</LI>
+            <LI>feat/issue-9: Refactor indexation and RAG configuration</LI>
         </UL>
         <h2>V1.0.2</h2>
         <UL>
-            <LI>Fix : fix chat scrollbar</LI>
+            <LI>Fix: fix chat scrollbar</LI>
         </UL>
         <h2>V1.0.1</h2>
         <UL>
-            <LI>Fix : fix chat scrollbar</LI>
+            <LI>Fix: fix chat scrollbar</LI>
         </UL>
         <h2>V1.0.O</h2>
         <UL>
@@ -102,6 +109,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
+        <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 
      </extensions>
 
