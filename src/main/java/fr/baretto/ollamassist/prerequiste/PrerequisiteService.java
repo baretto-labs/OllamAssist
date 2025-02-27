@@ -54,8 +54,6 @@ public class PrerequisiteService {
         new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                EditorListener.attachListeners();
-
                 project.getService(OllamaService.class).init();
                 AutocompleteService.get();
 
