@@ -11,6 +11,7 @@ import com.intellij.ui.components.fields.IntegerField;
 import com.intellij.util.ui.JBUI;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.StoreNotifier;
 
 import javax.swing.*;
@@ -98,6 +99,7 @@ public class ConfigurationPanel extends JPanel {
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(JBUI.Borders.empty(10, 0));
         JButton clearButton = new JButton("Clear Embedding Store");
+        ComponentCustomizer.applyHoverEffect(clearButton);
         clearButton.setPreferredSize(new Dimension(200, 30));
         clearButton.setMaximumSize(new Dimension(200, 30));
         clearButton.setAlignmentX(Component.LEFT_ALIGNMENT);
