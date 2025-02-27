@@ -9,6 +9,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
@@ -51,8 +52,11 @@ public class SyntaxHighlighterPanel extends JPanel {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         JButton insertButton = createButton(IconUtils.INSERT, INSERT);
+        insertButton.setToolTipText("Insert code");
         JButton copyButton = createButton(IconUtils.COPY, COPY_TO_CLIPBOARD);
-
+        copyButton.setToolTipText("Copy code");
+        ComponentCustomizer.applyHoverEffect(insertButton);
+        ComponentCustomizer.applyHoverEffect(copyButton);
         buttonPanel.add(insertButton);
         buttonPanel.add(copyButton);
         headerPanel.add(buttonPanel, BorderLayout.EAST);

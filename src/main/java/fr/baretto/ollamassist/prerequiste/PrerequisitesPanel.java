@@ -11,6 +11,7 @@ import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,6 +46,9 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         super(true, true);
         this.project = project;
         initPanel();
+        ComponentCustomizer.applyHoverEffect(restartButton);
+        ComponentCustomizer.applyHoverEffect(copyAutocompleteCommandButton);
+        ComponentCustomizer.applyHoverEffect(copyChatCommandButton);
     }
 
     private void initPanel() {

@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.util.ui.JBUI;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
 import javax.swing.*;
@@ -20,6 +21,7 @@ public class ConversationSelectorPanel extends JPanel {
         JLabel titleLabel = new JLabel(OLLAM_ASSIST_HISTORIC);
 
         JButton newConversation = new JButton();
+        ComponentCustomizer.applyHoverEffect(newConversation);
         newConversation.setPreferredSize(new Dimension(16, 16));
         newConversation.setMargin(JBUI.insets(2));
         newConversation.setFocusPainted(false);

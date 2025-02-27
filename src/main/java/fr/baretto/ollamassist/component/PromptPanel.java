@@ -10,6 +10,7 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorSettings;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
@@ -50,8 +51,13 @@ public class PromptPanel extends JPanel implements Disposable {
         editorTextField.setBackground(UIUtil.getTextFieldBackground());
         editorTextField.setForeground(UIUtil.getTextFieldForeground());
         editorTextField.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-
+        editorTextField.setOneLineMode(false);
+        editorTextField.addSettingsProvider(editor -> {
+            EditorSettings settings = editor.getSettings();
+            settings.setUseSoftWraps(true);
+        });
         sendButton = createSubmitButton();
+        ComponentCustomizer.applyHoverEffect(sendButton);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         buttonPanel.setAlignmentX(RIGHT_ALIGNMENT);
