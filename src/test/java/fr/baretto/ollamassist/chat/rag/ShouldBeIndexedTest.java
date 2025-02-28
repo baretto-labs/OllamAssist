@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 
 class ShouldBeIndexedTest {
@@ -54,8 +55,8 @@ class ShouldBeIndexedTest {
 
     private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
         ShouldBeIndexedForTest() {
-            excludedFiles = List.of(".git", ".json");
-            includedFiles = List.of("src/", ".java", "pom.xml");
+            excludedFiles = Set.of(".git", ".json");
+            includedFiles = Set.of("src/", ".java", "pom.xml");
         }
     }
 }

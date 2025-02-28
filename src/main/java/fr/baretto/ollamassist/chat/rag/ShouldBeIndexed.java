@@ -2,33 +2,27 @@ package fr.baretto.ollamassist.chat.rag;
 
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ShouldBeIndexed implements PathMatcher {
 
     private static final String SEPARATOR = ";";
-    protected List<String> includedFiles;
-    protected List<String> excludedFiles;
+    protected Set<String> includedFiles;
+    protected Set<String> excludedFiles;
 
     ShouldBeIndexed() {
         this.includedFiles = getSourcePatterns();
-        this.excludedFiles = List.of("target", "build", ".github", ".git", ".idea", ".gradle");
+        this.excludedFiles = Set.of();
     }
 
     @Override
     public boolean matches(Path path) {
         String normalizedPath = path.toString().replace('\\', '/');
-
-        for (String exclusion : excludedFiles) {
-            if (normalizedPath.contains(exclusion)) {
-                return false;
-            }
-        }
 
         boolean isIncluded = includedFiles.isEmpty();
         for (String inclusion : includedFiles) {
@@ -42,17 +36,17 @@ public class ShouldBeIndexed implements PathMatcher {
             return false;
         }
         try {
-            return Files.isRegularFile(path);
+            return Files.isRegularFile(path) && path.toFile().length()>0;
         } catch (SecurityException e) {
             return false;
         }
     }
 
-    private List<String> getSourcePatterns() {
+    private Set<String> getSourcePatterns() {
         return Arrays.stream(OllamAssistSettings.getInstance()
                         .getSources()
                         .split(SEPARATOR))
                 .filter(s -> !s.isBlank())
-                .toList();
+                .collect(Collectors.toSet());
     }
 }

@@ -39,10 +39,7 @@ class LuceneEmbeddingStoreTest {
 
     @Test
     void testIndexAndSearchDocumentsUsingFilesUtil() {
-        String directoryPath = getClass().getClassLoader().getResource("data").getPath();
-        String projectId = "test_project";
-
-        FilesUtil.batch(projectId, directoryPath, PATH_MATCHER, docs -> {
+        new FilesUtil(new DummyProject()).batch(docs -> {
             EmbeddingStoreIngestor.ingest(docs, store);
         });
 

@@ -30,7 +30,7 @@ public class DummyProject implements Project {
 
     @Override
     public @Nullable @NonNls @SystemIndependent String getBasePath() {
-        return "";
+        return getClass().getClassLoader().getResource("data").getPath();
     }
 
     @Override

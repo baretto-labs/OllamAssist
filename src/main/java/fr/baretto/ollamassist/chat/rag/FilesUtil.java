@@ -1,45 +1,52 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.intellij.openapi.project.Project;
 import com.jgoodies.common.base.Strings;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.util.ArrayList;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Slf4j
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FilesUtil {
 
+    private static final PathMatcher PATH_MATCHER = new ShouldBeIndexed();
     private static final int BATCH_SIZE = 100;
+    private final Set<Path> excludedPaths;
+    private final Project project;
 
-    public static void batch(String projectId, String directoryPath, PathMatcher fileFilter, Consumer<List<Document>> ingestor) {
-        validateDirectory(directoryPath);
-        List<File> batch = new ArrayList<>();
+    public FilesUtil(Project project){
+        this.project = project;
+        excludedPaths = Set.of(".git", ".idea",
+                        "target",".gradle", "jars","build", "bin", "obj", "out", ".vs", "x64", "Debug", "Release", "CMakeFiles",
+                "packages", ".nuget", "AppPackages", "Artifacts","vendor", "composer", "storage", ".phpstorm.meta.php",
+                "bundle", "tmp", "log", ".ruby-version", ".rbenv", "pkg", "*.exe", "*.test", "coverage.txt","__pycache__",
+                "venv", "env", "dist","*.egg-info","node_modules",".next", ".svelte-kit", ".parcel-cache","Cargo.lock",
+                "gen", "captures", "local.properties","Pods", "DerivedData","*.xcworkspace", "*.xcodeproj")
+                .stream().map(dir-> Path.of(project.getBasePath(), dir).toAbsolutePath())
+                .collect(Collectors.toSet());
+    }
 
-        try (var paths = Files.walk(Path.of(directoryPath))) {
-            paths.filter(path -> fileFilter.matches(path.toAbsolutePath()))
-                    .map(Path::toFile)
-                    .filter(file -> file.isFile() && file.length() > 0)
-                    .forEach(file -> {
-                        batch.add(file);
-                        if (batch.size() >= BATCH_SIZE) {
-                            processBatch(batch, projectId, ingestor);
-                            batch.clear();
-                        }
-                    });
 
+    public void batch(Consumer<List<Document>> ingestor) {
+        validateDirectory(project.getBasePath());
+        Set<File> batch = new HashSet<>();
+
+        try {
+            Files.walkFileTree(Path.of(project.getBasePath()), getFileVisitor(ingestor, batch));
             if (!batch.isEmpty()) {
-                processBatch(batch, projectId, ingestor);
+                processBatch(batch, project.getName(), ingestor);
                 batch.clear();
             }
         } catch (IOException e) {
@@ -47,7 +54,7 @@ public class FilesUtil {
         }
     }
 
-    private static void processBatch(List<File> files, String projectId, Consumer<List<Document>> ingestor) {
+    private void processBatch(Set<File> files, String projectId, Consumer<List<Document>> ingestor) {
         List<Document> documents = files.stream()
                 .map(file -> {
                     try {
@@ -66,16 +73,65 @@ public class FilesUtil {
     }
 
 
-    private static void validateDirectory(String directoryPath) {
+    private void validateDirectory(String directoryPath) {
         File directory = new File(directoryPath);
         if (!directory.exists() || !directory.isDirectory()) {
             throw new IllegalArgumentException("Invalid directory: " + directoryPath);
         }
     }
 
-    private static void handleIOException(IOException e, String context) {
+    private void handleIOException(IOException e, String context) {
         log.error("IOException during {}: {}", context, e.getMessage(), e);
         throw new RuntimeException(e);
     }
 
+    public long count() {
+        AtomicLong fileCount = new AtomicLong(0);
+        try {
+            Files.walkFileTree(Path.of(project.getBasePath()), new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    if (excludedPaths.contains(dir.toAbsolutePath())) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (PATH_MATCHER.matches(file) && attrs.isRegularFile() && attrs.size() > 0) {
+                        fileCount.incrementAndGet();
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            handleIOException(e, "file counting");
+        }
+
+        return fileCount.get();
+    }
+
+    private @NotNull SimpleFileVisitor<Path> getFileVisitor(Consumer<List<Document>> ingestor, Set<File> batch) {
+        return new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (excludedPaths.contains(dir.toAbsolutePath())) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (PATH_MATCHER.matches(file) && attrs.isRegularFile() && attrs.size() > 0) {
+                    batch.add(file.toFile());
+                    if (batch.size() >= BATCH_SIZE) {
+                        processBatch(batch, project.getName(), ingestor);
+                        batch.clear();
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        };
+    }
 }
