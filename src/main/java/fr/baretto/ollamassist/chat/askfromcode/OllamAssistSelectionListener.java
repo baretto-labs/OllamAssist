@@ -13,7 +13,7 @@ public class OllamAssistSelectionListener implements SelectionListener {
         if (!editor.getSelectionModel().hasSelection()) return;
 
         int startOffset = editor.getSelectionModel().getSelectionStart();
+        editor.getProject().getService(SelectionGutterIcon.class).addGutterIcon(editor, startOffset);
 
-        SelectionGutterIcon.addGutterIcon(editor, startOffset);
     }
 }

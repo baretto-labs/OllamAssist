@@ -183,4 +183,16 @@ public class PromptPanel extends JPanel implements Disposable {
         }
     }
 
+
+    public void removeListeners(){
+        for (MouseListener ml : this.getMouseListeners()) {
+            this.removeMouseListener(ml);
+        }
+        for (KeyListener kl : this.getKeyListeners()) {
+            this.removeKeyListener(kl);
+        }
+        for (ComponentListener cl : this.getComponentListeners()) {
+            this.removeComponentListener(cl);
+        }
+    }
 }

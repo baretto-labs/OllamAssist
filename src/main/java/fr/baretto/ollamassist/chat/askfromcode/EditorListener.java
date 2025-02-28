@@ -5,59 +5,65 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
 import com.intellij.openapi.editor.event.EditorFactoryListener;
-import com.intellij.openapi.editor.ex.EditorEx;
-import com.intellij.openapi.fileEditor.FileEditor;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileEditor.FileEditorManagerListener;
-import com.intellij.openapi.fileEditor.TextEditor;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.messages.MessageBusConnection;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EditorListener {
     private static final Disposable PLUGIN_DISPOSABLE = Disposer.newDisposable("OllamAssistPlugin");
+    private static final Map<Editor, OllamAssistSelectionListener> LISTENER_MAP =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     public static void attachListeners() {
-        EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
+        EditorFactory editorFactory = EditorFactory.getInstance();
+        editorFactory.addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorCreated(@NotNull EditorFactoryEvent event) {
-                Editor editor = event.getEditor();
-                editor.getSelectionModel().addSelectionListener(new OllamAssistSelectionListener());
+                handleEditorCreation(event.getEditor());
+            }
+
+            @Override
+            public void editorReleased(@NotNull EditorFactoryEvent event) {
+                handleEditorRelease(event.getEditor());
             }
         }, PLUGIN_DISPOSABLE);
 
-        initializeEditors();
+        initializeExistingEditors();
     }
 
-
-    private static void initializeEditors() {
-        for (Project project : ProjectManager.getInstance().getOpenProjects()) {
-            FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-            addSelectionListenerDuringEditorOpening(fileEditorManager.getAllEditors());
-            MessageBusConnection connection = project.getMessageBus().connect();
-            connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
-                @Override
-                public void fileOpened(@NotNull FileEditorManager manager, @NotNull VirtualFile file) {
-                    addSelectionListenerDuringEditorOpening(manager.getEditors(file));
-                }
-            });
+    private static void initializeExistingEditors() {
+        Editor[] editors = EditorFactory.getInstance().getAllEditors();
+        for (Editor editor : editors) {
+            handleEditorCreation(editor);
         }
     }
 
-    private static void addSelectionListenerDuringEditorOpening(FileEditor[] fileEditorManager) {
-        for (FileEditor fileEditor : fileEditorManager) {
-            if (fileEditor instanceof TextEditor textEditor) {
-                Editor editor = textEditor.getEditor();
-                if (editor instanceof EditorEx) {
-                    editor.getSelectionModel().addSelectionListener(new OllamAssistSelectionListener());
-                }
+    private static void handleEditorCreation(Editor editor) {
+        synchronized (LISTENER_MAP) {
+            if (!LISTENER_MAP.containsKey(editor)) {
+                OllamAssistSelectionListener listener = new OllamAssistSelectionListener();
+                editor.getSelectionModel().addSelectionListener(listener);
+                LISTENER_MAP.put(editor, listener);
             }
         }
+    }
+
+    private static void handleEditorRelease(Editor editor) {
+        synchronized (LISTENER_MAP) {
+            OllamAssistSelectionListener listener = LISTENER_MAP.remove(editor);
+            if (listener != null) {
+                editor.getSelectionModel().removeSelectionListener(listener);
+            }
+        }
+    }
+
+    public static void dispose() {
+        Disposer.dispose(PLUGIN_DISPOSABLE);
     }
 }

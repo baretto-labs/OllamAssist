@@ -6,6 +6,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -31,14 +32,27 @@ public class AskFromCodeAction implements ActionListener {
         if (userMessage.isEmpty()) {
             return;
         }
-        editor.getSelectionModel().removeSelection();
-        SelectionGutterIcon.removeGutterIcon(editor);
-        promptPanel.setVisible(false);
+        cleanPromptPanel();
 
         editor.getProject().getMessageBus()
                 .syncPublisher(NewUserMessageNotifier.TOPIC)
                 .newUserMessage(userMessage
                         .concat(": ")
                         .concat(selectedText));
+    }
+
+    private void cleanPromptPanel() {
+        editor.getSelectionModel().removeSelection();
+        editor.getProject().getService(SelectionGutterIcon.class).removeGutterIcon(editor);
+        promptPanel.removeListeners();
+        promptPanel.removeAll();
+
+        Container parent = promptPanel.getParent();
+        if (parent != null) {
+            parent.remove(promptPanel);
+            parent.revalidate();
+            parent.repaint();
+        }
+        promptPanel = null;
     }
 }
