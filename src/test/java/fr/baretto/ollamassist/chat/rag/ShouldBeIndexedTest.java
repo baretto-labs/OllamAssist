@@ -3,7 +3,6 @@ package fr.baretto.ollamassist.chat.rag;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -11,11 +10,11 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.nio.file.StandardOpenOption;
+import java.util.Set;
 
 
 class ShouldBeIndexedTest {
-
 
     @TempDir
     Path tempDir;
@@ -32,8 +31,13 @@ class ShouldBeIndexedTest {
 
             Mockito.doReturn("src,pom.xml").when(settings).getSources();
 
-            Assertions.assertTrue(new ShouldBeIndexedForTest().matches(Files.createFile(tempDir.resolve("srcHello.java"))));
-            Assertions.assertTrue(new ShouldBeIndexedForTest().matches(Files.createFile(tempDir.resolve("pom.xml"))));
+
+            Path hello = tempDir.resolve("srcHello.java");
+            createAndAppend(hello,"hello");
+            Assertions.assertTrue(new ShouldBeIndexedForTest().matches(hello));
+            Path pom = tempDir.resolve("pom.xml");
+            createAndAppend(pom, "<xml></xml>");
+            Assertions.assertTrue(new ShouldBeIndexedForTest().matches(pom));
         }
     }
 
@@ -54,8 +58,16 @@ class ShouldBeIndexedTest {
 
     private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
         ShouldBeIndexedForTest() {
-            excludedFiles = List.of(".git", ".json");
-            includedFiles = List.of("src/", ".java", "pom.xml");
+            excludedFiles = Set.of(".git", ".json");
+            includedFiles = Set.of("src/", ".java", "pom.xml");
         }
+    }
+
+    public void createAndAppend(Path path, String content) throws IOException {
+        Files.writeString(
+                path,
+                content,
+                StandardOpenOption.CREATE
+        );
     }
 }

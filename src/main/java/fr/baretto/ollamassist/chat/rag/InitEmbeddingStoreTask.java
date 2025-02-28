@@ -7,18 +7,12 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 @Slf4j
 public class InitEmbeddingStoreTask extends Task.Backgroundable {
@@ -28,7 +22,7 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
     private final EmbeddingStore<TextSegment> store;
     private final AtomicInteger processedFiles = new AtomicInteger(0);
     private long totalFiles;
-    private PathMatcher pathMatcher;
+
     private long startTime;
 
     public InitEmbeddingStoreTask(@Nullable Project project, EmbeddingStore<TextSegment> store) {
@@ -46,15 +40,19 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
             indicator.setIndeterminate(false);
             indicator.setText("Preparing indexing...");
 
+            FilesUtil filesUtil = getProject().getService(FilesUtil.class);
+            indicator.setText("Analyzing project structure...");
 
-            pathMatcher = new ShouldBeIndexed();
+            totalFiles = filesUtil.count();
+            indicator.setText2(String.format("Files to index: %d", totalFiles));
 
-            countTotalFiles(indicator);
             if (totalFiles == 0) {
                 indicator.setText2("No files to index");
                 return;
             }
-            processFiles(indicator, pathMatcher);
+
+            filesUtil.batch(docs -> handleBatch(docs, indicator));
+
             if (!indicator.isCanceled()) {
                 new IndexRegistry().markAsIndexed(getProject().getName());
             }
@@ -63,25 +61,6 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
-    }
-
-    private void countTotalFiles(ProgressIndicator indicator) throws Exception {
-        indicator.setText("Analyzing project structure...");
-        try (Stream<Path> stream = Files.walk(Path.of(getProject().getBasePath()))) {
-            totalFiles = stream
-                    .filter(path -> pathMatcher.matches(path))
-                    .count();
-        }
-        indicator.setText2(String.format("Files to index: %d", totalFiles));
-    }
-
-    private void processFiles(ProgressIndicator indicator, PathMatcher pathMatcher) {
-        FilesUtil.batch(
-                getProject().getName(),
-                getProject().getBasePath(),
-                pathMatcher,
-                docs -> handleBatch(docs, indicator)
-        );
     }
 
     private void handleBatch(List<Document> batch, ProgressIndicator indicator) {
