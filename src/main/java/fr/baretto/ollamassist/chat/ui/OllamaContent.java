@@ -71,7 +71,7 @@ public class OllamaContent {
         connection
                 .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
                         .getService(OllamaService.class)
-                        .forceInit(context));
+                        .forceInit());
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             if (currentChatThread != null) {

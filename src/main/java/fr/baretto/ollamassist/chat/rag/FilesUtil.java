@@ -9,6 +9,7 @@ import com.intellij.openapi.vfs.VirtualFileVisitor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,10 +17,11 @@ import java.util.List;
 public class FilesUtil {
     private final Project project;
     private final ProjectFileIndex fileIndex;
-
+    private final ShouldBeIndexed shouldBeIndexed;
     public FilesUtil(Project project) {
         this.project = project;
         this.fileIndex = ProjectFileIndex.getInstance(project);
+        this.shouldBeIndexed = new ShouldBeIndexed();
     }
 
     public List<String> collectFilePaths() {
@@ -29,9 +31,7 @@ public class FilesUtil {
             VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
                 @Override
                 public boolean visitFile(@NotNull VirtualFile file) {
-                    if (!file.isDirectory() &&
-                            !fileIndex.isExcluded(file) &&
-                            !file.getFileType().isBinary()) {
+                    if (shouldBeIndexed(file)) {
                         paths.add(file.getPath());
                     }
                     return true;
@@ -39,5 +39,14 @@ public class FilesUtil {
             });
             return paths;
         }).executeSynchronously();
+    }
+
+    public boolean shouldBeIndexed(@NotNull VirtualFile file) {
+        return !file.isDirectory() &&
+                file.isValid() &&
+                file.getLength() > 0 &&
+                !fileIndex.isExcluded(file) &&
+                !file.getFileType().isBinary() &&
+                shouldBeIndexed.matches(Path.of(file.getPath()));
     }
 }

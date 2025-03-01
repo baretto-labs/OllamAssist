@@ -58,7 +58,6 @@ class ShouldBeIndexedTest {
 
     private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
         ShouldBeIndexedForTest() {
-            excludedFiles = Set.of(".git", ".json");
             includedFiles = Set.of("src/", ".java", "pom.xml");
         }
     }
