@@ -48,9 +48,7 @@ class LuceneEmbeddingStoreTest {
             Mockito.doReturn("data").when(settings).getSources();
 
 
-            new FilesUtil(new DummyProject()).batch(docs -> {
-                EmbeddingStoreIngestor.ingest(docs, store);
-            });
+            new FilesUtil(new DummyProject()).collectFilePaths();
 
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(embed("BATCH_SIZE"))
