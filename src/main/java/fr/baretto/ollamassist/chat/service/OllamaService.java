@@ -2,7 +2,6 @@ package fr.baretto.ollamassist.chat.service;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.data.document.Document;
@@ -13,7 +12,6 @@ import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import fr.baretto.ollamassist.chat.ui.Context;
 import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
 import fr.baretto.ollamassist.chat.rag.ProjectFileListener;
 import fr.baretto.ollamassist.events.ConversationNotifier;
@@ -96,8 +94,8 @@ public final class OllamaService implements Disposable, SettingsListener {
         projectFileListener.load();
     }
 
-    public void forceInit(Context context) {
-        projectFileListener.forceLoad(context);
+    public void forceInit() {
+        projectFileListener.forceLoad();
     }
 
     @Override

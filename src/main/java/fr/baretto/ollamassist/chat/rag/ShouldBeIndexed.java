@@ -13,17 +13,14 @@ public class ShouldBeIndexed implements PathMatcher {
 
     private static final String SEPARATOR = ";";
     protected Set<String> includedFiles;
-    protected Set<String> excludedFiles;
 
     ShouldBeIndexed() {
         this.includedFiles = getSourcePatterns();
-        this.excludedFiles = Set.of();
     }
 
     @Override
     public boolean matches(Path path) {
         String normalizedPath = path.toString().replace('\\', '/');
-
         boolean isIncluded = includedFiles.isEmpty();
         for (String inclusion : includedFiles) {
             if (normalizedPath.contains(inclusion)) {
@@ -31,7 +28,6 @@ public class ShouldBeIndexed implements PathMatcher {
                 break;
             }
         }
-
         if (!isIncluded) {
             return false;
         }

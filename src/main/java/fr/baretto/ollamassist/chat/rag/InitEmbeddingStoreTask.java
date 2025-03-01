@@ -1,9 +1,12 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.google.common.collect.Lists;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
@@ -11,19 +14,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 
 @Slf4j
 public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
-
-    private static final int PROGRESS_UPDATE_THRESHOLD = 50;
     private final EmbeddingStore<TextSegment> store;
     private final AtomicInteger processedFiles = new AtomicInteger(0);
     private long totalFiles;
-
-    private long startTime;
 
     public InitEmbeddingStoreTask(@Nullable Project project, EmbeddingStore<TextSegment> store) {
         super(project, "OllamAssist - Knowledge Indexing", true);
@@ -32,30 +34,19 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
     @Override
     public void run(@NotNull ProgressIndicator indicator) {
-        startTime = System.currentTimeMillis();
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-
-            indicator.setIndeterminate(false);
-            indicator.setText("Preparing indexing...");
-
+            indicator.setText("Collecting files...");
             FilesUtil filesUtil = getProject().getService(FilesUtil.class);
-            indicator.setText("Analyzing project structure...");
+            List<String> filePaths = filesUtil.collectFilePaths();
+            totalFiles = filePaths.size();
 
-            totalFiles = filesUtil.count();
-            indicator.setText2(String.format("Files to index: %d", totalFiles));
-
-            if (totalFiles == 0) {
-                indicator.setText2("No files to index");
-                return;
-            }
-
-            filesUtil.batch(docs -> handleBatch(docs, indicator));
-
+            indicator.setText2("Indexing files...");
+            processBatchesSequentially(filePaths, indicator);
             if (!indicator.isCanceled()) {
                 new IndexRegistry().markAsIndexed(getProject().getName());
             }
+
         } catch (Exception e) {
             handleError(e, indicator);
         } finally {
@@ -63,60 +54,43 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
         }
     }
 
-    private void handleBatch(List<Document> batch, ProgressIndicator indicator) {
-        if (indicator.isCanceled()) return;
+    private void processBatchesSequentially(List<String> filePaths, ProgressIndicator indicator) {
+        List<List<String>> batches = Lists.partition(filePaths, 100);
 
-        int currentCount = processedFiles.addAndGet(batch.size());
-        double progress = (double) currentCount / totalFiles;
+        for (List<String> batch : batches) {
+            if (indicator.isCanceled()) break;
 
-        updateProgress(indicator, progress, batch.size(), currentCount);
-
-        try {
-            EmbeddingStoreIngestor.ingest(batch, store);
-        } catch (Exception e) {
-            log.error("Error during indexing of {} files", batch.size(), e);
-            indicator.setText2("Error in a batch of files - Check logs");
-        }
-    }
-
-    private void updateProgress(ProgressIndicator indicator, double progress, int batchSize, int totalProcessed) {
-        indicator.setFraction(progress);
-
-        if (totalProcessed % PROGRESS_UPDATE_THRESHOLD == 0 || totalProcessed == totalFiles) {
-            String progressText = String.format(
-                    "Indexing: %d/%d files (%.1f%%) - Last batch: %d files",
-                    totalProcessed,
-                    totalFiles,
-                    progress * 100,
-                    batchSize
-            );
-            indicator.setText2(progressText);
-            if (totalProcessed > 0 && totalFiles > 0) {
-                estimateRemainingTime(indicator, totalProcessed);
+            List<Document> documents = new ArrayList<>(100);
+            for (String path : batch) {
+                try {
+                    Document doc = FileSystemDocumentLoader.loadDocument(Path.of(path));
+                    documents.add(doc);
+                } catch (Exception e) {
+                    log.error("Error processing {}: {}", path, e.getMessage());
+                } finally {
+                    indicator.checkCanceled();
+                }
             }
-        } else {
-            String progressText = String.format(
-                    "Indexing: %d/%d files (%.1f%%)",
-                    totalProcessed,
-                    totalFiles,
-                    progress * 100
-            );
-            indicator.setText2(progressText);
+
+            ingestDocuments(documents);
+            documents.clear();
+            updateProgress(indicator, batch.size());
         }
     }
 
-    private void estimateRemainingTime(ProgressIndicator indicator, int processed) {
-        long elapsed = System.currentTimeMillis() - startTime;
-        long remaining = (long) ((elapsed / (double) processed) * (totalFiles - processed));
-
-        String timeEstimate = formatDuration(remaining);
-        indicator.setText2(indicator.getText2() + " - Estimated remaining time: " + timeEstimate);
+    private void ingestDocuments(List<Document> documents) {
+        if (!documents.isEmpty()) {
+            EmbeddingStoreIngestor.ingest(documents, store);
+        }
     }
 
-    private String formatDuration(long millis) {
-        long minutes = (millis / 1000) / 60;
-        long seconds = (millis / 1000) % 60;
-        return String.format("%02d:%02d", minutes, seconds);
+    private void updateProgress(ProgressIndicator indicator, int batchSize) {
+        processedFiles.addAndGet(batchSize);
+        ApplicationManager.getApplication().invokeLater(() -> {
+            double progress = (double) processedFiles.get() / totalFiles;
+            indicator.setFraction(progress);
+            indicator.setText2(processedFiles + "/" + totalFiles + " files");
+        });
     }
 
     private void handleError(Exception e, ProgressIndicator indicator) {
