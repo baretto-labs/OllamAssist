@@ -32,13 +32,12 @@ dependencies {
     implementation("org.apache.lucene:lucene-memory:$apacheLuceneVersion")
 
     implementation("com.fifesoft:rsyntaxtextarea:3.5.3")
-
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
 
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M2")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:$mockitoVersion")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.11.0-M2")
@@ -48,7 +47,7 @@ dependencies {
 intellij {
     version.set("2024.3")
     type.set("IC")
-    plugins.set(listOf())
+    plugins.set(listOf("Git4Idea"))
 }
 
 tasks {

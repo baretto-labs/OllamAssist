@@ -12,7 +12,7 @@ import org.apache.lucene.search.TermQuery;
  */
 @RequiredArgsConstructor
 @Getter
-public class IdEqualsFilter implements Filter {
+public class IdStartWithFilter implements Filter {
 
     private final String id;
 
@@ -27,8 +27,8 @@ public class IdEqualsFilter implements Filter {
 
     @Override
     public boolean test(Object object) {
-        if (object instanceof String) {
-            return object.equals(id);
+        if (object instanceof String value) {
+            return value.startsWith(id);
         }
         return false;
     }

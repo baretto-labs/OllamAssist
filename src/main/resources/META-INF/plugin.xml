@@ -55,6 +55,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.0.6</h2>
+        <UL>
+            <LI>fix/issue-49: Reduce CPU usage during indexation</LI>
+        </UL>
         <h2>V1.0.5</h2>
         <UL>
             <LI>feat/issue-38: Configure OllamAssist for all jetbrains products</LI>
@@ -105,12 +109,16 @@
                     factoryClass="fr.baretto.ollamassist.chat.ui.OllamaWindowFactory"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.prerequiste.PrerequisiteService"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.chat.rag.IndexRegistry"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIngestorFactory"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FilesUtil"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 
+
+        <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
      </extensions>
 
     <actions>
