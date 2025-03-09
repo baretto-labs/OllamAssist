@@ -43,7 +43,7 @@ public class IndexRegistry {
             return false;
         }
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
-        return !lastIndexedDate.isBefore(sevenDaysAgo);
+        return lastIndexedDate.isAfter(sevenDaysAgo);
     }
 
     public void markAsCurrentIndexation(String projectId) {

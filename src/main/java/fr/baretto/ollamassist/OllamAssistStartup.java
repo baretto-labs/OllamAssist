@@ -26,12 +26,6 @@ public class OllamAssistStartup implements ProjectActivity {
                     return null;
                 }
         );
-        new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-
-            }
-        }.queue();
         return "EXECUTE";
     }
 }
