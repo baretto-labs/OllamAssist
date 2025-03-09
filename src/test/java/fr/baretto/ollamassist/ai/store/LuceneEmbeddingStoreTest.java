@@ -22,8 +22,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class LuceneEmbeddingStoreTest {
 
@@ -69,7 +68,7 @@ class LuceneEmbeddingStoreTest {
 
             assertNotNull(searchResult);
             assertEquals(1, searchResult.matches().size());
-            assertEquals("FilesUtil.java", searchResult.matches().get(0).embeddingId());
+            assertTrue(searchResult.matches().get(0).embeddingId().contains("FilesUtil.java"));
 
 
             searchRequest = EmbeddingSearchRequest.builder()
@@ -81,7 +80,7 @@ class LuceneEmbeddingStoreTest {
 
             assertNotNull(searchResult);
             assertEquals(1, searchResult.matches().size());
-            assertEquals("README.adoc", searchResult.matches().get(0).embeddingId());
+            assertTrue(searchResult.matches().get(0).embeddingId().contains("README.adoc"));
         }
     }
 

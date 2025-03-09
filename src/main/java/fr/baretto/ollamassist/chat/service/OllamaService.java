@@ -11,7 +11,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import fr.baretto.ollamassist.chat.rag.DocumentIngestorFactory;
 import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
 import fr.baretto.ollamassist.chat.rag.ProjectFileListener;
 import fr.baretto.ollamassist.events.ConversationNotifier;
@@ -55,8 +55,8 @@ public final class OllamaService implements Disposable, SettingsListener {
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(OllamaService.class.getClassLoader());
-            EmbeddingStoreIngestor.ingest(List.of(Document.from("empty document")), embeddingStore);
 
+            DocumentIngestorFactory.create(embeddingStore).ingest(List.of(Document.from("empty doc")));
 
             ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
             messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);

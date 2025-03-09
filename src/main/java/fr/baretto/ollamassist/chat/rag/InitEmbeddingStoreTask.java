@@ -9,7 +9,6 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,35 +22,49 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
-    private final EmbeddingStore<TextSegment> store;
     private final AtomicInteger processedFiles = new AtomicInteger(0);
+    private final EmbeddingStore<TextSegment> store;
+    private final IndexRegistry indexationRegistry;
     private long totalFiles;
 
-    public InitEmbeddingStoreTask(@Nullable Project project, EmbeddingStore<TextSegment> store) {
+    public InitEmbeddingStoreTask(@Nullable Project project, EmbeddingStore<TextSegment> store, IndexRegistry indexationRegistry) {
         super(project, "OllamAssist - Knowledge Indexing", true);
         this.store = store;
+        this.indexationRegistry = indexationRegistry;
     }
 
     @Override
     public void run(@NotNull ProgressIndicator indicator) {
-        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
-        try {
-            indicator.setText("Collecting files...");
-            FilesUtil filesUtil = getProject().getService(FilesUtil.class);
-            List<String> filePaths = filesUtil.collectFilePaths();
-            totalFiles = filePaths.size();
+        if (!indexationRegistry.isIndexed(getProject().getName())) {
+            indexationRegistry.markAsCurrentIndexation(getProject().getName());
+            ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+            try {
+                indicator.setText("Collecting files...");
+                FilesUtil filesUtil = getProject().getService(FilesUtil.class);
+                List<String> filePaths = filesUtil.collectFilePaths();
+                totalFiles = filePaths.size();
+                if (totalFiles > 5000) {
+                    totalFiles = 5000;
+                    filePaths  = filePaths.subList(0, 5000 );
+                    indicator.setText2("Indexing files...");
+                } else {
+                    indicator.setText2("Indexing files...");
+                }
 
-            indicator.setText2("Indexing files...");
-            processBatchesSequentially(filePaths, indicator);
-            if (!indicator.isCanceled()) {
-                new IndexRegistry().markAsIndexed(getProject().getName());
+                processBatchesSequentially(filePaths, indicator);
+                if (!indicator.isCanceled()) {
+                    new IndexRegistry().markAsIndexed(getProject().getName());
+                }
+
+            } catch (Exception e) {
+                handleError(e, indicator);
+            } finally {
+                indexationRegistry.markAsIndexed(getProject().getName());
+                indexationRegistry.removeFromCurrentIndexation(getProject().getName());
+                Thread.currentThread().setContextClassLoader(originalClassLoader);
             }
-
-        } catch (Exception e) {
-            handleError(e, indicator);
-        } finally {
-            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
+
     }
 
     private void processBatchesSequentially(List<String> filePaths, ProgressIndicator indicator) {
@@ -71,7 +84,6 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
                     indicator.checkCanceled();
                 }
             }
-
             ingestDocuments(documents);
             documents.clear();
             updateProgress(indicator, batch.size());
@@ -80,7 +92,7 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
     private void ingestDocuments(List<Document> documents) {
         if (!documents.isEmpty()) {
-            EmbeddingStoreIngestor.ingest(documents, store);
+            DocumentIngestorFactory.create(store).ingest(documents);
         }
     }
 

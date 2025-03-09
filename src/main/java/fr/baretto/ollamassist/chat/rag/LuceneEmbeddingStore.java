@@ -34,6 +34,7 @@ import static fr.baretto.ollamassist.chat.rag.IndexRegistry.OLLAMASSIST_DIR;
 public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embedded>, Closeable, Disposable {
 
     public static final String DATABASE_KNOWLEDGE_INDEX = "/database/knowledge_index/";
+    public static final String FILE_PATH = "file_path";
     private final Directory directory;
     private final StandardAnalyzer analyzer;
     private final ObjectMapper mapper;
@@ -72,7 +73,7 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
     public String add(Embedding embedding) {
         rwLock.writeLock().lock();
         try {
-            String id = UUID.randomUUID().toString();
+            String id = getUniqueId(null, UUID.randomUUID().toString());
             add(id, embedding, null);
             return id;
         } finally {
@@ -89,7 +90,7 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
     public String add(Embedding embedding, Embedded embedded) {
         rwLock.writeLock().lock();
         try {
-            String id = UUID.randomUUID().toString();
+            String id = getUniqueId(embedded, UUID.randomUUID().toString());
             add(id, embedding, embedded);
             return id;
         } finally {
@@ -103,9 +104,7 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
             if (indexWriter == null) {
                 indexWriter = retrieveIndexWriter();
             }
-            String fileName = Optional.ofNullable(((TextSegment) embedded).metadata().getString("file_name"))
-                    .orElse(id);
-            indexWriter.updateDocument(new Term("id", fileName), toDocument(embedding, embedded, fileName));
+            indexWriter.updateDocument(new Term("id", id), toDocument(embedding, embedded, id));
             indexWriter.commit();
         } catch (IOException e) {
             throw new RuntimeException("Error adding or updating document in Lucene", e);
@@ -114,13 +113,10 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
         }
     }
 
-    private Document toDocument(Embedding embedding, Embedded embedded, String fileName) {
+    private Document toDocument(Embedding embedding, Embedded embedded, String id) {
         Document doc = new Document();
-        String projectId = Optional.ofNullable(((TextSegment) embedded).metadata().getString("project_id"))
-                .orElse("default");
 
-        doc.add(new StringField("id", fileName, Field.Store.YES));
-        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+        doc.add(new StringField("id", id, Field.Store.YES));
         doc.add(new StoredField("embedded", ((TextSegment) embedded).text()));
 
         String lastIndexedDate = ZonedDateTime.now().toString();
@@ -154,13 +150,13 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
 
             for (int i = 0; i < embeddings.size(); i++) {
                 Embedded embedded = i < metadataList.size() ? metadataList.get(i) : null;
-                String fileName = getFileName(embedded, UUID.randomUUID().toString());
-                ids.add(fileName);
+                String id = getUniqueId(embedded, UUID.randomUUID().toString());
+                ids.add(id);
 
                 documents.add(createDocument(
                         embeddings.get(i),
                         embedded,
-                        fileName,
+                        id,
                         getProjectId(embedded)
                 ));
             }
@@ -218,11 +214,11 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
     public void removeAll(Filter filter) {
         rwLock.writeLock().lock();
         try {
-            if (filter instanceof IdEqualsFilter idEqualsFilter) {
+            if (filter instanceof IdStartWithFilter idStartWithFilter) {
                 if (indexWriter == null) {
                     indexWriter = retrieveIndexWriter();
                 }
-                indexWriter.deleteDocuments(idEqualsFilter.toLuceneQuery());
+                indexWriter.deleteDocuments(idStartWithFilter.toLuceneQuery());
                 indexWriter.commit();
             } else {
                 throw new UnsupportedOperationException("Filter type not supported: " + filter.getClass());
@@ -247,18 +243,18 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
 
             List<EmbeddingMatch<Embedded>> matches = new ArrayList<>();
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-                    Document doc = searcher.storedFields().document(scoreDoc.doc);
+                Document doc = searcher.storedFields().document(scoreDoc.doc);
 
-                    String id = doc.get("id");
-                    String lastIndexedDate = doc.get("last_indexed_date");
-                    String embeddedText = doc.get("embedded");
+                String id = doc.get("id");
+                String lastIndexedDate = doc.get("last_indexed_date");
+                String embeddedText = doc.get("embedded");
 
-                    Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
-                    metadata.put("last_indexed_date", lastIndexedDate);
+                Metadata metadata = new Metadata(mapper.readValue(doc.get("metadata"), Map.class));
+                metadata.put("last_indexed_date", lastIndexedDate);
 
-                    Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
+                Embedded textSegment = (Embedded) TextSegment.from(embeddedText, metadata);
 
-                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
+                matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
             }
             return new EmbeddingSearchResult<>(matches);
         } catch (IOException e) {
@@ -286,12 +282,19 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
         close();
     }
 
-    private String getFileName(Embedded embedded, String defaultName) {
+    private String getUniqueId(Embedded embedded, String defaultId) {
+
         if (embedded instanceof TextSegment textSegment) {
-            return Optional.ofNullable((textSegment).metadata().getString("file_name"))
-                    .orElse(defaultName);
+            try{
+                return textSegment.metadata().getString("absolute_directory_path") + "/"
+                        + textSegment.metadata().getString("file_name")
+                        + UUID.randomUUID();
+            } catch (Exception exception){
+                return defaultId;
+            }
+
         }
-        return defaultName;
+        return defaultId;
     }
 
     private String getProjectId(Embedded embedded) {
@@ -302,11 +305,10 @@ public final class LuceneEmbeddingStore<Embedded> implements EmbeddingStore<Embe
         return "default";
     }
 
-    private Document createDocument(Embedding embedding, Embedded embedded, String fileName, String projectId) {
+    private Document createDocument(Embedding embedding, Embedded embedded, String filePath, String projectId) {
         Document doc = new Document();
 
-        doc.add(new StringField("id", fileName, Field.Store.YES));
-        doc.add(new StringField("projectId", projectId, Field.Store.YES));
+        doc.add(new StringField("id", filePath, Field.Store.YES));
 
         if (embedded instanceof TextSegment segment) {
             doc.add(new StoredField("embedded", segment.text()));

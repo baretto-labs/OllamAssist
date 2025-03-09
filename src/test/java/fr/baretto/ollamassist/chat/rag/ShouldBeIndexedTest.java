@@ -58,7 +58,7 @@ class ShouldBeIndexedTest {
 
     private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
         ShouldBeIndexedForTest() {
-            includedFiles = Set.of("src/", ".java", "pom.xml");
+            includedPaths = Set.of("src/", ".java", "pom.xml");
         }
     }
 

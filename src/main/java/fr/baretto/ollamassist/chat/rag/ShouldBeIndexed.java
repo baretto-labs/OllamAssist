@@ -12,17 +12,18 @@ import java.util.stream.Collectors;
 public class ShouldBeIndexed implements PathMatcher {
 
     private static final String SEPARATOR = ";";
-    protected Set<String> includedFiles;
-
+    protected Set<String> includedPaths;
+    protected Set<String> excludedPaths;
     ShouldBeIndexed() {
-        this.includedFiles = getSourcePatterns();
+        this.includedPaths = getSourcePatterns();
+        this.excludedPaths = Set.of();
     }
 
     @Override
     public boolean matches(Path path) {
         String normalizedPath = path.toString().replace('\\', '/');
-        boolean isIncluded = includedFiles.isEmpty();
-        for (String inclusion : includedFiles) {
+        boolean isIncluded = includedPaths.isEmpty();
+        for (String inclusion : includedPaths) {
             if (normalizedPath.contains(inclusion)) {
                 isIncluded = true;
                 break;
