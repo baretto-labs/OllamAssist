@@ -5,20 +5,19 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 
+@NoArgsConstructor
 public class OllamaGutterIconRenderer extends GutterIconRenderer {
 
-    private final Editor editor;
-    private final int lineNumber;
+    private  Editor editor;
+    private int lineNumber;
 
-    public OllamaGutterIconRenderer(Editor editor, int lineNumber){
-        this.editor = editor;
-        this.lineNumber = lineNumber;
-    }
+
     @Override
     public @NotNull Icon getIcon() {
         return IconUtils.OLLAMASSIST_ICON;
@@ -48,5 +47,10 @@ public class OllamaGutterIconRenderer extends GutterIconRenderer {
     @Override
     public @Nullable String getTooltipText() {
         return "OllamAssist inline chat";
+    }
+
+    public void update(Editor editor, int lineNumber){
+        this.editor = editor;
+        this.lineNumber = lineNumber;
     }
 }
