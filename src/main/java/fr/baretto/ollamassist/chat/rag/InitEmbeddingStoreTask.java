@@ -43,9 +43,9 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
                 FilesUtil filesUtil = getProject().getService(FilesUtil.class);
                 List<String> filePaths = filesUtil.collectFilePaths();
                 totalFiles = filePaths.size();
-                if (totalFiles > 5000) {
-                    totalFiles = 5000;
-                    filePaths  = filePaths.subList(0, 5000 );
+                if (totalFiles > FilesUtil.getMaxFiles()) {
+                    totalFiles = FilesUtil.getMaxFiles();
+                    filePaths  = filePaths.subList(0, FilesUtil.getMaxFiles());
                     indicator.setText2("Indexing files...");
                 } else {
                     indicator.setText2("Indexing files...");

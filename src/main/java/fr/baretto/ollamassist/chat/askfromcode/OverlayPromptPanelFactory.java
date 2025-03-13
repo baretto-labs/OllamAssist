@@ -80,9 +80,10 @@ public class OverlayPromptPanelFactory {
         PROMPT_PANEL.addActionMap(ASK_FROM_CODE_ACTION);
 
         Dimension editorDimension = editor.getComponent().getSize();
-        Dimension dimension = PROMPT_PANEL.getPreferredSize();
-        dimension.setSize(editorDimension.width * 0.6, dimension.height * 2d);
-        PROMPT_PANEL.setPreferredSize(dimension);
+        editorDimension.setSize(editorDimension.width * 0.6, editorDimension.height * 0.2);
+        PROMPT_PANEL.setMinimumSize(editorDimension);
+        PROMPT_PANEL.setMaximumSize(editorDimension);
+        PROMPT_PANEL.setPreferredSize(editorDimension);
     }
 
     public void closeActivePanel(Editor editor, SelectionListener selectionListener) {

@@ -10,6 +10,7 @@ import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileVisitor;
+import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,7 +22,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class FilesUtil {
-    private static final int MAX_FILES = 5000;
+
     private final Project project;
     private final ProjectFileIndex fileIndex;
     private final ShouldBeIndexed shouldBeIndexed;
@@ -32,21 +33,25 @@ public class FilesUtil {
         this.shouldBeIndexed = new ShouldBeIndexed();
     }
 
+    public static int getMaxFiles() {
+        return OllamAssistSettings.getInstance().getIndexationSize();
+    }
+
     public List<String> collectFilePaths() {
         VirtualFile baseDir = project.getBaseDir();
         return ReadAction.nonBlocking(() -> {
             AtomicInteger count = new AtomicInteger(0);
-            List<String> sourceFiles = new ArrayList<>(MAX_FILES);
-            List<String> otherFiles = new ArrayList<>(MAX_FILES);
+            List<String> sourceFiles = new ArrayList<>(getMaxFiles());
+            List<String> otherFiles = new ArrayList<>(getMaxFiles());
 
             VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
                 @Override
                 public boolean visitFile(@NotNull VirtualFile file) {
-                    if (count.get() >= MAX_FILES){
+                    if (count.get() >= getMaxFiles()) {
                         return false;
                     }
 
-                    if (shouldSkipFile(file)){
+                    if (shouldSkipFile(file)) {
                         return true;
                     }
 
@@ -76,12 +81,12 @@ public class FilesUtil {
                                      List<String> others,
                                      AtomicInteger counter) {
         if (fileIndex.isInSource(file)) {
-            if (sources.size() < MAX_FILES) {
+            if (sources.size() < getMaxFiles()) {
                 sources.add(file.getPath());
                 counter.incrementAndGet();
             }
         } else {
-            if (counter.get() < MAX_FILES) {
+            if (counter.get() < getMaxFiles()) {
                 others.add(file.getPath());
                 counter.incrementAndGet();
             }
@@ -90,10 +95,10 @@ public class FilesUtil {
 
     private List<String> mergeAndLimitResults(List<String> sources, List<String> others) {
         List<String> result = Stream.concat(sources.stream(), others.stream())
-                .limit(MAX_FILES)
+                .limit(getMaxFiles())
                 .toList();
 
-        if (result.size() >= MAX_FILES) {
+        if (result.size() >= getMaxFiles()) {
             notifyLimitReached();
         }
 
@@ -105,7 +110,7 @@ public class FilesUtil {
                 .notify(new Notification(
                         "RAG_Indexation",
                         "Limit reached",
-                        "Maximum indexable files limit (" + MAX_FILES + ") exceeded. Editing or creating files will trigger their indexing.",
+                        "Maximum indexable files limit (" + getMaxFiles() + ") exceeded. Editing or creating files will trigger their indexing.",
                         NotificationType.WARNING
                 ));
     }

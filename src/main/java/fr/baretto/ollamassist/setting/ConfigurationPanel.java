@@ -29,6 +29,7 @@ public class ConfigurationPanel extends JPanel {
     private final TextFieldWithAutoCompletion<String> completionModel;
     private final JBTextField timeout = new IntegerField(null, 0, Integer.MAX_VALUE);
     private final JBTextField sources = new JBTextField();
+    private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
     private final Project project;
 
 
@@ -38,17 +39,13 @@ public class ConfigurationPanel extends JPanel {
         setBorder(JBUI.Borders.empty(10)); // Ajouter des marges globales
 
         add(createLabeledField("Ollama URL:", ollamaUrl, "The URL of the Ollama server."));
-
         chatModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
         add(createLabeledField("Chat model:", chatModel, "The model should be loaded before use."));
-
         completionModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
         add(createLabeledField("Completion model:", completionModel, "The model should be loaded before use."));
-
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
-
         add(createLabeledField("Indexed Folders:", sources, "Separated by ';'"));
-
+        add(createLabeledField("Maximum number of documents indexed at once", maxDocuments, "The maximum number of documents indexed during a batch indexation"));
         add(createClearEmbeddingButton());
 
         ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -64,17 +61,15 @@ public class ConfigurationPanel extends JPanel {
     }
 
     private JPanel createLabeledField(String label, JComponent textField, String message) {
-        // Conteneur principal vertical pour le champ et le message
         JPanel panel = new JBPanel<>();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Alignement vertical
-        panel.setBorder(JBUI.Borders.empty(5, 0)); // Marges globales pour la section
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(JBUI.Borders.empty(5, 0));
 
-        // Label principal
         JBLabel fieldLabel = new JBLabel(label);
-        fieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT); // Alignement à gauche
+        fieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(fieldLabel);
 
-        panel.add(Box.createVerticalStrut(5)); // Espacement entre le label et le champ de texte
+        panel.add(Box.createVerticalStrut(5));
 
         textField.setPreferredSize(new Dimension(200, 30));
         textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
@@ -111,9 +106,7 @@ public class ConfigurationPanel extends JPanel {
                     Messages.getWarningIcon()
             );
             if (result == Messages.YES) {
-                project.getMessageBus()
-                        .syncPublisher(StoreNotifier.TOPIC)
-                        .clear();
+                triggerClearLocalStorage();
             }
         });
 
@@ -129,6 +122,12 @@ public class ConfigurationPanel extends JPanel {
         return panel;
     }
 
+    public void triggerClearLocalStorage() {
+        project.getMessageBus()
+                .syncPublisher(StoreNotifier.TOPIC)
+                .clear();
+    }
+
     public String getOllamaUrl() {
         return ollamaUrl.getText().trim();
     }
@@ -136,6 +135,14 @@ public class ConfigurationPanel extends JPanel {
     public void setOllamaUrl(String url) {
         ollamaUrl.setText(url.trim());
         updateAvailableModelsAutoCompletions();
+    }
+
+    public int getMaxDocuments() {
+        return maxDocuments.getValue();
+    }
+
+    public void setMaxDocuments(int maxDocumentsValue) {
+        maxDocuments.setValue(maxDocumentsValue);
     }
 
     public String getChatModel() {
