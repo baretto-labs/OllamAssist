@@ -4,7 +4,6 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
-import fr.baretto.ollamassist.events.StoreNotifier;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
