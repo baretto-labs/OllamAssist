@@ -1,10 +1,9 @@
 package fr.baretto.ollamassist;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
@@ -21,6 +20,7 @@ public class OllamAssistStartup implements ProjectActivity {
                     prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
                         if (prerequisiteService.allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
                             prerequisiteService.loadModels(project);
+                            EditorListener.attachListeners();
                         }
                     });
                     return null;

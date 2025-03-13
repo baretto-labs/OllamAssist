@@ -47,7 +47,6 @@ public final class OllamaService implements Disposable, SettingsListener {
         this.messageBusConnection.setDefaultHandler(() -> {
         });
         this.messageBusConnection.subscribe(SettingsListener.TOPIC, this);
-
         this.assistant = initAssistant();
     }
 

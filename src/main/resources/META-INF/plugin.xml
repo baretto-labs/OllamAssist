@@ -55,6 +55,13 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.1.0</h2>
+        <UL>
+            <LI>feat/issue-58: Users can set the limit for indexed documents</LI>
+        </UL>
+        <UL>
+            <LI>feat/issue-26: Start chat by a code selection</LI>
+        </UL>
         <h2>V1.0.6</h2>
         <UL>
             <LI>fix/issue-49: Reduce CPU usage during indexation</LI>
@@ -114,6 +121,8 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FilesUtil"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.SelectionGutterIcon"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 

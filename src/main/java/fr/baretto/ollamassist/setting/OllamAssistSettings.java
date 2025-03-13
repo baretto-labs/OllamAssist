@@ -61,6 +61,14 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.completionModelName = modelName;
     }
 
+    public void setIndexationSize(int numberOfDocuments) {
+        myState.indexationSize = numberOfDocuments;
+    }
+
+    public int getIndexationSize() {
+        return myState.indexationSize;
+    }
+
     public Duration getTimeoutDuration() {
         try {
             return Duration.ofSeconds(Long.parseLong(myState.timeout));
@@ -92,6 +100,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String completionModelName = "llama3.1";
         public String timeout = "300";
         public String sources = "src/";
+        public int indexationSize = 5000;
     }
 
 

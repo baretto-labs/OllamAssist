@@ -22,7 +22,7 @@ public class SelectionGutterIcon {
 
     private final Map<Editor, Disposable> editorDisposables = new WeakHashMap<>();
     private final Map<Editor, RangeHighlighter> activeHighlighters = new WeakHashMap<>();
-
+    private final OllamaGutterIconRenderer gutterIconRenderer = new OllamaGutterIconRenderer();
 
     public void addGutterIcon(@NotNull Editor editor, int startOffset) {
         MarkupModel markupModel = editor.getMarkupModel();
@@ -43,7 +43,8 @@ public class SelectionGutterIcon {
                 new TextAttributes()
         );
 
-        highlighter.setGutterIconRenderer(new OllamaGutterIconRenderer(editor, lineNumber));
+        gutterIconRenderer.update(editor, lineNumber);
+        highlighter.setGutterIconRenderer(gutterIconRenderer);
         activeHighlighters.put(editor, highlighter);
 
         Disposer.register(parentDisposable, () -> {

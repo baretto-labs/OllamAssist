@@ -18,9 +18,10 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         return "OllamAssist Settings";
     }
 
-    public OllamassistSettingsConfigurable(Project project){
+    public OllamassistSettingsConfigurable(Project project) {
         configurationPanel = new ConfigurationPanel(project);
     }
+
     @Nullable
     @Override
     public JComponent createComponent() {
@@ -31,6 +32,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setCompletionModelName(settings.getCompletionModelName());
         configurationPanel.setTimeout(settings.getTimeout());
         configurationPanel.setSources(settings.getSources());
+        configurationPanel.setMaxDocuments(settings.getIndexationSize());
         return configurationPanel;
     }
 
@@ -41,28 +43,40 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
                 !configurationPanel.getCompletionModel().equalsIgnoreCase(settings.getCompletionModelName()) ||
                 !configurationPanel.getTimeout().equalsIgnoreCase(settings.getTimeout()) ||
-                !configurationPanel.getSources().equalsIgnoreCase(settings.getSources());
+                !configurationPanel.getSources().equalsIgnoreCase(settings.getSources()) ||
+                configurationPanel.getMaxDocuments() != settings.getIndexationSize();
     }
 
 
     @Override
     public void apply() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        boolean modified = isModified();
 
-        if (modified) {
+        if (isModified()) {
+
+            boolean needIndexation = needIndexation();
 
             settings.setOllamaUrl(configurationPanel.getOllamaUrl());
             settings.setChatModelName(configurationPanel.getChatModel());
             settings.setCompletionModelName(configurationPanel.getCompletionModel());
             settings.setTimeout(configurationPanel.getTimeout());
             settings.setSources(configurationPanel.getSources());
-
+            settings.setIndexationSize(configurationPanel.getMaxDocuments());
 
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(SettingsListener.TOPIC)
                     .settingsChanged(settings.getState());
+
+            if (needIndexation) {
+                configurationPanel.triggerClearLocalStorage();
+            }
+
         }
+    }
+
+    private boolean needIndexation() {
+        OllamAssistSettings settings = OllamAssistSettings.getInstance();
+        return configurationPanel.getMaxDocuments() != settings.getIndexationSize();
     }
 
     @Override
@@ -73,6 +87,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setCompletionModelName(settings.getCompletionModelName().trim());
         configurationPanel.setTimeout(settings.getTimeout().trim());
         configurationPanel.setSources(settings.getSources().trim());
+        configurationPanel.setMaxDocuments(settings.getIndexationSize());
     }
 
     @Override

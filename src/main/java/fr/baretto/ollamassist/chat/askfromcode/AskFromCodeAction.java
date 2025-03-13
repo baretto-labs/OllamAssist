@@ -6,20 +6,20 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 
-import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class AskFromCodeAction implements ActionListener {
-    private final Editor editor;
-    private final String selectedText;
+    private Editor editor;
     private PromptPanel promptPanel;
 
 
-    public AskFromCodeAction(Editor editor, PromptPanel panel, String selectedText) {
-        this.editor = editor;
+    public AskFromCodeAction(PromptPanel panel) {
         this.promptPanel = panel;
-        this.selectedText = selectedText;
+    }
+
+    public void fromCodeEditor(Editor editor){
+        this.editor = editor;
     }
 
     @Override
@@ -32,6 +32,7 @@ public class AskFromCodeAction implements ActionListener {
         if (userMessage.isEmpty()) {
             return;
         }
+        String selectedText = editor.getSelectionModel().getSelectedText();
         cleanPromptPanel();
 
         editor.getProject().getMessageBus()
@@ -45,14 +46,6 @@ public class AskFromCodeAction implements ActionListener {
         editor.getSelectionModel().removeSelection();
         editor.getProject().getService(SelectionGutterIcon.class).removeGutterIcon(editor);
         promptPanel.removeListeners();
-        promptPanel.removeAll();
-
-        Container parent = promptPanel.getParent();
-        if (parent != null) {
-            parent.remove(promptPanel);
-            parent.revalidate();
-            parent.repaint();
-        }
-        promptPanel = null;
+        promptPanel.setVisible(false);
     }
 }

@@ -27,8 +27,8 @@ import java.awt.event.*;
 @Getter
 public class PromptPanel extends JPanel implements Disposable {
 
-    private final Border defaultEditorBorder = BorderFactory.createEmptyBorder(6, 6, 6, 6);
-    private final Border focusedEditorBorder = BorderFactory.createCompoundBorder(
+    private static final Border DEFAULT_EDITOR_BORDER = BorderFactory.createEmptyBorder(6, 6, 6, 6);
+    private static final Border FOCUSED_EDITOR_BORDER = BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UIUtil.getFocusedBorderColor(), 1),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
     );
@@ -42,6 +42,37 @@ public class PromptPanel extends JPanel implements Disposable {
     public PromptPanel() {
         super(new BorderLayout());
         setupUI();
+        setActions();
+    }
+
+    private void setActions() {
+        AnAction sendAction = new AnAction("Ask to OllamAssit") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                triggerAction();
+            }
+        };
+
+        AnAction insertNewLineAction = new AnAction("Insert New Line") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                insertNewLine(editorTextField.getEditor());
+            }
+        };
+
+        ShortcutSet sendShortcuts = new CustomShortcutSet(
+                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)
+        );
+
+
+        ShortcutSet newlineShortcuts = new CustomShortcutSet(
+                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK)
+        );
+
+        sendAction.registerCustomShortcutSet(sendShortcuts, editorTextField.getComponent());
+        insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
+
+        sendButton.addActionListener(e -> triggerAction());
     }
 
     private void setupUI() {
@@ -74,14 +105,14 @@ public class PromptPanel extends JPanel implements Disposable {
         editorTextField.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                editorTextField.setBorder(focusedEditorBorder);
+                editorTextField.setBorder(FOCUSED_EDITOR_BORDER);
                 editorTextField.revalidate();
                 editorTextField.repaint();
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                editorTextField.setBorder(defaultEditorBorder);
+                editorTextField.setBorder(DEFAULT_EDITOR_BORDER);
                 editorTextField.revalidate();
                 editorTextField.repaint();
             }
@@ -110,34 +141,6 @@ public class PromptPanel extends JPanel implements Disposable {
 
     public void addActionMap(ActionListener listener) {
         this.listener = listener;
-
-        AnAction sendAction = new AnAction("Ask to OllamAssit") {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                triggerAction();
-            }
-        };
-
-        AnAction insertNewLineAction = new AnAction("Insert New Line") {
-            @Override
-            public void actionPerformed(@NotNull AnActionEvent e) {
-                insertNewLine(editorTextField.getEditor());
-            }
-        };
-
-        ShortcutSet sendShortcuts = new CustomShortcutSet(
-                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0)
-        );
-
-
-        ShortcutSet newlineShortcuts = new CustomShortcutSet(
-                KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK)
-        );
-
-        sendAction.registerCustomShortcutSet(sendShortcuts, editorTextField.getComponent());
-        insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
-
-        sendButton.addActionListener(e -> triggerAction());
     }
 
 

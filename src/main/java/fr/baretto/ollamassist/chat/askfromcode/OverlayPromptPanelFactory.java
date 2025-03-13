@@ -10,7 +10,6 @@ import com.intellij.openapi.editor.impl.EditorEmbeddedComponentManager;
 import com.intellij.openapi.editor.impl.EditorEmbeddedComponentManager.Properties;
 import com.intellij.openapi.util.Disposer;
 import fr.baretto.ollamassist.component.PromptPanel;
-import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
@@ -19,25 +18,29 @@ import java.awt.event.KeyEvent;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-@NoArgsConstructor
+
 public class OverlayPromptPanelFactory {
 
     private final Map<Editor, Inlay<?>> activeInlays = new WeakHashMap<>();
+    private static final PromptPanel PROMPT_PANEL = new PromptPanel();
+    private static final AskFromCodeAction ASK_FROM_CODE_ACTION = new AskFromCodeAction(PROMPT_PANEL);
 
-    public void showOverlayPromptPanel(Editor editor, int startOffset) {
-        closeActivePanel(editor);
-
-        PromptPanel panel = createOverlayPromptPanel(editor);
+    static {
         KeyAdapter keyListener = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER && !e.isShiftDown()) {
-                    panel.getSendButton().doClick();
+                    PROMPT_PANEL.getSendButton().doClick();
                     e.consume();
                 }
             }
         };
-        panel.getEditorTextField().addKeyListener(keyListener);
+        PROMPT_PANEL.getEditorTextField().addKeyListener(keyListener);
+    }
+
+
+    public void showOverlayPromptPanel(Editor editor, int startOffset) {
+        updateOverlayPromptPanel(editor);
 
         Properties properties = new Properties(
                 EditorEmbeddedComponentManager.ResizePolicy.any(),
@@ -52,7 +55,7 @@ public class OverlayPromptPanelFactory {
 
         Inlay<?> inlay = EditorEmbeddedComponentManager.getInstance().addComponent(
                 (EditorEx) editor,
-                panel,
+                PROMPT_PANEL,
                 properties
         );
 
@@ -61,35 +64,34 @@ public class OverlayPromptPanelFactory {
         SelectionListener selectionListener = new SelectionListener() {
             @Override
             public void selectionChanged(@NotNull SelectionEvent e) {
-                editor.getSelectionModel().removeSelectionListener(this);
-                closeActivePanel(editor);
+                closeActivePanel(editor, this);
             }
         };
-        editor.getSelectionModel().addSelectionListener(selectionListener, panel);
+        editor.getSelectionModel().addSelectionListener(selectionListener, PROMPT_PANEL);
 
         if (editor instanceof Disposable disposable) {
-            Disposer.register(disposable, () -> closeActivePanel(editor));
+            Disposer.register(disposable, () -> closeActivePanel(editor, selectionListener));
         }
     }
 
-    private @NotNull PromptPanel createOverlayPromptPanel(Editor editor) {
-        PromptPanel panel = new PromptPanel();
-        AskFromCodeAction askFromCodeAction = new AskFromCodeAction(editor, panel, editor.getSelectionModel().getSelectedText());
-        panel.addActionMap(askFromCodeAction);
+    private void updateOverlayPromptPanel(Editor editor) {
+
+        ASK_FROM_CODE_ACTION.fromCodeEditor(editor);
+        PROMPT_PANEL.addActionMap(ASK_FROM_CODE_ACTION);
 
         Dimension editorDimension = editor.getComponent().getSize();
-        Dimension dimension = panel.getPreferredSize();
-        dimension.setSize(editorDimension.width * 0.6, dimension.height * 2d);
-        panel.setPreferredSize(dimension);
-
-        return panel;
+        editorDimension.setSize(editorDimension.width * 0.6, editorDimension.height * 0.2);
+        PROMPT_PANEL.setMinimumSize(editorDimension);
+        PROMPT_PANEL.setMaximumSize(editorDimension);
+        PROMPT_PANEL.setPreferredSize(editorDimension);
     }
 
-    public void closeActivePanel(Editor editor) {
+    public void closeActivePanel(Editor editor, SelectionListener selectionListener) {
         Inlay<?> inlay = activeInlays.get(editor);
         if (inlay != null) {
             inlay.dispose();
             activeInlays.remove(editor);
+            editor.getSelectionModel().removeSelectionListener(selectionListener);
         }
     }
 }
