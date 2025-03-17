@@ -37,7 +37,7 @@ dependencies {
 
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.12.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:$mockitoVersion")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.11.0-M2")
