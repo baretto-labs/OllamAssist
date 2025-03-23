@@ -27,6 +27,7 @@ public class ConfigurationPanel extends JPanel {
     private final JBTextField ollamaUrl = new JBTextField(DEFAULT_URL);
     private final TextFieldWithAutoCompletion<String> chatModel;
     private final TextFieldWithAutoCompletion<String> completionModel;
+    private final TextFieldWithAutoCompletion<String> embeddingModel;
     private final JBTextField timeout = new IntegerField(null, 0, Integer.MAX_VALUE);
     private final JBTextField sources = new JBTextField();
     private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
@@ -36,13 +37,17 @@ public class ConfigurationPanel extends JPanel {
     public ConfigurationPanel(Project project) {
         this.project = project;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(JBUI.Borders.empty(10)); // Ajouter des marges globales
+        setBorder(JBUI.Borders.empty(10));
 
         add(createLabeledField("Ollama URL:", ollamaUrl, "The URL of the Ollama server."));
         chatModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
         add(createLabeledField("Chat model:", chatModel, "The model should be loaded before use."));
         completionModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
         add(createLabeledField("Completion model:", completionModel, "The model should be loaded before use."));
+        embeddingModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
+        add(createLabeledField("Embedding model:", embeddingModel, "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use." +
+                " For example: nomic-embed-text. " +
+                "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
         add(createLabeledField("Indexed Folders:", sources, "Separated by ';'"));
         add(createLabeledField("Maximum number of documents indexed at once", maxDocuments, "The maximum number of documents indexed during a batch indexation"));
@@ -78,12 +83,21 @@ public class ConfigurationPanel extends JPanel {
         panel.add(textField);
 
         if (message != null) {
-            JBLabel infoLabel = new JBLabel(message);
-            infoLabel.setFont(infoLabel.getFont().deriveFont(Font.ITALIC));
-            infoLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-            infoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JTextArea infoText = new JTextArea(message);
+            infoText.setEditable(false);
+            infoText.setLineWrap(true);
+            infoText.setWrapStyleWord(true);
+            infoText.setBackground(panel.getBackground());
+            infoText.setFont(infoText.getFont().deriveFont(Font.ITALIC));
+            infoText.setForeground(UIManager.getColor("Label.disabledForeground"));
+            infoText.setBorder(BorderFactory.createEmptyBorder());
+            infoText.setFocusable(false);
+            infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            infoText.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+
             panel.add(Box.createVerticalStrut(3));
-            panel.add(infoLabel);
+            panel.add(infoText);
         }
 
         return panel;
@@ -153,6 +167,10 @@ public class ConfigurationPanel extends JPanel {
         return completionModel.getText().trim();
     }
 
+    public String getEmbeddingModel() {
+        return embeddingModel.getText().trim();
+    }
+
     public String getSources() {
         return sources.getText().trim();
     }
@@ -177,10 +195,20 @@ public class ConfigurationPanel extends JPanel {
         completionModel.setText(completionModelName.trim());
     }
 
+    public void setEmbeddingModelName(String embeddingModelName) {
+        embeddingModel.setText(embeddingModelName.trim());
+    }
+
     private List<OllamaModel> fetchAvailableModels() {
-        return OllamaModels.builder()
+        List<OllamaModel> models = OllamaModels.builder()
                 .baseUrl(ollamaUrl.getText() == null ? DEFAULT_URL : ollamaUrl.getText())
-                .build().availableModels().content();
+                .build()
+                .availableModels()
+                .content();
+
+        models.add(OllamaModel.builder().model("").model("").build());
+
+        return models;
     }
 
     private void updateAvailableModelsAutoCompletions() {
@@ -188,14 +216,21 @@ public class ConfigurationPanel extends JPanel {
             List<OllamaModel> availableModels = fetchAvailableModels();
             chatModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
             completionModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
+            embeddingModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
             ollamaUrl.setForeground(UIManager.getColor("TextField.foreground"));
         } catch (RuntimeException e) {
 //            Messages.showErrorDialog("Could not connect to the Ollama server. Please check the URL.", "Connection Error");
             chatModel.setVariants(Collections.emptyList());
             completionModel.setVariants(Collections.emptyList());
+            embeddingModel.setVariants(Collections.emptyList());
             ollamaUrl.setForeground(
                     JBColor.RED);
         }
     }
 
+    public void triggerCleanAllDatabase() {
+        project.getMessageBus()
+                .syncPublisher(StoreNotifier.TOPIC)
+                .indexCorrupted();
+    }
 }

@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.chat.rag;
 import java.util.concurrent.*;
 
 public class Debouncer<K> {
+
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final ConcurrentHashMap<K, ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
     private final long delay;

@@ -30,6 +30,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setOllamaUrl(settings.getOllamaUrl());
         configurationPanel.setChatModelName(settings.getChatModelName());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName());
+        configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
         configurationPanel.setTimeout(settings.getTimeout());
         configurationPanel.setSources(settings.getSources());
         configurationPanel.setMaxDocuments(settings.getIndexationSize());
@@ -42,6 +43,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         return !configurationPanel.getOllamaUrl().equalsIgnoreCase(settings.getOllamaUrl()) ||
                 !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
                 !configurationPanel.getCompletionModel().equalsIgnoreCase(settings.getCompletionModelName()) ||
+                !configurationPanel.getEmbeddingModel().equalsIgnoreCase(settings.getEmbeddingModelName()) ||
                 !configurationPanel.getTimeout().equalsIgnoreCase(settings.getTimeout()) ||
                 !configurationPanel.getSources().equalsIgnoreCase(settings.getSources()) ||
                 configurationPanel.getMaxDocuments() != settings.getIndexationSize();
@@ -53,12 +55,12 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
 
         if (isModified()) {
-
             boolean needIndexation = needIndexation();
-
+            boolean shouldCleanAllDatabase = shouldCleanAllDatabase();
             settings.setOllamaUrl(configurationPanel.getOllamaUrl());
             settings.setChatModelName(configurationPanel.getChatModel());
             settings.setCompletionModelName(configurationPanel.getCompletionModel());
+            settings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
             settings.setTimeout(configurationPanel.getTimeout());
             settings.setSources(configurationPanel.getSources());
             settings.setIndexationSize(configurationPanel.getMaxDocuments());
@@ -66,6 +68,11 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(SettingsListener.TOPIC)
                     .settingsChanged(settings.getState());
+
+            if (shouldCleanAllDatabase) {
+                configurationPanel.triggerCleanAllDatabase();
+                return;
+            }
 
             if (needIndexation) {
                 configurationPanel.triggerClearLocalStorage();
@@ -79,12 +86,19 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         return configurationPanel.getMaxDocuments() != settings.getIndexationSize();
     }
 
+    private boolean shouldCleanAllDatabase() {
+        OllamAssistSettings settings = OllamAssistSettings.getInstance();
+        return !settings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel());
+
+    }
+
     @Override
     public void reset() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
         configurationPanel.setOllamaUrl(settings.getOllamaUrl().trim());
         configurationPanel.setChatModelName(settings.getChatModelName().trim());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName().trim());
+        configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
         configurationPanel.setTimeout(settings.getTimeout().trim());
         configurationPanel.setSources(settings.getSources().trim());
         configurationPanel.setMaxDocuments(settings.getIndexationSize());

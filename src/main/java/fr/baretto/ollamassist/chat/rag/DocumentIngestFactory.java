@@ -3,23 +3,47 @@ package fr.baretto.ollamassist.chat.rag;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15QuantizedEmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.codehaus.plexus.util.StringUtils;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class DocumentIngestorFactory {
+public class DocumentIngestFactory {
 
 
     public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store) {
-        EmbeddingModel embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
-        return EmbeddingStoreIngestor.builder().embeddingStore(store).embeddingModel(embeddingModel).build();
+        EmbeddingModel embeddingModel;
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(DocumentIngestFactory.class.getClassLoader());
+        try {
+            embeddingModel = createEmbeddingModel();
+            return EmbeddingStoreIngestor.builder().embeddingStore(store).embeddingModel(embeddingModel).build();
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    public static EmbeddingModel createEmbeddingModel() {
+        EmbeddingModel embeddingModel;
+        if (StringUtils.isNotBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
+            OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = new OllamaEmbeddingModel.OllamaEmbeddingModelBuilder();
+            embeddingModel = builder.baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
+                    .modelName(OllamAssistSettings.getInstance().getEmbeddingModelName())
+                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
+                    .build();
+        } else {
+            embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
+        }
+        return embeddingModel;
     }
 
 

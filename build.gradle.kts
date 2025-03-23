@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    val langchain4jVersion = "1.0.0-alpha1"
+    val langchain4jVersion = "1.0.0-beta2"
     val apacheLuceneVersion = "9.12.1"
     val mockitoVersion = "5.15.2"
 

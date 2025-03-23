@@ -68,10 +68,10 @@ public class OllamaContent {
             }
         });
 
-        connection
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
-                        .getService(OllamaService.class)
-                        .forceInit());
+        //connection
+        //        .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
+        //                .getService(OllamaService.class)
+        //                .forceInit());
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             if (currentChatThread != null) {
@@ -160,7 +160,7 @@ public class OllamaContent {
 
         private void run() {
             if (onNext != null) {
-                tokenStream.onNext(stoppable(onNext));
+                tokenStream.onPartialResponse(stoppable(onNext));
             }
             if (onError != null) {
                 tokenStream.onError(stoppable(onError));

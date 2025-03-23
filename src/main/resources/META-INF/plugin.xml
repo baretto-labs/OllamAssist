@@ -116,18 +116,26 @@
                     factoryClass="fr.baretto.ollamassist.chat.ui.OllamaWindowFactory"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.prerequiste.PrerequisiteService"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
+
         <applicationService serviceImplementation="fr.baretto.ollamassist.chat.rag.IndexRegistry"/>
-        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIngestorFactory"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIngestFactory"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FilesUtil"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIndexingPipeline"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
+
+
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.SelectionGutterIcon"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
+
+
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
+
+
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 
-
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
+        <notificationGroup id="index_corrupted" displayType="BALLOON"/>
      </extensions>
 
     <actions>

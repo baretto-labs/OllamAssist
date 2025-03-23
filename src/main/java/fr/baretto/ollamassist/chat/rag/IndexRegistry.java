@@ -1,6 +1,9 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
+import org.apache.lucene.store.FSDirectory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -28,6 +31,21 @@ public class IndexRegistry {
     private static final String SEPARATOR = ",";
     private final Set<String> currentIndexations = new HashSet<>();
 
+    public static class ProjectMetadata {
+        @Getter
+        private final LocalDate lastIndexedDate;
+        private final boolean isCorrupted;
+
+        ProjectMetadata(LocalDate lastIndexedDate, boolean isCorrupted) {
+            this.lastIndexedDate = lastIndexedDate;
+            this.isCorrupted = isCorrupted;
+        }
+
+        public boolean isCorrupted() {
+            return isCorrupted;
+        }
+    }
+
     public IndexRegistry() {
         ensureDirectoryExists();
         ensureFileExists();
@@ -37,14 +55,19 @@ public class IndexRegistry {
         if (currentIndexations.contains(projectId)) {
             return true;
         }
-        Map<String, LocalDate> indexedProjects = getIndexedProjects();
-        LocalDate lastIndexedDate = indexedProjects.get(projectId);
-        if (lastIndexedDate == null) {
+        Map<String, ProjectMetadata> indexedProjects = getIndexedProjects();
+        ProjectMetadata metadata = indexedProjects.get(projectId);
+        if (metadata == null) {
+            return false;
+        }
+        if (metadata.isCorrupted()) {
             return false;
         }
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
-        return lastIndexedDate.isAfter(sevenDaysAgo);
+        LocalDate lastIndexedDate = metadata.getLastIndexedDate();
+        return lastIndexedDate != null && lastIndexedDate.isAfter(sevenDaysAgo);
     }
+
 
     public void markAsCurrentIndexation(String projectId) {
         currentIndexations.add(projectId);
@@ -59,24 +82,46 @@ public class IndexRegistry {
     }
 
     public void markAsIndexed(String projectId) {
-        Map<String, LocalDate> projects = getIndexedProjects();
-        projects.put(projectId, LocalDate.now());
+        Map<String, ProjectMetadata> projects = getIndexedProjects();
+        projects.put(projectId, new ProjectMetadata(LocalDate.now(), false));
         writeProjectsToFile(projects);
     }
 
-    public Map<String, LocalDate> getIndexedProjects() {
-        Map<String, LocalDate> projects = new HashMap<>();
+    public boolean isCorrupted(String projectId) {
+        ProjectMetadata metadata = getIndexedProjects().get(projectId);
+        return metadata != null && metadata.isCorrupted();
+    }
+
+    public void markAllAsCorrupted() {
+        getIndexedProjects().keySet().forEach(this::markAsCorrupted);
+    }
+
+    public void markAsCorrupted(String projectId) {
+        Map<String, ProjectMetadata> projects = getIndexedProjects();
+        ProjectMetadata existing = projects.get(projectId);
+        if (existing != null) {
+            projects.put(projectId, new ProjectMetadata(existing.getLastIndexedDate(), true));
+        } else {
+            projects.put(projectId, new ProjectMetadata(LocalDate.now(), true));
+        }
+        writeProjectsToFile(projects);
+    }
+
+    public Map<String, ProjectMetadata> getIndexedProjects() {
+        Map<String, ProjectMetadata> projects = new HashMap<>();
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(PROJECTS_FILE))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (line.isEmpty() || line.startsWith(",")) continue;
 
-                String[] parts = line.split(SEPARATOR, 2);
-                if (parts.length == 2) {
+                String[] parts = line.split(SEPARATOR, 3);
+                if (parts.length >= 2) {
+                    String projectId = parts[0].trim();
                     try {
-                        LocalDate date = LocalDate.parse(parts[1]);
-                        projects.put(parts[0], date);
+                        LocalDate date = LocalDate.parse(parts[1].trim());
+                        boolean isCorrupted = parts.length >= 3 && Boolean.parseBoolean(parts[2].trim());
+                        projects.put(projectId, new ProjectMetadata(date, isCorrupted));
                     } catch (DateTimeParseException e) {
                         log.warn("Invalid date format for project {}: {}", parts[0], parts[1]);
                     }
@@ -91,16 +136,17 @@ public class IndexRegistry {
     }
 
     public void removeProject(String projectId) {
-        Map<String, LocalDate> projects = getIndexedProjects();
+        Map<String, ProjectMetadata> projects = getIndexedProjects();
         if (projects.remove(projectId) != null) {
             writeProjectsToFile(projects);
         }
     }
 
-    private void writeProjectsToFile(Map<String, LocalDate> projects) {
+    private void writeProjectsToFile(Map<String, ProjectMetadata> projects) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(PROJECTS_FILE))) {
-            for (Map.Entry<String, LocalDate> entry : projects.entrySet()) {
-                writer.write(entry.getKey() + SEPARATOR + entry.getValue());
+            for (Map.Entry<String, ProjectMetadata> entry : projects.entrySet()) {
+                ProjectMetadata metadata = entry.getValue();
+                writer.write(entry.getKey() + SEPARATOR + metadata.getLastIndexedDate() + SEPARATOR + metadata.isCorrupted());
                 writer.newLine();
             }
         } catch (IOException e) {

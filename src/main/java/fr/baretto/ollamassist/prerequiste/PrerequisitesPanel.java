@@ -212,9 +212,6 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                     prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
                         ApplicationManager.getApplication().invokeLater(() ->
                                 updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
-                        if (prerequisiteService.allPrerequisitesAreAvailable(ollamaReady, chatModelReady, autocompleteModelReady)) {
-                            prerequisiteService.loadModels(project);
-                        }
                     });
                     return null;
                 }

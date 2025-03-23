@@ -198,4 +198,8 @@ public class PromptPanel extends JPanel implements Disposable {
             this.removeComponentListener(cl);
         }
     }
+
+    public void clearUserPrompt() {
+        editorTextField.setText("");
+    }
 }

@@ -11,7 +11,8 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
-import fr.baretto.ollamassist.chat.rag.DocumentIngestorFactory;
+import fr.baretto.ollamassist.chat.rag.DocumentIndexingPipeline;
+import fr.baretto.ollamassist.chat.rag.DocumentIngestFactory;
 import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
 import fr.baretto.ollamassist.chat.rag.ProjectFileListener;
 import fr.baretto.ollamassist.events.ConversationNotifier;
@@ -33,10 +34,12 @@ public final class OllamaService implements Disposable, SettingsListener {
     @Getter
     private Assistant assistant;
     private MessageBusConnection messageBusConnection;
+    private DocumentIndexingPipeline documentIndexingPipeline;
 
 
     public OllamaService(@NotNull Project project) {
         this.project = project;
+        this.documentIndexingPipeline = project.getService(DocumentIndexingPipeline.class);
         initialize();
     }
 
@@ -55,7 +58,7 @@ public final class OllamaService implements Disposable, SettingsListener {
         try {
             Thread.currentThread().setContextClassLoader(OllamaService.class.getClassLoader());
 
-            DocumentIngestorFactory.create(embeddingStore).ingest(List.of(Document.from("empty doc")));
+            documentIndexingPipeline.processSingleDocument(Document.from("empty doc"));
 
             ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
             messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
@@ -74,6 +77,7 @@ public final class OllamaService implements Disposable, SettingsListener {
                     .chatMemory(chatMemory)
                     .contentRetriever(EmbeddingStoreContentRetriever
                             .builder()
+                            .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
                             .dynamicMaxResults(query -> 3)
                             .dynamicMinScore(query -> {
                                 int length = query.text().length();
@@ -91,10 +95,6 @@ public final class OllamaService implements Disposable, SettingsListener {
 
     public void init() {
         projectFileListener.load();
-    }
-
-    public void forceInit() {
-        projectFileListener.forceLoad();
     }
 
     @Override

@@ -57,8 +57,16 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         return myState.completionModelName;
     }
 
+    public String getEmbeddingModelName() {
+        return myState.getEmbeddingModelName();
+    }
+
     public void setCompletionModelName(String modelName) {
         myState.completionModelName = modelName;
+    }
+
+    public void setEmbeddingModelName(String embeddingModelName) {
+        myState.embeddingModelName = embeddingModelName;
     }
 
     public void setIndexationSize(int numberOfDocuments) {
@@ -98,6 +106,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String ollamaUrl = DEFAULT_URL;
         public String chatModelName = "llama3.1";
         public String completionModelName = "llama3.1";
+        public String embeddingModelName = "";
         public String timeout = "300";
         public String sources = "src/";
         public int indexationSize = 5000;

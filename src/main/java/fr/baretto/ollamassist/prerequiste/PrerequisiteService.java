@@ -35,6 +35,10 @@ public class PrerequisiteService {
         return isOllamaAttributeExists(PATH_TO_TAGS, s -> s.contains(OllamAssistSettings.getInstance().getCompletionModelName()));
     }
 
+    public CompletableFuture<Boolean> isEmbeddingModelAvailableAsync() {
+        return isOllamaAttributeExists(PATH_TO_TAGS, s -> s.contains(OllamAssistSettings.getInstance().getEmbeddingModelName()));
+    }
+
     private CompletableFuture<Boolean> isOllamaAttributeExists(String endpoint, Predicate<String> check) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -47,21 +51,6 @@ public class PrerequisiteService {
                 return false;
             }
         }, AppExecutorUtil.getAppExecutorService());
-    }
-
-    public void loadModels(Project project) {
-        new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                project.getService(OllamaService.class).init();
-                AutocompleteService.get();
-
-                ApplicationManager.getApplication()
-                        .getMessageBus()
-                        .syncPublisher(ModelAvailableNotifier.TOPIC)
-                        .onModelAvailable();
-            }
-        }.queue();
     }
 
     public boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
