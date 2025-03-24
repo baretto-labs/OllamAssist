@@ -1,9 +1,11 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.intellij.openapi.util.NlsSafe;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.store.FSDirectory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -30,6 +32,8 @@ public class IndexRegistry {
     private static final String PROJECTS_FILE = OLLAMASSIST_DIR + File.separator + "indexed_projects.txt";
     private static final String SEPARATOR = ",";
     private final Set<String> currentIndexations = new HashSet<>();
+
+
 
     public static class ProjectMetadata {
         @Getter
@@ -94,6 +98,17 @@ public class IndexRegistry {
 
     public void markAllAsCorrupted() {
         getIndexedProjects().keySet().forEach(this::markAsCorrupted);
+    }
+
+    public void markAsCleared(String projectId) {
+        Map<String, ProjectMetadata> projects = getIndexedProjects();
+        ProjectMetadata existing = projects.get(projectId);
+        if (existing != null) {
+            projects.put(projectId, new ProjectMetadata(existing.getLastIndexedDate(), false));
+        } else {
+            projects.put(projectId, new ProjectMetadata(LocalDate.now(), false));
+        }
+        writeProjectsToFile(projects);
     }
 
     public void markAsCorrupted(String projectId) {

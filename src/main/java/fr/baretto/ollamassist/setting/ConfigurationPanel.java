@@ -1,9 +1,8 @@
 package fr.baretto.ollamassist.setting;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.ui.JBColor;
-import com.intellij.ui.TextFieldWithAutoCompletion;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBTextField;
@@ -17,6 +16,7 @@ import fr.baretto.ollamassist.events.StoreNotifier;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusEvent;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -25,14 +25,13 @@ import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
 public class ConfigurationPanel extends JPanel {
 
     private final JBTextField ollamaUrl = new JBTextField(DEFAULT_URL);
-    private final TextFieldWithAutoCompletion<String> chatModel;
-    private final TextFieldWithAutoCompletion<String> completionModel;
-    private final TextFieldWithAutoCompletion<String> embeddingModel;
+    private final ComboBox<String> chatModel;
+    private final ComboBox<String> completionModel;
+    private final ComboBox<String> embeddingModel;
     private final JBTextField timeout = new IntegerField(null, 0, Integer.MAX_VALUE);
     private final JBTextField sources = new JBTextField();
     private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
-    private final Project project;
-
+    private final transient Project project;
 
     public ConfigurationPanel(Project project) {
         this.project = project;
@@ -40,22 +39,29 @@ public class ConfigurationPanel extends JPanel {
         setBorder(JBUI.Borders.empty(10));
 
         add(createLabeledField("Ollama URL:", ollamaUrl, "The URL of the Ollama server."));
-        chatModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
+
+        chatModel = createComboBox();
         add(createLabeledField("Chat model:", chatModel, "The model should be loaded before use."));
-        completionModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
+
+        completionModel = createComboBox();
         add(createLabeledField("Completion model:", completionModel, "The model should be loaded before use."));
-        embeddingModel = TextFieldWithAutoCompletion.create(project, Collections.emptyList(), true, null);
-        add(createLabeledField("Embedding model:", embeddingModel, "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use." +
-                " For example: nomic-embed-text. " +
-                "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
+
+        embeddingModel = createComboBox();
+        add(createLabeledField("Embedding model:", embeddingModel,
+                "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use. " +
+                        "For example: nomic-embed-text. " +
+                        "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
+
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
         add(createLabeledField("Indexed Folders:", sources, "Separated by ';'"));
-        add(createLabeledField("Maximum number of documents indexed at once", maxDocuments, "The maximum number of documents indexed during a batch indexation"));
+        add(createLabeledField("Maximum number of documents indexed at once", maxDocuments,
+                "The maximum number of documents indexed during a batch indexation"));
         add(createClearEmbeddingButton());
 
         ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                new Thread(() -> updateAvailableModelsAutoCompletions()).start();
+                new Thread(() -> updateAvailableModels()).start();
             }
 
             @Override
@@ -65,7 +71,15 @@ public class ConfigurationPanel extends JPanel {
         });
     }
 
-    private JPanel createLabeledField(String label, JComponent textField, String message) {
+    private ComboBox<String> createComboBox() {
+        ComboBox<String> comboBox = new ComboBox<>();
+        comboBox.setEditable(false);
+        comboBox.setPreferredSize(new Dimension(200, 30));
+        comboBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        return comboBox;
+    }
+
+    private JPanel createLabeledField(String label, JComponent component, String message) {
         JPanel panel = new JBPanel<>();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(JBUI.Borders.empty(5, 0));
@@ -76,11 +90,11 @@ public class ConfigurationPanel extends JPanel {
 
         panel.add(Box.createVerticalStrut(5));
 
-        textField.setPreferredSize(new Dimension(200, 30));
-        textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        textField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        textField.setAlignmentY(Component.CENTER_ALIGNMENT);
-        panel.add(textField);
+        component.setPreferredSize(new Dimension(200, 30));
+        component.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        component.setAlignmentX(Component.LEFT_ALIGNMENT);
+        component.setAlignmentY(Component.CENTER_ALIGNMENT);
+        panel.add(component);
 
         if (message != null) {
             JTextArea infoText = new JTextArea(message);
@@ -93,7 +107,6 @@ public class ConfigurationPanel extends JPanel {
             infoText.setBorder(BorderFactory.createEmptyBorder());
             infoText.setFocusable(false);
             infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
-
             infoText.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
 
             panel.add(Box.createVerticalStrut(3));
@@ -148,7 +161,7 @@ public class ConfigurationPanel extends JPanel {
 
     public void setOllamaUrl(String url) {
         ollamaUrl.setText(url.trim());
-        updateAvailableModelsAutoCompletions();
+        updateAvailableModels();
     }
 
     public int getMaxDocuments() {
@@ -160,15 +173,15 @@ public class ConfigurationPanel extends JPanel {
     }
 
     public String getChatModel() {
-        return chatModel.getText().trim();
+        return (String) chatModel.getSelectedItem();
     }
 
     public String getCompletionModel() {
-        return completionModel.getText().trim();
+        return (String) completionModel.getSelectedItem();
     }
 
     public String getEmbeddingModel() {
-        return embeddingModel.getText().trim();
+        return (String) embeddingModel.getSelectedItem();
     }
 
     public String getSources() {
@@ -188,44 +201,46 @@ public class ConfigurationPanel extends JPanel {
     }
 
     public void setChatModelName(String chatModelName) {
-        chatModel.setText(chatModelName.trim());
+        chatModel.setSelectedItem(chatModelName.trim());
     }
 
     public void setCompletionModelName(String completionModelName) {
-        completionModel.setText(completionModelName.trim());
+        completionModel.setSelectedItem(completionModelName.trim());
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
-        embeddingModel.setText(embeddingModelName.trim());
+        embeddingModel.setSelectedItem(embeddingModelName.trim());
     }
 
     private List<OllamaModel> fetchAvailableModels() {
-        List<OllamaModel> models = OllamaModels.builder()
-                .baseUrl(ollamaUrl.getText() == null ? DEFAULT_URL : ollamaUrl.getText())
-                .build()
-                .availableModels()
-                .content();
-
-        models.add(OllamaModel.builder().model("").model("").build());
-
-        return models;
+        try {
+            return OllamaModels.builder()
+                    .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText())
+                    .build()
+                    .availableModels()
+                    .content();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
-    private void updateAvailableModelsAutoCompletions() {
-        try {
-            List<OllamaModel> availableModels = fetchAvailableModels();
-            chatModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
-            completionModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
-            embeddingModel.setVariants(availableModels.stream().map(OllamaModel::getName).toList());
-            ollamaUrl.setForeground(UIManager.getColor("TextField.foreground"));
-        } catch (RuntimeException e) {
-//            Messages.showErrorDialog("Could not connect to the Ollama server. Please check the URL.", "Connection Error");
-            chatModel.setVariants(Collections.emptyList());
-            completionModel.setVariants(Collections.emptyList());
-            embeddingModel.setVariants(Collections.emptyList());
-            ollamaUrl.setForeground(
-                    JBColor.RED);
-        }
+    private void updateAvailableModels() {
+        List<String> availableModels = fetchAvailableModels().stream()
+                .map(OllamaModel::getName)
+                .toList();
+
+        List<String> availableModelsFoEmbedding = new ArrayList<>(availableModels);
+        availableModelsFoEmbedding.add("Local - BgeSmallEnV15Quantized");
+
+        updateComboBox(chatModel, availableModels);
+        updateComboBox(completionModel, availableModels);
+        updateComboBox(embeddingModel, availableModelsFoEmbedding);
+    }
+
+    private void updateComboBox(ComboBox<String> comboBox, List<String> items) {
+        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
+        items.forEach(model::addElement);
+        comboBox.setModel(model);
     }
 
     public void triggerCleanAllDatabase() {

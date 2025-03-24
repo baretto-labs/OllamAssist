@@ -26,7 +26,11 @@ public class DocumentIngestFactory {
         Thread.currentThread().setContextClassLoader(DocumentIngestFactory.class.getClassLoader());
         try {
             embeddingModel = createEmbeddingModel();
-            return EmbeddingStoreIngestor.builder().embeddingStore(store).embeddingModel(embeddingModel).build();
+            return EmbeddingStoreIngestor
+                    .builder()
+                    .embeddingStore(store)
+                    .embeddingModel(embeddingModel)
+                    .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
@@ -34,14 +38,15 @@ public class DocumentIngestFactory {
 
     public static EmbeddingModel createEmbeddingModel() {
         EmbeddingModel embeddingModel;
-        if (StringUtils.isNotBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
+        if (StringUtils.equalsIgnoreCase("Local - BgeSmallEnV15Quantized", OllamAssistSettings.getInstance().getEmbeddingModelName())
+        || org.apache.commons.lang3.StringUtils.isBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
+            embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
+        } else {
             OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = new OllamaEmbeddingModel.OllamaEmbeddingModelBuilder();
             embeddingModel = builder.baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getEmbeddingModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                     .build();
-        } else {
-            embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
         }
         return embeddingModel;
     }

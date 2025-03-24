@@ -22,8 +22,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
-
 
 @Slf4j
 public final class OllamaService implements Disposable, SettingsListener {
@@ -63,9 +61,8 @@ public final class OllamaService implements Disposable, SettingsListener {
             ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
             messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
             OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
-                    .temperature(0.3)
-                    .topK(40)
-                    .topP(0.9)
+                    .temperature(0.2)
+                    .topK(70)
                     .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())

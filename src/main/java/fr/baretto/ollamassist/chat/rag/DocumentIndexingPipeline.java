@@ -180,6 +180,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
             log.warn("Index corruption detected - Recreating index...");
             embeddingStore.recreateIndex();
             ingestor = DocumentIngestFactory.create(embeddingStore);
+
             log.info("Index recreated - Resuming operations");
         } catch (Exception ex) {
             log.error("Critical error during index recovery", ex);
