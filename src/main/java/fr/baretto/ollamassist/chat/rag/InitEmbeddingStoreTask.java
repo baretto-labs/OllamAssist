@@ -32,6 +32,7 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
             if (indexationRegistry.isCorrupted(getProject().getName())) {
                 documentIndexingPipeline.handleCorruption();
+                indexationRegistry.markAsCleared(getProject().getName());
             }
 
             indexationRegistry.markAsCurrentIndexation(getProject().getName());

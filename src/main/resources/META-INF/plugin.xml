@@ -58,6 +58,7 @@
         <h2>V1.1.0</h2>
         <UL>
             <LI>feat/issue-58: Users can set the limit for indexed documents</LI>
+            <LI>feat/issue-49: Users can choose the embedding model from the settings panel</LI>
         </UL>
         <UL>
             <LI>feat/issue-26: Start chat by a code selection</LI>
