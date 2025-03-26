@@ -79,7 +79,6 @@ public class PromptPanel extends JPanel implements Disposable {
         insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
 
         sendButton.addActionListener(e -> triggerAction());
-        modelSelector.activateListener();
     }
 
     private void setupUI() {
@@ -147,6 +146,7 @@ public class PromptPanel extends JPanel implements Disposable {
         ));
 
         add(container, BorderLayout.CENTER);
+
     }
 
     private List<String> fetchAvailableModels() {

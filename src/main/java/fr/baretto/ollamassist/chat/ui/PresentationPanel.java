@@ -39,7 +39,7 @@ public class PresentationPanel extends JPanel {
         mainPanel.add(featuresPanel);
 
         JScrollPane scrollPane = new JBScrollPane(mainPanel);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Désactive la barre de défilement horizontale
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         add(scrollPane);
     }

@@ -24,6 +24,7 @@ public class IconUtils {
             AllIcons.Process.Step_8);
     public static final Icon SUBMIT = load("/icons/submit.svg");
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
+    public static final Icon DELETE_CONVERSATION = AllIcons.General.Delete;
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");
     public static final Icon OLLAMASSIST_WARN_ICON = AllIcons.General.Warning;

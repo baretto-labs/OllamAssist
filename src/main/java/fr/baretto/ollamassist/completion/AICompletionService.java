@@ -54,13 +54,18 @@ public class AICompletionService {
 
 
     public String getFileExtension(Editor editor) {
-        FileEditorManager fileEditorManager = FileEditorManager.getInstance(editor.getProject());
-        VirtualFile file = fileEditorManager.getSelectedFiles().length > 0 ? fileEditorManager.getSelectedFiles()[0] : null;
+        try{
+            FileEditorManager fileEditorManager = FileEditorManager.getInstance(editor.getProject());
+            VirtualFile file = fileEditorManager.getSelectedFiles().length > 0 ? fileEditorManager.getSelectedFiles()[0] : null;
 
-        if (file != null) {
-            return file.getExtension();
+            if (file != null) {
+                return file.getExtension();
+            }
+            return "";
+        } catch (Exception e) {
+            return "";
         }
-        return null;
+
     }
 
     public String extractCode(String code, String snippet) {

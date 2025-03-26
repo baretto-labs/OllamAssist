@@ -37,7 +37,9 @@ public class ModelSelector extends JPanel {
         initialModel.addElement(savedModel);
         comboBox = new ComboBox<>(initialModel);
         comboBox.setPrototypeDisplayValue("Prototype_Model_Name_Length");
-        comboBox.setPreferredSize(new Dimension(200, comboBox.getPreferredSize().height));
+        comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
+        comboBox.setMinimumSize(new Dimension(80, comboBox.getPreferredSize().height));
+        comboBox.setMaximumSize(new Dimension(180, comboBox.getPreferredSize().height));
         comboBox.setRenderer(new LoadingListRenderer());
         configureComboBoxBehavior();
 
@@ -49,6 +51,7 @@ public class ModelSelector extends JPanel {
 
         add(comboBox, BorderLayout.CENTER);
         add(progressBar, BorderLayout.SOUTH);
+        activateListener();
     }
 
     public void activateListener() {
@@ -104,7 +107,9 @@ public class ModelSelector extends JPanel {
         models.forEach(model::addElement);
         comboBox.setModel(model);
         isLoaded = true;
-        comboBox.setPreferredSize(new Dimension(200, comboBox.getPreferredSize().height));
+        comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
+        comboBox.setMinimumSize(new Dimension(80, comboBox.getPreferredSize().height));
+        comboBox.setMaximumSize(new Dimension(180, comboBox.getPreferredSize().height));
     }
 
     private void finishLoading() {

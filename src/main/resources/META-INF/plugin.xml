@@ -59,6 +59,9 @@
         <UL>
             <LI>feat/issue-58: Users can set the limit for indexed documents</LI>
             <LI>feat/issue-49: Users can choose the embedding model from the settings panel</LI>
+            <LI>feat: Users can choose the chat model directly from prompt panel</LI>
+            <LI>feat: Users can choose select code and click to the gutter icon in order to start a chat</LI>
+            <LI>chore: Replace delete icon</LI>
         </UL>
         <UL>
             <LI>feat/issue-26: Start chat by a code selection</LI>
