@@ -10,6 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
+import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
+
 @State(
         name = "OllamAssist",
         storages = {@Storage("OllamAssist.xml")}
@@ -106,7 +108,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String ollamaUrl = DEFAULT_URL;
         public String chatModelName = "llama3.1";
         public String completionModelName = "llama3.1";
-        public String embeddingModelName = "";
+        public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;
         public String timeout = "300";
         public String sources = "src/";
         public int indexationSize = 5000;

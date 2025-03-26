@@ -15,6 +15,8 @@ import org.codehaus.plexus.util.StringUtils;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
+
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DocumentIngestFactory {
@@ -38,7 +40,7 @@ public class DocumentIngestFactory {
 
     public static EmbeddingModel createEmbeddingModel() {
         EmbeddingModel embeddingModel;
-        if (StringUtils.equalsIgnoreCase("Local - BgeSmallEnV15Quantized", OllamAssistSettings.getInstance().getEmbeddingModelName())
+        if (StringUtils.equalsIgnoreCase(DEFAULT_EMBEDDING_MODEL, OllamAssistSettings.getInstance().getEmbeddingModelName())
         || org.apache.commons.lang3.StringUtils.isBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
             embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
         } else {

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
 import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
 
 public class ConfigurationPanel extends JPanel {
@@ -230,7 +231,7 @@ public class ConfigurationPanel extends JPanel {
                 .toList();
 
         List<String> availableModelsFoEmbedding = new ArrayList<>(availableModels);
-        availableModelsFoEmbedding.add("Local - BgeSmallEnV15Quantized");
+        availableModelsFoEmbedding.add(DEFAULT_EMBEDDING_MODEL);
 
         updateComboBox(chatModel, availableModels);
         updateComboBox(completionModel, availableModels);

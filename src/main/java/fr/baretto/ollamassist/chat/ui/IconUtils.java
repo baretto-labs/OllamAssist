@@ -42,6 +42,8 @@ public class IconUtils {
             AllIcons.Process.Big.Step_7,
             AllIcons.Process.Big.Step_8);
 
+    public static final Icon STOP = AllIcons.Run.Stop;
+
     public static Icon load(String path) {
         return IconLoader.getIcon(path, IconUtils.class);
     }

@@ -11,7 +11,6 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorSettings;
-import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
@@ -27,10 +26,9 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
 
 @Getter
 public class PromptPanel extends JPanel implements Disposable {
@@ -43,8 +41,10 @@ public class PromptPanel extends JPanel implements Disposable {
 
     private EditorTextField editorTextField;
     private JButton sendButton;
-    private ComboBox<String> modelSelector;
     private ActionListener listener;
+    private ModelSelector modelSelector;
+    private JButton stopButton;
+    private boolean isGenerating = false;
 
     public PromptPanel() {
         super(new BorderLayout());
@@ -79,6 +79,7 @@ public class PromptPanel extends JPanel implements Disposable {
         insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
 
         sendButton.addActionListener(e -> triggerAction());
+        modelSelector.activateListener();
     }
 
     private void setupUI() {
@@ -94,18 +95,25 @@ public class PromptPanel extends JPanel implements Disposable {
         });
 
 
-        modelSelector = createModelSelector();
         sendButton = createSubmitButton();
-        ComponentCustomizer.applyHoverEffect(sendButton);
 
+        stopButton = createStopButton();
+        stopButton.setVisible(false);
+
+        ComponentCustomizer.applyHoverEffect(sendButton);
+        ComponentCustomizer.applyHoverEffect(stopButton);
 
         JPanel controlPanel = new JPanel(new BorderLayout(10, 0));
         controlPanel.setOpaque(false);
 
+        modelSelector = new ModelSelector();
+        modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
+        modelSelector.setModelLoader(this::fetchAvailableModels);
         JPanel comboButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         comboButtonPanel.setOpaque(false);
-       // comboButtonPanel.add(modelSelector);
+        comboButtonPanel.add(modelSelector);
         comboButtonPanel.add(sendButton);
+        comboButtonPanel.add(stopButton);
 
         controlPanel.add(comboButtonPanel, BorderLayout.EAST);
 
@@ -130,6 +138,8 @@ public class PromptPanel extends JPanel implements Disposable {
             }
         });
 
+
+
         setBackground(UIUtil.getPanelBackground());
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(JBColor.border(), 1),
@@ -139,62 +149,16 @@ public class PromptPanel extends JPanel implements Disposable {
         add(container, BorderLayout.CENTER);
     }
 
-    private ComboBox<String> createModelSelector() {
-        ComboBox<String> combo = new ComboBox<>();
-        combo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-            }
-        });
-
-        combo.setEditable(false);
-        combo.setPreferredSize(new Dimension(120, 30));
-        combo.setMinimumSize(new Dimension(80, 30));
-        combo.setBackground(UIUtil.getTextFieldBackground());
-        combo.setToolTipText("Select chat model");
-        return combo;
-    }
-
-    public void updateModelList(List<String> models, String currentModel) {
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        for (String m : models) {
-            model.addElement(m);
-        }
-
-        if(models.contains(currentModel)) {
-            model.setSelectedItem(currentModel);
-        } else {
-            model.addElement(currentModel);
-            model.setSelectedItem(currentModel);
-        }
-
-        modelSelector.setModel(model);
-    }
-
-    public String getCurrentModel() {
-        return (String) modelSelector.getSelectedItem();
-    }
-
-    public void setCurrentModel(String modelName) {
-        modelSelector.setSelectedItem(modelName);
-        if(modelSelector.getSelectedIndex() == -1) {
-            DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) modelSelector.getModel();
-            model.addElement(modelName);
-            modelSelector.setSelectedItem(modelName);
-        }
-    }
-
     private List<String> fetchAvailableModels() {
         try {
-            return OllamaModels.builder()
+            return new ArrayList<>(OllamaModels.builder()
                     .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                     .build()
                     .availableModels()
                     .content()
                     .stream()
                     .map(OllamaModel::getName)
-                    .toList();
+                    .toList());
         } catch (Exception e) {
             return Collections.emptyList();
         }
@@ -218,22 +182,35 @@ public class PromptPanel extends JPanel implements Disposable {
         return submit;
     }
 
+    private JButton createStopButton() {
+        JButton stop = new JButton(IconUtils.STOP);
+        stop.setPreferredSize(new Dimension(100, 30));
+        stop.setMinimumSize(new Dimension(100, 30));
+        stop.setMaximumSize(new Dimension(100, 30));
+        stop.setBackground(UIUtil.getPanelBackground());
+        stop.setForeground(UIUtil.getLabelForeground());
+        stop.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(4, 8, 4, 8),
+                stop.getBorder()
+        ));
+        stop.setFocusPainted(false);
+        stop.setOpaque(true);
+        stop.setMargin(JBUI.emptyInsets());
+        stop.setToolTipText("Stop current generation");
+        return stop;
+    }
+
+    public void toggleGenerationState(boolean isGenerationInProcess) {
+        SwingUtilities.invokeLater(() -> {
+            this.isGenerating = isGenerationInProcess;
+            sendButton.setVisible(!isGenerating);
+            stopButton.setVisible(isGenerating);
+            editorTextField.setEnabled(!isGenerating);
+        });
+    }
+
     public void addActionMap(ActionListener listener) {
         this.listener = listener;
-    }
-
-    public void setAvailableModels(List<String> models) {
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        models.forEach(model::addElement);
-        modelSelector.setModel(model);
-    }
-
-    public String getSelectedModel() {
-        return (String) modelSelector.getSelectedItem();
-    }
-
-    public void setSelectedModel(String modelName) {
-        modelSelector.setSelectedItem(modelName);
     }
 
     private void insertNewLine(Editor editor) {
@@ -253,9 +230,13 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     public void triggerAction() {
-        if (listener != null) {
+        if (listener != null && !isGenerating) {
             listener.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, null));
         }
+    }
+
+    public void addStopActionListener(ActionListener listener) {
+        stopButton.addActionListener(listener);
     }
 
     public void clear() {
