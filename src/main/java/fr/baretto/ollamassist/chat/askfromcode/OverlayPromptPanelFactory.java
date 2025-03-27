@@ -81,7 +81,7 @@ public class OverlayPromptPanelFactory {
 
 
         Dimension editorDimension = editor.getComponent().getSize();
-        editorDimension.setSize(editorDimension.width * 0.6, editorDimension.height * 0.2);
+        editorDimension.setSize(editorDimension.width * 0.8, editorDimension.height * 0.3);
         PROMPT_PANEL.setMinimumSize(editorDimension);
         PROMPT_PANEL.setMaximumSize(editorDimension);
         PROMPT_PANEL.setPreferredSize(editorDimension);
