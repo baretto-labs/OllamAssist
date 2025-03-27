@@ -100,10 +100,7 @@ public class ModelSelector extends JPanel {
     private void updateModels(List<String> models) {
         String savedModel = OllamAssistSettings.getInstance().getChatModelName();
 
-
         models.sort(String::compareTo);
-
-
         DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
         models.forEach(comboBoxModel::addElement);
         comboBox.setModel(comboBoxModel);
