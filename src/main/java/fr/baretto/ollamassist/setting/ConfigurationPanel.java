@@ -233,14 +233,15 @@ public class ConfigurationPanel extends JPanel {
         List<String> availableModelsFoEmbedding = new ArrayList<>(availableModels);
         availableModelsFoEmbedding.add(DEFAULT_EMBEDDING_MODEL);
 
-        updateComboBox(chatModel, availableModels);
-        updateComboBox(completionModel, availableModels);
-        updateComboBox(embeddingModel, availableModelsFoEmbedding);
+        updateComboBox(chatModel, availableModels, OllamAssistSettings.getInstance().getChatModelName());
+        updateComboBox(completionModel, availableModels, OllamAssistSettings.getInstance().getCompletionModelName());
+        updateComboBox(embeddingModel, availableModelsFoEmbedding,OllamAssistSettings.getInstance().getEmbeddingModelName());
     }
 
-    private void updateComboBox(ComboBox<String> comboBox, List<String> items) {
+    private void updateComboBox(ComboBox<String> comboBox, List<String> items, String selectedValue) {
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
         items.forEach(model::addElement);
+        model.setSelectedItem(selectedValue);
         comboBox.setModel(model);
     }
 
