@@ -34,7 +34,7 @@ public class ModelSelector extends JPanel {
         String savedModel = OllamAssistSettings.getInstance().getChatModelName();
 
         DefaultComboBoxModel<String> initialModel = new DefaultComboBoxModel<>();
-        initialModel.addElement(savedModel);
+        initialModel.setSelectedItem(savedModel);
         comboBox = new ComboBox<>(initialModel);
         comboBox.setPrototypeDisplayValue("Prototype_Model_Name_Length");
         comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
@@ -99,13 +99,20 @@ public class ModelSelector extends JPanel {
 
     private void updateModels(List<String> models) {
         String savedModel = OllamAssistSettings.getInstance().getChatModelName();
-        models.remove(savedModel);
-        models.sort(String::compareTo);
-        models.addFirst(savedModel);
 
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        models.forEach(model::addElement);
-        comboBox.setModel(model);
+
+        models.sort(String::compareTo);
+
+
+        DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
+        models.forEach(comboBoxModel::addElement);
+        comboBox.setModel(comboBoxModel);
+
+        models.stream()
+                .filter(model-> model.startsWith(savedModel))
+                .findFirst()
+                .ifPresent(comboBoxModel::setSelectedItem);
+
         isLoaded = true;
         comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
         comboBox.setMinimumSize(new Dimension(80, comboBox.getPreferredSize().height));
