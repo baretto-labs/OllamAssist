@@ -1,17 +1,9 @@
 package fr.baretto.ollamassist.prerequiste;
 
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.Task;
-import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.io.HttpRequests;
-import fr.baretto.ollamassist.ai.AutocompleteService;
-import fr.baretto.ollamassist.chat.service.OllamaService;
-import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.NoArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +27,10 @@ public class PrerequisiteService {
         return isOllamaAttributeExists(PATH_TO_TAGS, s -> s.contains(OllamAssistSettings.getInstance().getCompletionModelName()));
     }
 
+    public CompletableFuture<Boolean> isEmbeddingModelAvailableAsync() {
+        return isOllamaAttributeExists(PATH_TO_TAGS, s -> s.contains(OllamAssistSettings.getInstance().getEmbeddingModelName()));
+    }
+
     private CompletableFuture<Boolean> isOllamaAttributeExists(String endpoint, Predicate<String> check) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -47,21 +43,6 @@ public class PrerequisiteService {
                 return false;
             }
         }, AppExecutorUtil.getAppExecutorService());
-    }
-
-    public void loadModels(Project project) {
-        new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                project.getService(OllamaService.class).init();
-                AutocompleteService.get();
-
-                ApplicationManager.getApplication()
-                        .getMessageBus()
-                        .syncPublisher(ModelAvailableNotifier.TOPIC)
-                        .onModelAvailable();
-            }
-        }.queue();
     }
 
     public boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {

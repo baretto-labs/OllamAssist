@@ -40,6 +40,7 @@ public class OllamaContent {
     private boolean isAvailable = false;
     private ChatThread currentChatThread;
 
+
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
         prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
@@ -52,7 +53,7 @@ public class OllamaContent {
                 .connect();
 
         subscribe(connection);
-
+        promptInput.addStopActionListener(e -> stopGeneration());
         Disposer.register(toolWindow.getDisposable(), connection);
     }
 
@@ -67,11 +68,6 @@ public class OllamaContent {
                 });
             }
         });
-
-        connection
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) newState -> context.project()
-                        .getService(OllamaService.class)
-                        .forceInit());
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             if (currentChatThread != null) {
@@ -92,6 +88,7 @@ public class OllamaContent {
                     .build()
                     .start();
             promptInput.clear();
+            promptInput.toggleGenerationState(true);
         });
 
 
@@ -142,6 +139,14 @@ public class OllamaContent {
         return conversationPanel;
     }
 
+    private void stopGeneration() {
+        if (currentChatThread != null) {
+            currentChatThread.stop();
+            outputPanel.cancelMessage();
+        }
+
+        promptInput.toggleGenerationState(false);
+    }
 
     @Builder
     private static class ChatThread {
@@ -160,7 +165,7 @@ public class OllamaContent {
 
         private void run() {
             if (onNext != null) {
-                tokenStream.onNext(stoppable(onNext));
+                tokenStream.onPartialResponse(stoppable(onNext));
             }
             if (onError != null) {
                 tokenStream.onError(stoppable(onError));
@@ -202,6 +207,7 @@ public class OllamaContent {
 
     private void done(ChatResponse chatResponse) {
         outputPanel.finalizeMessage(chatResponse);
+        promptInput.toggleGenerationState(false);
     }
 
     private void publish(String token) {

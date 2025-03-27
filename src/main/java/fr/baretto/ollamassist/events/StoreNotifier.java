@@ -8,4 +8,5 @@ public interface StoreNotifier {
 
     void clear();
 
+    void indexCorrupted();
 }

@@ -35,6 +35,7 @@ public class OverlayPromptPanelFactory {
                 }
             }
         };
+        PROMPT_PANEL.addActionMap(ASK_FROM_CODE_ACTION);
         PROMPT_PANEL.getEditorTextField().addKeyListener(keyListener);
     }
 
@@ -75,15 +76,16 @@ public class OverlayPromptPanelFactory {
     }
 
     private void updateOverlayPromptPanel(Editor editor) {
-
+        PROMPT_PANEL.clearUserPrompt();
         ASK_FROM_CODE_ACTION.fromCodeEditor(editor);
-        PROMPT_PANEL.addActionMap(ASK_FROM_CODE_ACTION);
+
 
         Dimension editorDimension = editor.getComponent().getSize();
-        editorDimension.setSize(editorDimension.width * 0.6, editorDimension.height * 0.2);
+        editorDimension.setSize(editorDimension.width * 0.8, editorDimension.height * 0.3);
         PROMPT_PANEL.setMinimumSize(editorDimension);
         PROMPT_PANEL.setMaximumSize(editorDimension);
         PROMPT_PANEL.setPreferredSize(editorDimension);
+        PROMPT_PANEL.setVisible(true);
     }
 
     public void closeActivePanel(Editor editor, SelectionListener selectionListener) {

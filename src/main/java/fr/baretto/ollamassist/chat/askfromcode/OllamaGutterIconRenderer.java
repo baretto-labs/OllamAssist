@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.util.Objects;
 
 @NoArgsConstructor
 public class OllamaGutterIconRenderer extends GutterIconRenderer {
@@ -28,7 +29,7 @@ public class OllamaGutterIconRenderer extends GutterIconRenderer {
         return new AnAction() {
             @Override
             public void actionPerformed(@NotNull AnActionEvent e) {
-                editor.getProject().getService(OverlayPromptPanelFactory.class)
+                Objects.requireNonNull(editor.getProject()).getService(OverlayPromptPanelFactory.class)
                         .showOverlayPromptPanel(editor, lineNumber);
             }
         };

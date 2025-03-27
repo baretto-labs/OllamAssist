@@ -28,7 +28,7 @@ public class ConversationSelectorPanel extends JPanel {
         newConversation.setBorderPainted(false);
         newConversation.setContentAreaFilled(false);
 
-        newConversation.setIcon(IconUtils.NEW_CONVERSATION);
+        newConversation.setIcon(IconUtils.DELETE_CONVERSATION);
 
         newConversation.addMouseListener(new MouseAdapter() {
             @Override

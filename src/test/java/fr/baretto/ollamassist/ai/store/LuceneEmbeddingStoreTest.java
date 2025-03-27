@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.ai.store;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.List;
@@ -39,12 +39,13 @@ class LuceneEmbeddingStoreTest {
     void tearDown() {
         if (store != null) {
             store.removeAll();
+            store.recreateIndex();
             store.close();
         }
     }
 
     @Test
-    void testIndexAndSearchDocumentsUsingFilesUtil() throws IOException {
+    void testIndexAndSearchDocumentsUsingFilesUtil() {
         try (MockedStatic<OllamAssistSettings> ollamAssistSettingsMocked = Mockito.mockStatic(OllamAssistSettings.class)) {
             ollamAssistSettingsMocked.
                     when(OllamAssistSettings::getInstance)
@@ -82,6 +83,38 @@ class LuceneEmbeddingStoreTest {
             assertEquals(1, searchResult.matches().size());
             assertTrue(searchResult.matches().get(0).embeddingId().contains("README.adoc"));
         }
+    }
+
+    @Test
+    void testRecreateIndexWithDifferentVectorDimensions() {
+
+        TextSegment segment1 = TextSegment.from("Test text 1", Metadata.from("source", "test1"));
+        Embedding embedding3D = new Embedding(new float[]{0.1f, 0.2f, 0.3f}); // Non-zero 3D vector
+        String id1 = store.add(embedding3D, segment1);
+
+        EmbeddingSearchRequest request1 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding3D)
+                .maxResults(1)
+                .build();
+        EmbeddingSearchResult<TextSegment> result1 = store.search(request1);
+        assertEquals(1, result1.matches().size(), "Initial 3D embedding should be found");
+
+        store.recreateIndex();
+
+        TextSegment segment2 = TextSegment.from("Test text 2", Metadata.from("source", "test2"));
+        Embedding embedding4D = new Embedding(new float[]{0.1f, 0.2f, 0.3f, 0.4f}); // Non-zero 4D vector
+        String id2 = store.add(embedding4D, segment2);
+
+        EmbeddingSearchRequest request2 = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding4D)
+                .maxResults(2)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> result2 = store.search(request2);
+
+        assertEquals(1, result2.matches().size(), "New 4D embedding should be found");
+        assertEquals(id2, result2.matches().get(0).embeddingId(), "Should retrieve new embedding ID");
+
     }
 
     private @NotNull Embedding embed(String string) {

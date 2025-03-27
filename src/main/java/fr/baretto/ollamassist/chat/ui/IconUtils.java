@@ -24,6 +24,7 @@ public class IconUtils {
             AllIcons.Process.Step_8);
     public static final Icon SUBMIT = load("/icons/submit.svg");
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
+    public static final Icon DELETE_CONVERSATION = AllIcons.General.Delete;
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");
     public static final Icon OLLAMASSIST_WARN_ICON = AllIcons.General.Warning;
@@ -41,6 +42,8 @@ public class IconUtils {
             AllIcons.Process.Big.Step_6,
             AllIcons.Process.Big.Step_7,
             AllIcons.Process.Big.Step_8);
+
+    public static final Icon STOP = AllIcons.Run.Stop;
 
     public static Icon load(String path) {
         return IconLoader.getIcon(path, IconUtils.class);

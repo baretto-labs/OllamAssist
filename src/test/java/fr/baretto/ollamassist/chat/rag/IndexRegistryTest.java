@@ -74,7 +74,7 @@ class IndexRegistryTest {
         assertTrue(indexRegistry.isIndexed(projectId));
         assertEquals(
                 LocalDate.now(),
-                indexRegistry.getIndexedProjects().get(projectId)
+                indexRegistry.getIndexedProjects().get(projectId).getLastIndexedDate()
         );
     }
 
@@ -137,15 +137,14 @@ class IndexRegistryTest {
     @Test
     void shouldHandleCorruptedFileAndReindex() throws IOException {
         List<String> corruptedContent = List.of(
-                "valid_project," + LocalDate.now().minusDays(1),
+                "valid_project," + LocalDate.now().minusDays(1) + ",false",
                 "missing_date_project",
-                "invalid_date_project,2023-99-99",
-                "empty_project,",
-                ",2023-10-10"
+                "invalid_date_project,2023-99-99,true",
+                "empty_project,,true",
+                ",2023-10-10,false"
         );
 
         Files.write(tempProjectsFile, corruptedContent, IndexRegistry.CHARSET);
-
         IndexRegistry registry = new IndexRegistry();
 
         assertAll(
@@ -166,27 +165,96 @@ class IndexRegistryTest {
         assertAll(
                 () -> assertEquals(4, updatedLines.size(), "file should contains 4"),
 
-                () -> assertTrue(updatedLines.contains("valid_project," + today.minusDays(1))),
+                () -> assertTrue(
+                        updatedLines.contains("valid_project," + today.minusDays(1) + ",false"),
+                        "Valid project entry missing"
+                ),
 
-                () -> assertTrue(updatedLines.stream()
-                        .anyMatch(line -> line.startsWith("missing_date_project," + today))),
+                () -> assertTrue(
+                        updatedLines.stream().anyMatch(line -> line.startsWith("missing_date_project," + today)),
+                        "Missing date project not updated"
+                ),
 
-                () -> assertTrue(updatedLines.stream()
-                        .anyMatch(line -> line.startsWith("invalid_date_project," + today))),
+                () -> assertTrue(
+                        updatedLines.stream().anyMatch(line -> line.startsWith("invalid_date_project," + today)),
+                        "Invalid date project not updated"
+                ),
 
-                () -> assertTrue(updatedLines.stream()
-                        .anyMatch(line -> line.startsWith("empty_project," + today))),
+                () -> assertTrue(
+                        updatedLines.stream().anyMatch(line -> line.startsWith("empty_project," + today)),
+                        "Empty project not updated"
+                ),
 
-                () -> assertFalse(updatedLines.stream()
-                        .anyMatch(line -> line.startsWith(",")), "empty line should be deleted")
+                () -> assertFalse(
+                        updatedLines.stream().anyMatch(line -> line.startsWith(",")),
+                        "Empty line not deleted"
+                ),
+
+                () -> updatedLines.forEach(line -> {
+                    String[] parts = line.split(",", 3);
+                    assertDoesNotThrow(
+                            () -> LocalDate.parse(parts[1]),
+                            "Invalid date in line: " + line
+                    );
+                })
         );
+    }
 
-        updatedLines.forEach(line -> {
-            String[] parts = line.split(",", 2);
-            assertDoesNotThrow(
-                    () -> LocalDate.parse(parts[1]),
-                    "Invalid date in line: " + line
-            );
-        });
+
+    @Test
+    void isCorrupted_shouldReturnFalseForNonCorruptedProject() {
+        String projectId = "valid_project";
+        indexRegistry.markAsIndexed(projectId);
+        assertFalse(indexRegistry.isCorrupted(projectId));
+    }
+
+    @Test
+    void isCorrupted_shouldReturnTrueForCorruptedProject() throws IOException {
+        String corruptedProject = "corrupted_project," + LocalDate.now() + ",true";
+        Files.write(tempProjectsFile, List.of(corruptedProject), IndexRegistry.CHARSET);
+        assertTrue(indexRegistry.isCorrupted("corrupted_project"));
+    }
+
+
+    @Test
+    void markAsCorrupted_shouldPreserveExistingDate() {
+        String projectId = "dated_project";
+        indexRegistry.markAsIndexed(projectId);
+        LocalDate originalDate = indexRegistry.getIndexedProjects().get(projectId).getLastIndexedDate();
+
+        indexRegistry.markAsCorrupted(projectId);
+        IndexRegistry.ProjectMetadata metadata = indexRegistry.getIndexedProjects().get(projectId);
+
+        assertEquals(originalDate, metadata.getLastIndexedDate());
+        assertTrue(metadata.isCorrupted());
+    }
+
+    @Test
+    void markAsIndexed_shouldClearCorruptionStatus() {
+        String projectId = "recovered_project";
+        indexRegistry.markAsCorrupted(projectId);
+        indexRegistry.markAsIndexed(projectId);
+
+        assertFalse(indexRegistry.isCorrupted(projectId));
+    }
+
+    @Test
+    void shouldHandleLegacyFormatWithoutCorruptionFlag() throws IOException {
+        String legacyProject = "legacy_project," + LocalDate.now();
+        Files.write(tempProjectsFile, List.of(legacyProject), IndexRegistry.CHARSET);
+
+        assertFalse(indexRegistry.isCorrupted("legacy_project"),
+                "Legacy entries without corruption flag should default to false");
+    }
+
+    @Test
+    void corruptedProject_shouldNotBeConsideredIndexed() {
+        String projectId = "recent_but_corrupted";
+        indexRegistry.markAsCorrupted(projectId);
+
+        assertAll(
+                () -> assertTrue(indexRegistry.getIndexedProjects().containsKey(projectId)),
+                () -> assertFalse(indexRegistry.isIndexed(projectId))
+        );
     }
 }
