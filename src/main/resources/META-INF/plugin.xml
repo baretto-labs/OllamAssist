@@ -57,6 +57,7 @@
     <change-notes><![CDATA[
         <h2>V1.1.1</h2>
         <UL>
+            <LI>fix: Fix for the disappearance of the prerequisites panel when the models are not loaded.</LI>
             <LI>fix: Add missing dependencies for some jetbrains product</LI>
         </UL>
         <h2>V1.1.0</h2>
