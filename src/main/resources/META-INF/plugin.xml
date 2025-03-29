@@ -55,6 +55,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.1.1</h2>
+        <UL>
+            <LI>fix: Add missing dependencies for some jetbrains product</LI>
+        </UL>
         <h2>V1.1.0</h2>
         <UL>
             <LI>feat/issue-58: Users can set the limit for indexed documents</LI>

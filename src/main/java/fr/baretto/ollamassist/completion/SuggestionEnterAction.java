@@ -7,8 +7,10 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.codeStyle.CodeStyleManager;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+@Slf4j
 public class SuggestionEnterAction {
     private final SuggestionManager suggestionManager;
     private final int offset;
@@ -33,14 +35,19 @@ public class SuggestionEnterAction {
 
             private void insertSuggestion(Editor editor) {
                 ApplicationManager.getApplication().runWriteAction(() -> {
-                    editor.getDocument().insertString(offset, suggestionManager.getCurrentSuggestion());
-                    PsiDocumentManager psiDocumentManager = PsiDocumentManager.getInstance(editor.getProject());
-                    psiDocumentManager.commitDocument(editor.getDocument());
-                    CodeStyleManager.getInstance(editor.getProject()).reformatText(
-                            psiDocumentManager.getPsiFile(editor.getDocument()), offset, offset + suggestionManager.getCurrentSuggestion().length()
-                    );
-                    editor.getCaretModel().moveToOffset(offset + suggestionManager.getCurrentSuggestion().length());
-                    suggestionManager.clearSuggestion();
+                    try{
+                        editor.getDocument().insertString(offset, suggestionManager.getCurrentSuggestion());
+                        PsiDocumentManager psiDocumentManager = PsiDocumentManager.getInstance(editor.getProject());
+                        psiDocumentManager.commitDocument(editor.getDocument());
+                        CodeStyleManager.getInstance(editor.getProject()).reformatText(
+                                psiDocumentManager.getPsiFile(editor.getDocument()), offset, offset + suggestionManager.getCurrentSuggestion().length()
+                        );
+                        editor.getCaretModel().moveToOffset(offset + suggestionManager.getCurrentSuggestion().length());
+                    } catch (Exception e) {
+                        log.error("Error during autocomplete");
+                    } finally {
+                        suggestionManager.clearSuggestion();
+                    }
                 });
             }
         };

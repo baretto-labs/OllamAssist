@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.1.0"
+version = "1.1.1"
 
 repositories {
     mavenCentral()
@@ -23,7 +23,7 @@ dependencies {
         exclude(group = "xml-apis")
     }
     implementation("dev.langchain4j:langchain4j-reactor:$langchain4jVersion")
-
+    implementation("org.codehaus.plexus:plexus-utils:3.4.1")
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-analysis-common:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-codecs:$apacheLuceneVersion")
