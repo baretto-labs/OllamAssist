@@ -31,7 +31,7 @@ dependencies {
     implementation("org.apache.lucene:lucene-queryparser:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-memory:$apacheLuceneVersion")
 
-    implementation("com.fifesoft:rsyntaxtextarea:3.5.3")
+    implementation("com.fifesoft:rsyntaxtextarea:3.6.0")
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
