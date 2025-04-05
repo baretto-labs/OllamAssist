@@ -11,7 +11,6 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
-import fr.baretto.ollamassist.ai.AutocompleteService;
 import org.jetbrains.annotations.NotNull;
 
 public class AICompletionService {

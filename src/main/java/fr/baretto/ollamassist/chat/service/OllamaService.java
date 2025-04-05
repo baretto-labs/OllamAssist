@@ -95,10 +95,7 @@ public final class OllamaService implements Disposable, SettingsListener {
                             .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
                             .dynamicMaxResults(query -> 3)
                             .dynamicMinScore(query -> {
-                                int length = query.text().length();
-                                if (length > 100) return 0.85;
-                                if (length > 50) return 0.65;
-                                return 0.5;
+                                return 0.85;
                             })
                             .embeddingStore(embeddingStore)
                             .build())

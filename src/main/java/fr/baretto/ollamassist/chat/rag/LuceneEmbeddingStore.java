@@ -288,8 +288,10 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 metadata.put(LAST_INDEXED_DATE, lastIndexedDate);
 
                 EMBEDDED textSegment = (EMBEDDED) TextSegment.from(embeddedText, metadata);
+                if (scoreDoc.score > request.minScore()) {
+                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
+                }
 
-                matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
             }
             return new EmbeddingSearchResult<>(matches);
         } catch (Exception e) {
