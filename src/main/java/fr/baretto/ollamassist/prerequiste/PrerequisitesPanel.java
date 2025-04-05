@@ -10,7 +10,7 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import fr.baretto.ollamassist.ai.AutocompleteService;
+import fr.baretto.ollamassist.completion.AutocompleteService;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.component.ComponentCustomizer;

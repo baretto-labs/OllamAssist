@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.ai;
+package fr.baretto.ollamassist.completion;
 
 import com.intellij.openapi.application.ApplicationManager;
 import dev.langchain4j.model.ollama.OllamaChatModel;
