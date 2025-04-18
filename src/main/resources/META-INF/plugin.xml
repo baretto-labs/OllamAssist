@@ -55,7 +55,7 @@
   ]]></description>
 
     <change-notes><![CDATA[
-        <h2>V1.2.0</h2>
+        <h2>V1.1.2</h2>
         <UL>
             <LI>fix/issue-77: Filter documents based on the score during RAG retrieval.</LI>
         </UL>
