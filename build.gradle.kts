@@ -32,8 +32,8 @@ dependencies {
     implementation("org.apache.lucene:lucene-memory:$apacheLuceneVersion")
 
     implementation("com.fifesoft:rsyntaxtextarea:3.6.0")
-    compileOnly("org.projectlombok:lombok:1.18.34")
-    annotationProcessor("org.projectlombok:lombok:1.18.34")
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
 
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
