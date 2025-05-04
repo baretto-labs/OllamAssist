@@ -69,6 +69,8 @@ public class OllamaContent {
             }
         });
 
+
+
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             if (currentChatThread != null) {
                 currentChatThread.stop();

@@ -51,7 +51,7 @@ public final class OllamaService implements Disposable, SettingsListener {
                 new Task.Backgroundable(project, "Reload chat model") {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
-                        initAssistant();
+                        assistant = initAssistant();
                     }
                 }.queue();
             }
