@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.1.3"
+version = "1.2.0"
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
 dependencies {
     val langchain4jVersion = "1.0.0-beta2"
     val apacheLuceneVersion = "9.12.1"
-    val mockitoVersion = "5.17.0"
+    val mockitoVersion = "5.16.1"
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")

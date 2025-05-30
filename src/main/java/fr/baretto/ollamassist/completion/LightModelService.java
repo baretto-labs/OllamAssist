@@ -13,10 +13,10 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
-public class AICompletionService {
+public class LightModelService {
     private final SuggestionManager suggestionManager;
 
-    public AICompletionService(SuggestionManager suggestionManager) {
+    public LightModelService(SuggestionManager suggestionManager) {
         this.suggestionManager = suggestionManager;
     }
 
@@ -41,7 +41,7 @@ public class AICompletionService {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     String lineStartContent = getLineStartContent(editor).trim();
-                    final String suggestion = extractCode(AutocompleteService.get().complete(context, getFileExtension(editor)), lineStartContent);
+                    final String suggestion = extractCode(LightModelAssistant.get().complete(context, getFileExtension(editor)), lineStartContent);
                     ApplicationManager.getApplication().invokeLater(() -> {
                         suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
                         attachKeyListener(editor, editor.getCaretModel().getOffset());

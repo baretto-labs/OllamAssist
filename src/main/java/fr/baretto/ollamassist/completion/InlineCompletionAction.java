@@ -12,10 +12,10 @@ import org.jetbrains.annotations.NotNull;
 
 public class InlineCompletionAction extends AnAction {
 
-    private final AICompletionService aiCompletionService;
+    private final LightModelService lightModelService;
 
     public InlineCompletionAction() {
-        this.aiCompletionService = new AICompletionService(new SuggestionManager());
+        this.lightModelService = new LightModelService(new SuggestionManager());
     }
 
     @Override
@@ -30,7 +30,7 @@ public class InlineCompletionAction extends AnAction {
             return;
         }
         ApplicationManager.getApplication()
-                .invokeLater(() -> aiCompletionService.handleSuggestion(editor));
+                .invokeLater(() -> lightModelService.handleSuggestion(editor));
     }
 
     private Editor getActiveEditor() {
