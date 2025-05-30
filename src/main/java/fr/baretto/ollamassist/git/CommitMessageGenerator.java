@@ -17,13 +17,19 @@ import fr.baretto.ollamassist.completion.LightModelAssistant;
 import lombok.extern.log4j.Log4j2;
 import org.jetbrains.annotations.NotNull;
 
+import javax.swing.*;
 import java.util.Collection;
 
 @Log4j2
 public class CommitMessageGenerator extends AnAction {
 
+
+    private static final Icon OLLAMASSIST_ICON = IconUtils.OLLAMASSIST_ICON;
+    private static final Icon LOADING_ICON = IconUtils.OLLAMASSIST_THINKING_ICON;
+
+
     public CommitMessageGenerator() {
-        super(IconUtils.OLLAMASSIST_ICON);
+        super(OLLAMASSIST_ICON);
     }
 
     @Override
@@ -32,6 +38,7 @@ public class CommitMessageGenerator extends AnAction {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 try {
+                    e.getPresentation().setIcon(LOADING_ICON);
                     Project project = e.getProject();
                     if (project == null) return;
 
@@ -46,6 +53,8 @@ public class CommitMessageGenerator extends AnAction {
                     }
                 } catch (Exception exception) {
                     log.error("Exception during commit message generation", exception);
+                } finally {
+                    e.getPresentation().setIcon(OLLAMASSIST_ICON);
                 }
             }
         }.queue();
