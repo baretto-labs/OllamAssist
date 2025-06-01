@@ -10,6 +10,7 @@ Boost productivity, streamline problem-solving, and code smarter with OllamAssis
 2. **Enhanced Context Awareness**: Boost model accuracy by providing your workspace through RAG for tailored suggestions.
 3. **Offline Mode**: Enjoy full functionality offline after loading the model and data.
 4. **Experimental Smart Autocomplete**: Experience intelligent code completion designed to enhance your productivity.
+5. Generate context-aware commit messages directly from code changes
 
 
 ### Start in 5 Minutes with ollama
