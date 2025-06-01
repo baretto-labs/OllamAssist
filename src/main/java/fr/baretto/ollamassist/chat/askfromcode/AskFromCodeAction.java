@@ -1,6 +1,8 @@
 package fr.baretto.ollamassist.chat.askfromcode;
 
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import fr.baretto.ollamassist.component.PromptPanel;
@@ -18,7 +20,7 @@ public class AskFromCodeAction implements ActionListener {
         this.promptPanel = panel;
     }
 
-    public void fromCodeEditor(Editor editor){
+    public void fromCodeEditor(Editor editor) {
         this.editor = editor;
     }
 
@@ -35,11 +37,28 @@ public class AskFromCodeAction implements ActionListener {
         String selectedText = editor.getSelectionModel().getSelectedText();
         cleanPromptPanel();
 
-        editor.getProject().getMessageBus()
-                .syncPublisher(NewUserMessageNotifier.TOPIC)
-                .newUserMessage(userMessage
-                        .concat(": ")
-                        .concat(selectedText));
+        if (selectedText != null) {
+            VirtualFile file = FileDocumentManager.getInstance().getFile(editor.getDocument());
+
+            userMessage = userMessage
+                    .concat("```");
+
+            if (file != null) {
+                String extension = file.getExtension();
+                if (extension != null) {
+                    userMessage = userMessage.concat(extension);
+                }
+            }
+            userMessage = userMessage
+                    .concat("\n")
+                    .concat(selectedText)
+                    .concat("\n")
+                    .concat("```");
+            editor.getProject().getMessageBus()
+                    .syncPublisher(NewUserMessageNotifier.TOPIC)
+                    .newUserMessage(userMessage);
+        }
+
     }
 
     private void cleanPromptPanel() {
