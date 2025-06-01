@@ -33,16 +33,16 @@ public class LightModelAssistant {
     private static Service init() {
         OllamaChatModel model = OllamaChatModel
                 .builder()
-                // .temperature(0.2)
-                // .topK(30)
-                // .topP(0.7)
+                .temperature(0.2)
+                .topK(30)
+                .topP(0.7)
                 .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                 .build();
 
         return AiServices.builder(Service.class)
-                .chatLanguageModel(model)
+                .chatModel(model)
                 .build();
     }
 

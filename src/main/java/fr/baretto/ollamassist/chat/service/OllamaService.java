@@ -88,7 +88,7 @@ public final class OllamaService implements Disposable, SettingsListener {
 
 
             return AiServices.builder(Assistant.class)
-                    .streamingChatLanguageModel(model)
+                    .streamingChatModel(model)
                     .chatMemory(chatMemory)
                     .contentRetriever(EmbeddingStoreContentRetriever
                             .builder()
