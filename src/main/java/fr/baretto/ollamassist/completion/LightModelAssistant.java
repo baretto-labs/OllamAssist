@@ -3,22 +3,23 @@ package fr.baretto.ollamassist.completion;
 import com.intellij.openapi.application.ApplicationManager;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.SettingsListener;
 
 
-public class AutocompleteService {
+public class LightModelAssistant {
     private static Service service;
 
-    AutocompleteService() {
+    LightModelAssistant() {
         ApplicationManager.getApplication().getMessageBus()
                 .connect()
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) AutocompleteService::reloadModel);
+                .subscribe(SettingsListener.TOPIC, (SettingsListener) LightModelAssistant::reloadModel);
     }
 
-    public static AutocompleteService.Service get() {
+    public static LightModelAssistant.Service get() {
         if (service == null) {
             service = init();
         }
@@ -32,9 +33,9 @@ public class AutocompleteService {
     private static Service init() {
         OllamaChatModel model = OllamaChatModel
                 .builder()
-                .temperature(0.2)
-                .topK(30)
-                .topP(0.7)
+                // .temperature(0.2)
+                // .topK(30)
+                // .topP(0.7)
                 .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
@@ -75,5 +76,51 @@ public class AutocompleteService {
                     ```
                 """)
         String complete(@V("context") String context, @V("extension") String fileExtension);
+
+        @SystemMessage("""
+                You are an assistant specialized in generating precise and concise commit messages, 
+                following the Conventional Commits specification.
+                
+                Your task is to analyze the output of a `git diff --staged` and write a concise and meaningful commit message.
+                
+                Rules:
+                - Identify the nature of the change and choose the appropriate commit type: feat, fix, chore, docs, style, refactor, perf, test.
+                - Optionally, use a scope if it makes the message clearer.
+                - The subject line must be less than or equal to 80 characters.
+                - Do not add any commentary, metadata, or explanation—return only the commit message.
+                - Write in the specified locale language when provided.
+                
+                Stay precise, short, and aligned with the commit message conventions.
+                """)
+        @UserMessage("""                
+                This is the staged `git diff`:
+                {{gitDiff}}
+                
+                Write a one-line commit message that follows the Conventional Commits format:
+                - Format: <type>(optional-scope): <short summary>
+                - Types: feat, fix, chore, docs, style, refactor, perf, test.
+                - Limit the subject line to 80 characters.
+                
+                Very important:
+                - Your goal is to identify and summarize the **main feature or fix** that the diff is building towards — the most **structuring or functional** change for the **end user**.
+                - This main change may involve multiple small technical steps (refactors, optimizations, display tweaks, etc.) — you must summarize **the purpose**, not the implementation.
+                - Ignore which part has more lines of code. Focus only on **the final outcome for the user**.
+                - If there’s no user-visible change, then describe the most meaningful internal improvement.
+                
+                Steps:
+                1. Identify all distinct intentions in the code (feature, fix, refactor, doc, etc.).
+                2. Determine which of these intentions is the main goal for the user.
+                3. Write a single commit message that summarizes **that goal**.
+                
+                Examples:
+                ❌ `refactor: clean diff logic` → (bad, if the goal was to enable auto commit message generation)
+                ✅ `feat: add automatic commit message generation` → (good, reflects the purpose)
+                
+                Only return the final commit message. No explanation.
+                
+                                Example:
+                                 feat: add user authentication
+                """)
+        String writecommitMessage(@V("gitDiff") String gitDiff);
     }
 }

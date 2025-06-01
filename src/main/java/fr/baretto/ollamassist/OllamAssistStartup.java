@@ -5,7 +5,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
-import fr.baretto.ollamassist.completion.AutocompleteService;
+import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
@@ -28,7 +28,7 @@ public class OllamAssistStartup implements ProjectActivity {
                                 @Override
                                 public void run(@NotNull ProgressIndicator indicator) {
                                     project.getService(OllamaService.class).init();
-                                    AutocompleteService.get();
+                                    LightModelAssistant.get();
 
                                     ApplicationManager.getApplication()
                                             .getMessageBus()

@@ -10,7 +10,7 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import fr.baretto.ollamassist.completion.AutocompleteService;
+import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
@@ -217,7 +217,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                                 updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
                        if(Boolean.TRUE.equals(ollamaReady) && Boolean.TRUE.equals(chatModelReady) && Boolean.TRUE.equals(autocompleteModelReady)){
                            project.getService(OllamaService.class).init();
-                           AutocompleteService.get();
+                           LightModelAssistant.get();
 
                            ApplicationManager.getApplication()
                                    .getMessageBus()

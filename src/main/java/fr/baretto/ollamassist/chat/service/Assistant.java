@@ -67,4 +67,5 @@ public interface Assistant {
                 - Assumptions beyond documentation
             """)
     TokenStream chat(String message);
+
 }
