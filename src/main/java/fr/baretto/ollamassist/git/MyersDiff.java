@@ -107,7 +107,6 @@ public class MyersDiff {
             }
         }
 
-        // Fin de séquence restante
         while (x > 0 || y > 0) {
             if (x > 0 && y > 0 && a.get(x - 1).equals(b.get(y - 1))) {
                 edits.add(new Edit(Operation.EQUAL, a.get(x - 1)));
