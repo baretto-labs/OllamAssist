@@ -1,7 +1,7 @@
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.1.20"
-    id("org.jetbrains.intellij") version "1.17.4"
+    id("org.jetbrains.intellij.platform") version "2.6.0"
 }
 
 group = "fr.baretto"
@@ -9,9 +9,20 @@ version = "1.2.0"
 
 repositories {
     mavenCentral()
+    intellijPlatform {
+        defaultRepositories() // assure l'accès à l’installateur IntelliJ
+    }
 }
 
+
 dependencies {
+    intellijPlatform {
+        // Ciblage d’IntelliJ IDEA Community 2024.3 via son installateur
+        intellijIdeaCommunity("2024.3", useInstaller = true)
+        // Inclusion du plugin Git4Idea
+        bundledPlugins("Git4Idea")
+    }
+
     val langchain4jVersion = "1.0.1-beta6"
     val apacheLuceneVersion = "9.12.1"
     val mockitoVersion = "5.16.1"
@@ -44,11 +55,31 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.26.0")
 }
 
-intellij {
-    version.set("2024.3")
-    type.set("IC")
-    plugins.set(listOf("Git4Idea"))
+
+intellijPlatform {
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild = "243"
+            untilBuild = ""
+        }
+        changeNotes = "Mise à jour vers IntelliJ Platform Gradle Plugin 2.6.0"
+    }
+
+    signing {
+        certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
+        privateKey.set(System.getenv("PRIVATE_KEY"))
+        password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
+    }
+
+    publishing {
+        token.set(System.getenv("PUBLISH_TOKEN"))
+    }
+
+
+    // Activation des options de recherche
+    buildSearchableOptions.set(true)
 }
+
 
 tasks {
 
@@ -65,17 +96,9 @@ tasks {
         untilBuild.set("")
     }
 
-    signPlugin {
-        certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
-        privateKey.set(System.getenv("PRIVATE_KEY"))
-        password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
-    }
     test {
         useJUnitPlatform {
             includeEngines("junit-jupiter")
         }
-    }
-    publishPlugin {
-        token.set(System.getenv("PUBLISH_TOKEN"))
     }
 }
