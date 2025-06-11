@@ -10,16 +10,14 @@ version = "1.2.0"
 repositories {
     mavenCentral()
     intellijPlatform {
-        defaultRepositories() // assure l'accès à l’installateur IntelliJ
+        defaultRepositories()
     }
 }
 
 
 dependencies {
     intellijPlatform {
-        // Ciblage d’IntelliJ IDEA Community 2024.3 via son installateur
         intellijIdeaCommunity("2024.3", useInstaller = true)
-        // Inclusion du plugin Git4Idea
         bundledPlugins("Git4Idea")
     }
 
@@ -76,8 +74,6 @@ intellijPlatform {
         token.set(System.getenv("PUBLISH_TOKEN"))
     }
 
-
-    // Activation des options de recherche
     buildSearchableOptions.set(true)
 }
 
