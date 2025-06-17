@@ -52,7 +52,7 @@ public class FilesUtil {
                     }
 
                     if (shouldSkipFile(file)) {
-                        return true;
+                        return false;
                     }
 
                     if (shouldProcessFile(file)) {
