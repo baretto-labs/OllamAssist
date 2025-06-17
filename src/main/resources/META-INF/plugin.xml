@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.3.0</h2>
+        <UL>
+            <LI>fix: prevent indexing of ignored directories.</LI>
+        </UL>
         <h2>V1.2.0</h2>
         <UL>
             <LI>feat: Generate commit message.</LI>
