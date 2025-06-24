@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.2.0"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
@@ -14,16 +14,37 @@ repositories {
     }
 }
 
+val langchain4jVersion = "1.0.1-beta6"
+val apacheLuceneVersion = "9.12.1"
+val mockitoVersion = "5.16.1"
+val lombokVersion = "1.18.38"
+val junitJupiterVersion = "5.11.0-M2"
+val junitVintageVersion = "5.11.0-M2"
+val junitEngineVersion = "5.11.4"
+val junitLegacyVersion = "4.13.2"
+val assertjVersion = "3.27.0"
+val testcontainersVersion = "1.19.1"
+val rsyntaxtextareaVersion = "3.6.0"
+
+sourceSets {
+    create("benchmark") {
+        java.srcDir("src/benchmark/java")
+        resources.srcDir("src/benchmark/resources")
+        compileClasspath += sourceSets["main"].output + configurations["testRuntimeClasspath"]
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    maybeCreate("benchmarkImplementation").extendsFrom(configurations["implementation"], configurations["testImplementation"])
+    maybeCreate("benchmarkRuntimeOnly").extendsFrom(configurations["runtimeOnly"], configurations["testRuntimeOnly"])
+}
 
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3", useInstaller = true)
         bundledPlugins("Git4Idea")
     }
-
-    val langchain4jVersion = "1.0.1-beta6"
-    val apacheLuceneVersion = "9.12.1"
-    val mockitoVersion = "5.16.1"
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
@@ -33,6 +54,7 @@ dependencies {
     }
     implementation("dev.langchain4j:langchain4j-reactor:$langchain4jVersion")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
+
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-analysis-common:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-codecs:$apacheLuceneVersion")
@@ -40,20 +62,22 @@ dependencies {
     implementation("org.apache.lucene:lucene-queryparser:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-memory:$apacheLuceneVersion")
 
-    implementation("com.fifesoft:rsyntaxtextarea:3.6.0")
-    compileOnly("org.projectlombok:lombok:1.18.38")
-    annotationProcessor("org.projectlombok:lombok:1.18.38")
+    implementation("com.fifesoft:rsyntaxtextarea:$rsyntaxtextareaVersion")
 
+    compileOnly("org.projectlombok:lombok:$lombokVersion")
+    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
 
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.4")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.0-M2")
-    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
+    testImplementation("junit:junit:$junitLegacyVersion")
     testImplementation("org.mockito:mockito-core:$mockitoVersion")
-    testImplementation("org.junit.vintage:junit-vintage-engine:5.11.0-M2")
-    testImplementation("org.assertj:assertj-core:3.27.0")
+    testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
+    testImplementation("org.assertj:assertj-core:$assertjVersion")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
 
+    add("benchmarkImplementation", "org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    add("benchmarkImplementation", "org.testcontainers:junit-jupiter:$testcontainersVersion")
+    add("benchmarkImplementation", "org.testcontainers:postgresql:$testcontainersVersion")
 }
-
 
 intellijPlatform {
     pluginConfiguration {
@@ -77,9 +101,7 @@ intellijPlatform {
     buildSearchableOptions.set(true)
 }
 
-
 tasks {
-
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
@@ -97,5 +119,18 @@ tasks {
         useJUnitPlatform {
             includeEngines("junit-jupiter")
         }
+    }
+
+    val integration by registering(Test::class) {
+        description = "Runs integration tests."
+        group = "verification"
+        testClassesDirs = sourceSets["integration"].output.classesDirs
+        classpath = sourceSets["integration"].runtimeClasspath
+        useJUnitPlatform()
+        shouldRunAfter(test)
+    }
+
+    check {
+        dependsOn(integration)
     }
 }
