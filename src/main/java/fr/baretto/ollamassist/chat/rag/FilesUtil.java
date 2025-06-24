@@ -11,6 +11,7 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileVisitor;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,60 +27,66 @@ public class FilesUtil {
     private final Project project;
     private final ProjectFileIndex fileIndex;
     private final ShouldBeIndexed shouldBeIndexed;
+    @Getter
+    private final int maxFiles;
 
     public FilesUtil(Project project) {
-        this.project = project;
-        this.fileIndex = ProjectFileIndex.getInstance(project);
-        this.shouldBeIndexed = new ShouldBeIndexed();
+        this(project, ProjectFileIndex.getInstance(project), new ShouldBeIndexed(), OllamAssistSettings.getInstance().getIndexationSize());
     }
 
-    public static int getMaxFiles() {
-        return OllamAssistSettings.getInstance().getIndexationSize();
+    public FilesUtil(Project project, ProjectFileIndex fileIndex, ShouldBeIndexed shouldBeIndexed, int maxFiles) {
+        this.project = project;
+        this.fileIndex = fileIndex;
+        this.shouldBeIndexed = shouldBeIndexed;
+        this.maxFiles = maxFiles;
     }
 
     public List<String> collectFilePaths() {
-        VirtualFile baseDir = project.getBaseDir();
-        return ReadAction.nonBlocking(() -> {
-            AtomicInteger count = new AtomicInteger(0);
-            List<String> sourceFiles = new ArrayList<>(getMaxFiles());
-            List<String> otherFiles = new ArrayList<>(getMaxFiles());
-
-            VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
-                @Override
-                public boolean visitFile(@NotNull VirtualFile file) {
-                    if (count.get() >= getMaxFiles()) {
-                        return false;
-                    }
-
-                    if (shouldSkipFile(file)) {
-                        return false;
-                    }
-
-                    if (shouldProcessFile(file)) {
-                        addFileToProperList(file, sourceFiles, otherFiles, count);
-                    }
-
-                    return true;
-                }
-            });
-
-            return mergeAndLimitResults(sourceFiles, otherFiles);
-        }).executeSynchronously();
+        return ReadAction.nonBlocking(this::collectFilePathsInternal).executeSynchronously();
     }
 
-    private boolean shouldSkipFile(VirtualFile file) {
+    List<String> collectFilePathsInternal() {
+        VirtualFile baseDir = project.getBaseDir();
+        AtomicInteger count = new AtomicInteger(0);
+        List<String> sourceFiles = new ArrayList<>(getMaxFiles());
+        List<String> otherFiles = new ArrayList<>(getMaxFiles());
+
+        VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
+            @Override
+            public boolean visitFile(@NotNull VirtualFile file) {
+                if (count.get() >= getMaxFiles()) {
+                    return false;
+                }
+
+                if (shouldSkipFile(file)) {
+                    return false;
+                }
+
+                if (shouldProcessFile(file)) {
+                    addFileToProperList(file, sourceFiles, otherFiles, count);
+                }
+
+                return true;
+            }
+        });
+
+        return mergeAndLimitResults(sourceFiles, otherFiles);
+
+    }
+
+    boolean shouldSkipFile(VirtualFile file) {
         return file.isDirectory() && shouldExcludedDirectory(file);
     }
 
-    private boolean shouldProcessFile(VirtualFile file) {
+    boolean shouldProcessFile(VirtualFile file) {
         return !file.isDirectory() &&
                 (fileIndex.isInSource(file) || shouldBeIndexed(file));
     }
 
-    private void addFileToProperList(VirtualFile file,
-                                     List<String> sources,
-                                     List<String> others,
-                                     AtomicInteger counter) {
+    void addFileToProperList(VirtualFile file,
+                             List<String> sources,
+                             List<String> others,
+                             AtomicInteger counter) {
         if (fileIndex.isInSource(file)) {
             if (sources.size() < getMaxFiles()) {
                 sources.add(file.getPath());
@@ -115,9 +122,9 @@ public class FilesUtil {
                 ));
     }
 
-    private boolean shouldExcludedDirectory(@NotNull VirtualFile file) {
+    boolean shouldExcludedDirectory(@NotNull VirtualFile file) {
         return fileIndex.isExcluded(file)
-                || file.getPath().startsWith(".")
+                || file.getName().startsWith(".")
                 || fileIndex.isUnderIgnored(file)
                 || isIgnoredByGit(file);
     }

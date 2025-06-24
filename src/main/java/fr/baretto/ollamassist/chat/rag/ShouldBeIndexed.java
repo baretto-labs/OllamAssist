@@ -14,6 +14,7 @@ public class ShouldBeIndexed implements PathMatcher {
     private static final String SEPARATOR = ";";
     protected Set<String> includedPaths;
     protected Set<String> excludedPaths;
+
     ShouldBeIndexed() {
         this.includedPaths = getSourcePatterns();
         this.excludedPaths = Set.of();

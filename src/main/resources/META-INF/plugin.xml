@@ -58,7 +58,10 @@
     <change-notes><![CDATA[
         <h2>V1.3.0</h2>
         <UL>
-            <LI>fix: prevent indexing of ignored directories.</LI>
+            <LI>feat: Answers now use Tree-of-Thought reasoning: multiple internal solutions are evaluated, and only the most reliable one is returned.</LI>
+            <LI>feat: Provide entire file context instead of splitting into chunks.</LI>
+            <LI>feat: Automatically include the currently open file in the assistant’s context.</LI>
+            <LI>fix: Exclude ignored directories from indexing.</LI>
         </UL>
         <h2>V1.2.0</h2>
         <UL>
