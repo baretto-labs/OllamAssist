@@ -33,6 +33,7 @@ sourceSets {
         compileClasspath += sourceSets["main"].output + configurations["testRuntimeClasspath"]
         runtimeClasspath += output + compileClasspath
     }
+
 }
 
 configurations {
@@ -121,16 +122,16 @@ tasks {
         }
     }
 
-    val integration by registering(Test::class) {
-        description = "Runs integration tests."
+    val benchmark by registering(Test::class) {
+        description = "Runs benchmark tests."
         group = "verification"
-        testClassesDirs = sourceSets["integration"].output.classesDirs
-        classpath = sourceSets["integration"].runtimeClasspath
+        testClassesDirs = sourceSets["benchmark"].output.classesDirs
+        classpath = sourceSets["benchmark"].runtimeClasspath
         useJUnitPlatform()
         shouldRunAfter(test)
     }
 
     check {
-        dependsOn(integration)
+        dependsOn(benchmark)
     }
 }
