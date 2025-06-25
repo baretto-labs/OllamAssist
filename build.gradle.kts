@@ -134,4 +134,8 @@ tasks {
     check {
         dependsOn(benchmark)
     }
+
+    build {
+        dependsOn("buildPlugin")
+    }
 }
