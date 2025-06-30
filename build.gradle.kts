@@ -22,7 +22,7 @@ dependencies {
     }
 
     val langchain4jVersion = "1.0.1-beta6"
-    val apacheLuceneVersion = "9.12.1"
+    val apacheLuceneVersion = "10.2.2"
     val mockitoVersion = "5.16.1"
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
