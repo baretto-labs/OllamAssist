@@ -17,7 +17,7 @@ public class ContextRetriever implements ContentRetriever {
 
     public ContextRetriever(ContentRetriever contentRetriever, Project project) {
         this.contentRetriever = contentRetriever;
-        this.focusContextProvider = new FullFileContextProvider(project);
+        this.focusContextProvider = new FocusedWindowContextProvider(project);
     }
 
 

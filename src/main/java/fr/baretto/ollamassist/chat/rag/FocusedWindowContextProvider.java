@@ -9,15 +9,15 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 
 /**
- * - This class is part of the LangChain4J integration with IntelliJ IDEA, specifically designed for Retrieval-Augmented Generation (RAG) tasks.
- * - The implementation assumes that there is at most one selected file in the editor at any given time (getSelectedFiles()[0]).
- * - If no text editor or file is available, it gracefully returns null to indicate the absence of context.
+ * Provides a focused window of code around the user's caret position.
+ * Extracts a substring centered on the caret, with a configurable character window size.
  */
-public class FullFileContextProvider implements FocusContextProvider {
+public class FocusedWindowContextProvider implements FocusContextProvider {
 
+    private static final int WINDOW_SIZE = 8000;
     private final Project project;
 
-    public FullFileContextProvider(Project project) {
+    public FocusedWindowContextProvider(Project project) {
         this.project = project;
     }
 
@@ -35,7 +35,16 @@ public class FullFileContextProvider implements FocusContextProvider {
                 return null;
             }
 
-            return Content.from(document.getText());
+            String fullText = document.getText();
+            int caretOffset = editor.getCaretModel().getOffset();
+
+            int halfWindow = WINDOW_SIZE / 2;
+            int start = Math.max(0, caretOffset - halfWindow);
+            int end = Math.min(fullText.length(), caretOffset + halfWindow);
+
+            String focusedText = fullText.substring(start, end);
+
+            return Content.from(focusedText);
         } catch (Exception e) {
             return Content.from("");
         }
