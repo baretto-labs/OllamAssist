@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15QuantizedEmbeddingModel;
@@ -22,7 +23,7 @@ import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MOD
 public class DocumentIngestFactory {
 
 
-    public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store) {
+    public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store, Project project) {
         EmbeddingModel embeddingModel;
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(DocumentIngestFactory.class.getClassLoader());

@@ -13,10 +13,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
-import fr.baretto.ollamassist.chat.rag.DocumentIndexingPipeline;
-import fr.baretto.ollamassist.chat.rag.DocumentIngestFactory;
-import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
-import fr.baretto.ollamassist.chat.rag.ProjectFileListener;
+import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -45,17 +42,13 @@ public final class OllamaService implements Disposable, SettingsListener {
         initialize();
 
         messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
-        project.getMessageBus().connect().subscribe(ChatModelModifiedNotifier.TOPIC, new ChatModelModifiedNotifier() {
+        project.getMessageBus().connect().subscribe(ChatModelModifiedNotifier.TOPIC,
+                (ChatModelModifiedNotifier) () -> new Task.Backgroundable(project, "Reload chat model") {
             @Override
-            public void onChatModelModified() {
-                new Task.Backgroundable(project, "Reload chat model") {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        assistant = initAssistant();
-                    }
-                }.queue();
+            public void run(@NotNull ProgressIndicator indicator) {
+                assistant = initAssistant();
             }
-        });
+        }.queue());
 
 
     }
@@ -90,15 +83,15 @@ public final class OllamaService implements Disposable, SettingsListener {
             return AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
                     .chatMemory(chatMemory)
-                    .contentRetriever(EmbeddingStoreContentRetriever
-                            .builder()
-                            .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
-                            .dynamicMaxResults(query -> 3)
-                            .dynamicMinScore(query -> {
-                                return 0.85;
-                            })
-                            .embeddingStore(embeddingStore)
-                            .build())
+                    .contentRetriever(new ContextRetriever(
+                            EmbeddingStoreContentRetriever
+                                    .builder()
+                                    .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
+                                    .dynamicMaxResults(query -> 3)
+                                    .dynamicMinScore(query -> 0.70)
+                                    .embeddingStore(embeddingStore)
+                                    .build(),
+                            project))
                     .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);

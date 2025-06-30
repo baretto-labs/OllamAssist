@@ -24,6 +24,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
     private static final int MAX_RETRIES = 3;
 
     private final LuceneEmbeddingStore<TextSegment> embeddingStore;
+    private final Project project;
     private EmbeddingStoreIngestor ingestor;
     private final Map<String, AtomicInteger> fileRetries = new ConcurrentHashMap<>();
 
@@ -38,7 +39,8 @@ public class DocumentIndexingPipeline implements AutoCloseable {
 
     public DocumentIndexingPipeline(Project project) {
         this.embeddingStore = project.getService(LuceneEmbeddingStore.class);
-        this.ingestor = DocumentIngestFactory.create(embeddingStore);
+        this.ingestor = DocumentIngestFactory.create(embeddingStore, project);
+        this.project = project;
         start();
     }
 
@@ -179,7 +181,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
         try {
             log.warn("Index corruption detected - Recreating index...");
             embeddingStore.recreateIndex();
-            ingestor = DocumentIngestFactory.create(embeddingStore);
+            ingestor = DocumentIngestFactory.create(embeddingStore, project);
 
             log.info("Index recreated - Resuming operations");
         } catch (Exception ex) {

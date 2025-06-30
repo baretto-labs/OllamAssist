@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -275,8 +278,17 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 return new EmbeddingSearchResult<>(List.of());
             }
 
+            double[] scores = Arrays.stream(topDocs.scoreDocs)
+                    .mapToDouble(sd -> sd.score)
+                    .toArray();
+            double dynamicThreshold = calculateDynamicThreshold(
+                    scores,
+                    request.minScore(),
+                    topDocs.scoreDocs[0].score
+            );
 
             List<EmbeddingMatch<EMBEDDED>> matches = new ArrayList<>();
+            Set<String> files = new HashSet<>();
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 Document doc = searcher.storedFields().document(scoreDoc.doc);
 
@@ -287,17 +299,63 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 Metadata metadata = new Metadata(mapper.readValue(doc.get(METADATA), Map.class));
                 metadata.put(LAST_INDEXED_DATE, lastIndexedDate);
 
-                EMBEDDED textSegment = (EMBEDDED) TextSegment.from(embeddedText, metadata);
-                if (scoreDoc.score > request.minScore()) {
-                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, textSegment));
+                if (scoreDoc.score > dynamicThreshold) {
+                  //  String path = metadata.getString("absolute_directory_path") + '/' + metadata.getString("file_name");
+                   // try {
+                   //     if (!files.contains(path)) {
+                   //         matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(readFileContentFromId(path), metadata)));
+                   //         files.add(path);
+                   //     }
+                   // } catch (Exception e) {
+                        matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(embeddedText, metadata)));
+                   // }
                 }
-
             }
             return new EmbeddingSearchResult<>(matches);
         } catch (Exception e) {
             log.error("Exception during lucene embedding request", e);
             return new EmbeddingSearchResult<>(List.of());
         }
+    }
+
+    private String readFileContentFromId(String path) {
+        VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
+        if (file == null || !file.exists()) {
+            log.warn("File not found for id: " + path);
+            return null;
+        }
+
+        try {
+            return VfsUtilCore.loadText(file);
+        } catch (IOException e) {
+            log.error("Failed to read file content for: " + path, e);
+            return null;
+        }
+    }
+
+    /**
+     * Computes dynamic relevance threshold for vector search results.
+     *
+     * <p>Implements hybrid strategy:
+     * 1. <b>Range-based</b>: Keeps top 70% of [baseMinScore, maxScore] interval
+     * 2. <b>Statistical fallback</b>: For flat distributions (range < 0.1), uses average - 0.05 margin
+     * 3. <b>Safety</b>: Always respects baseMinScore as absolute floor
+     *
+     * @param scores       Raw similarity scores of candidate documents
+     * @param baseMinScore Absolute minimum relevance threshold
+     * @param maxScore     Highest similarity score in current results
+     * @return Dynamic threshold ≥ baseMinScore
+     */
+    private double calculateDynamicThreshold(double[] scores, double baseMinScore, double maxScore) {
+        double scoreRange = maxScore - baseMinScore;
+        double dynamicThreshold = maxScore - (0.3 * scoreRange);
+
+        if (scoreRange < 0.1) {
+            double avg = Arrays.stream(scores).average().orElse(baseMinScore);
+            dynamicThreshold = Math.max(baseMinScore, avg - 0.05);
+        }
+
+        return Math.max(baseMinScore, dynamicThreshold);
     }
 
     @Override
