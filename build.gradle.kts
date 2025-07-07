@@ -23,7 +23,7 @@ val junitVintageVersion = "5.11.0-M2"
 val junitEngineVersion = "5.11.4"
 val junitLegacyVersion = "4.13.2"
 val assertjVersion = "3.27.0"
-val testcontainersVersion = "1.19.1"
+val testcontainersVersion = "1.21.3"
 val rsyntaxtextareaVersion = "3.6.0"
 
 sourceSets {
