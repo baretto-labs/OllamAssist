@@ -39,13 +39,31 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState = state;
     }
 
-    public String getOllamaUrl() {
-        return myState.ollamaUrl;
+    public String getChatOllamaUrl() {
+        return myState.chatOllamaUrl;
     }
 
-    public void setOllamaUrl(String url) {
-        myState.ollamaUrl = url;
+    public void setChatOllamaUrl(String url) {
+        myState.chatOllamaUrl = url;
     }
+
+    public String getCompletionOllamaUrl() {
+        return myState.completionOllamaUrl;
+    }
+
+    public void setCompletionOllamaUrl(String url) {
+        myState.completionOllamaUrl = url;
+    }
+
+    public String getEmbeddingOllamaUrl() {
+        return myState.embeddingOllamaUrl;
+    }
+
+    public void setEmbeddingOllamaUrl(String url) {
+        myState.embeddingOllamaUrl = url;
+    }
+
+    
 
     public String getChatModelName() {
         return myState.chatModelName;
@@ -59,12 +77,12 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         return myState.completionModelName;
     }
 
-    public String getEmbeddingModelName() {
-        return myState.getEmbeddingModelName();
-    }
-
     public void setCompletionModelName(String modelName) {
         myState.completionModelName = modelName;
+    }
+
+    public String getEmbeddingModelName() {
+        return myState.embeddingModelName;
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
@@ -105,9 +123,11 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
     @Getter
     public static class State {
-        public String ollamaUrl = DEFAULT_URL;
-        public String chatModelName = "llama3.1";
-        public String completionModelName = "llama3.1";
+        public String chatOllamaUrl = DEFAULT_URL;
+        public String completionOllamaUrl = DEFAULT_URL;
+        public String embeddingOllamaUrl = DEFAULT_URL;
+        public String chatModelName = "lama3.1";
+        public String completionModelName = "lama3.1";
         public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;
         public String timeout = "300";
         public String sources = "src/";

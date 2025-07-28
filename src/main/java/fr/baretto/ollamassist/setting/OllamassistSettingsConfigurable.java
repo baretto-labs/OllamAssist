@@ -27,7 +27,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     public JComponent createComponent() {
 
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        configurationPanel.setOllamaUrl(settings.getOllamaUrl());
+        configurationPanel.setChatOllamaUrl(settings.getChatOllamaUrl());
+        configurationPanel.setCompletionOllamaUrl(settings.getCompletionOllamaUrl());
+        configurationPanel.setEmbeddingOllamaUrl(settings.getEmbeddingOllamaUrl());
         configurationPanel.setChatModelName(settings.getChatModelName());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName());
         configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
@@ -39,8 +41,16 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     @Override
     public boolean isModified() {
+        if (configurationPanel == null ||
+            configurationPanel.getChatModel() == null ||
+            configurationPanel.getCompletionModel() == null ||
+            configurationPanel.getEmbeddingModel() == null) {
+            return false;
+        }
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        return !configurationPanel.getOllamaUrl().equalsIgnoreCase(settings.getOllamaUrl()) ||
+        return !configurationPanel.getChatOllamaUrl().equalsIgnoreCase(settings.getChatOllamaUrl()) ||
+                !configurationPanel.getCompletionOllamaUrl().equalsIgnoreCase(settings.getCompletionOllamaUrl()) ||
+                !configurationPanel.getEmbeddingOllamaUrl().equalsIgnoreCase(settings.getEmbeddingOllamaUrl()) ||
                 !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
                 !configurationPanel.getCompletionModel().equalsIgnoreCase(settings.getCompletionModelName()) ||
                 !configurationPanel.getEmbeddingModel().equalsIgnoreCase(settings.getEmbeddingModelName()) ||
@@ -57,7 +67,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         if (isModified()) {
             boolean needIndexation = needIndexation();
             boolean shouldCleanAllDatabase = shouldCleanAllDatabase();
-            settings.setOllamaUrl(configurationPanel.getOllamaUrl());
+            settings.setChatOllamaUrl(configurationPanel.getChatOllamaUrl());
+            settings.setCompletionOllamaUrl(configurationPanel.getCompletionOllamaUrl());
+            settings.setEmbeddingOllamaUrl(configurationPanel.getEmbeddingOllamaUrl());
             settings.setChatModelName(configurationPanel.getChatModel());
             settings.setCompletionModelName(configurationPanel.getCompletionModel());
             settings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
@@ -88,14 +100,17 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     private boolean shouldCleanAllDatabase() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        return !settings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel());
+        return !settings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel()) ||
+                !settings.getEmbeddingOllamaUrl().equals(configurationPanel.getEmbeddingOllamaUrl());
 
     }
 
     @Override
     public void reset() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        configurationPanel.setOllamaUrl(settings.getOllamaUrl().trim());
+        configurationPanel.setChatOllamaUrl(settings.getChatOllamaUrl().trim());
+        configurationPanel.setCompletionOllamaUrl(settings.getCompletionOllamaUrl().trim());
+        configurationPanel.setEmbeddingOllamaUrl(settings.getEmbeddingOllamaUrl().trim());
         configurationPanel.setChatModelName(settings.getChatModelName().trim());
         configurationPanel.setCompletionModelName(settings.getCompletionModelName().trim());
         configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
