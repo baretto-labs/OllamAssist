@@ -36,7 +36,7 @@ public class LightModelAssistant {
                 .temperature(0.2)
                 .topK(30)
                 .topP(0.7)
-                .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
+                .baseUrl(OllamAssistSettings.getInstance().getCompletionOllamaUrl())
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                 .build();

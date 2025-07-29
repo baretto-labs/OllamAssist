@@ -46,7 +46,7 @@ public class DocumentIngestFactory {
             embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
         } else {
             OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = new OllamaEmbeddingModel.OllamaEmbeddingModelBuilder();
-            embeddingModel = builder.baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
+            embeddingModel = builder.baseUrl(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getEmbeddingModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                     .build();
