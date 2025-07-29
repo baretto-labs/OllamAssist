@@ -11,6 +11,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.component.PromptPanel;
+import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
@@ -22,6 +23,8 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,6 +37,7 @@ public class OllamaContent {
     @Getter
     private final JPanel contentPanel = new JPanel();
     private final PromptPanel promptInput = new PromptPanel();
+    private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
     private final PrerequisitesPanel prerequisitesPanel;
     private final AskToChatAction askToChatAction;
@@ -43,6 +47,7 @@ public class OllamaContent {
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
+        filesSelector = new WorkspaceFileSelector(toolWindow.getProject());
         prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
         askToChatAction = new AskToChatAction(promptInput, context);
         promptInput.addActionMap(askToChatAction);
@@ -68,7 +73,6 @@ public class OllamaContent {
                 });
             }
         });
-
 
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
@@ -104,25 +108,138 @@ public class OllamaContent {
     }
 
     private JPanel createSplitter() {
-        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.75f);
-        splitter.setFirstComponent(outputPanel);
-        splitter.setSecondComponent(createInputPanel());
+        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.70f);
+
+        JPanel messagesPanel = new JPanel(new BorderLayout());
+        messagesPanel.add(outputPanel, BorderLayout.CENTER);
+
+        JComponent inputPanel = createInputPanel();
+
+        splitter.setFirstComponent(messagesPanel);
+        splitter.setSecondComponent(inputPanel);
         splitter.setHonorComponentsMinimumSize(true);
+        splitter.setResizeEnabled(true);
+
         return splitter;
     }
 
     private JComponent createInputPanel() {
-        JPanel submitPanel = new JPanel(new BorderLayout());
-        submitPanel.setMinimumSize(new Dimension(Integer.MAX_VALUE, 100));
-        submitPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 100));
-        JPanel promptsPanel = new JPanel();//@TODO add context file management
-        submitPanel.add(promptsPanel, BorderLayout.NORTH);
+        // Panel pour la saisie de prompt
         JBScrollPane scrollPane = new JBScrollPane(promptInput);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
-        submitPanel.add(scrollPane, BorderLayout.CENTER);
-        return submitPanel;
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        // Panneau des fichiers repliable
+        JPanel filePanel = createCollapsiblePanel("Fichiers", new WorkspaceFileSelector(context.project()));
+
+        // On place les deux dans un JSplitPane vertical
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, filePanel, scrollPane);
+        splitPane.setResizeWeight(0.0); // priorité à la zone du bas (prompt)
+        splitPane.setOneTouchExpandable(false); // ou true si tu veux les flèches
+        splitPane.setBorder(null);
+
+        // Taille initiale raisonnable
+        splitPane.setDividerLocation(120);
+
+        // 🔁 Callback quand on replie le panneau fichiers
+        AbstractButton toggleButton = (AbstractButton) ((JPanel) filePanel.getComponent(0)).getComponent(0);
+        toggleButton.addActionListener(e -> {
+            boolean collapsed = !filePanel.getComponent(1).isVisible();
+            filePanel.getComponent(1).setVisible(collapsed); // toggle visibility
+
+            // Si fermé, donne toute la hauteur au prompt
+            SwingUtilities.invokeLater(() -> {
+                if (!collapsed) {
+                    splitPane.setDividerLocation(0); // tout en bas = prompt prend tout
+                } else {
+                    splitPane.setDividerLocation(120); // valeur par défaut
+                }
+                filePanel.revalidate();
+                splitPane.revalidate();
+            });
+        });
+
+        return splitPane;
     }
+
+    private JPanel createCollapsiblePanel(String title, WorkspaceFileSelector fileSelector) {
+        JPanel panel = new JPanel(new BorderLayout());
+
+
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+        JButton toggleButton = new JButton("▼ " + title);
+        toggleButton.setBorderPainted(false);
+        toggleButton.setFocusPainted(false);
+        toggleButton.setContentAreaFilled(false);
+        toggleButton.setHorizontalAlignment(SwingConstants.LEFT);
+
+        JButton addButton = new JButton("Add to context...");
+        addButton.setIcon(UIManager.getIcon("FileChooser.newFolderIcon"));
+        addButton.addActionListener(fileSelector::addFilesAction);
+
+        JButton removeButton = new JButton("Supprimer");
+        removeButton.setIcon(UIManager.getIcon("Tree.closedIcon"));
+        removeButton.setEnabled(false);
+        removeButton.addActionListener(fileSelector::removeFilesAction);
+
+        fileSelector.getFileList().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                removeButton.setEnabled(fileSelector.getFileList().getSelectedIndex() != -1);
+            }
+        });
+
+        headerPanel.add(toggleButton);
+        headerPanel.add(Box.createHorizontalGlue());
+        headerPanel.add(addButton);
+        headerPanel.add(Box.createRigidArea(new Dimension(5, 0)));
+        headerPanel.add(removeButton);
+
+
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileList());
+
+
+        fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 120));
+        fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        contentPanel.add(fileScrollPane, BorderLayout.CENTER);
+
+        panel.add(headerPanel, BorderLayout.NORTH);
+        panel.add(contentPanel, BorderLayout.CENTER);
+
+
+        final boolean[] isCollapsed = {false};
+
+        toggleButton.addActionListener(e -> {
+            isCollapsed[0] = !isCollapsed[0];
+            contentPanel.setVisible(!isCollapsed[0]);
+            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + title);
+
+
+            if (isCollapsed[0]) {
+                fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 0));
+            } else {
+                fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 120));
+            }
+
+            SwingUtilities.invokeLater(() -> {
+                panel.revalidate();
+                panel.repaint();
+                Container parent = panel.getParent();
+                if (parent != null) {
+                    parent.revalidate();
+                    parent.repaint();
+                }
+            });
+        });
+
+        return panel;
+    }
+
 
 
     private JPanel createConversationPanel() {

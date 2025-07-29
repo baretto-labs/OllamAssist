@@ -153,6 +153,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FilesUtil"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIndexingPipeline"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FocusedWindowContextProvider"/>
 
 
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.SelectionGutterIcon"/>
