@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
+import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
+
 @NoArgsConstructor
 public class PrerequisiteService {
 
@@ -28,6 +30,12 @@ public class PrerequisiteService {
     }
 
     public CompletableFuture<Boolean> isEmbeddingModelAvailableAsync(String url, String modelName) {
+        // The model used was BgeSmallEnV15Quantized, which is provided by langchain4j. To avoid creating a blocking point for users utilizing it,
+        // we should not perform verification through Ollama's endpoint call.
+        // Perhaps we should consider migrating to another Ollama model in the future?
+        if (DEFAULT_EMBEDDING_MODEL.equals(modelName)) {
+            return CompletableFuture.completedFuture(true);
+        }
         return isOllamaAttributeExists(url, PATH_TO_TAGS, s -> s.contains(modelName));
     }
 
@@ -45,7 +53,4 @@ public class PrerequisiteService {
         }, AppExecutorUtil.getAppExecutorService());
     }
 
-    public boolean allPrerequisitesAreAvailable(Boolean ollamaReady, Boolean chatModelReady, Boolean autocompleteModelReady) {
-        return ollamaReady && chatModelReady && Boolean.TRUE.equals(autocompleteModelReady);
-    }
 }

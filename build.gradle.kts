@@ -14,7 +14,7 @@ repositories {
     }
 }
 
-val langchain4jVersion = "1.1.0-rc1"
+val langchain4jVersion = "1.2.0"
 val apacheLuceneVersion = "9.12.1"
 val mockitoVersion = "5.16.1"
 val lombokVersion = "1.18.38"
@@ -50,10 +50,10 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-easy-rag:1.1.0-beta7") {
+    implementation("dev.langchain4j:langchain4j-easy-rag:1.2.0-beta8") {
         exclude(group = "xml-apis")
     }
-    implementation("dev.langchain4j:langchain4j-reactor:1.1.0-beta7")
+    implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
