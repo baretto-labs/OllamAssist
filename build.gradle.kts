@@ -84,7 +84,6 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "243"
-            untilBuild = ""
         }
         changeNotes = "Mise à jour vers IntelliJ Platform Gradle Plugin 2.6.0"
     }
@@ -113,7 +112,6 @@ tasks {
 
     patchPluginXml {
         sinceBuild.set("243")
-        untilBuild.set("")
     }
 
     test {
