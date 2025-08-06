@@ -126,8 +126,8 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String chatOllamaUrl = DEFAULT_URL;
         public String completionOllamaUrl = DEFAULT_URL;
         public String embeddingOllamaUrl = DEFAULT_URL;
-        public String chatModelName = "lama3.1";
-        public String completionModelName = "lama3.1";
+        public String chatModelName = "llama3.1";
+        public String completionModelName = "llama3.1";
         public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;
         public String timeout = "300";
         public String sources = "src/";
