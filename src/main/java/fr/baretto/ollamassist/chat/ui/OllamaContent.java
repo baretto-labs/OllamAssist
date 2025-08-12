@@ -130,30 +130,37 @@ public class OllamaContent {
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
         // Panneau des fichiers repliable
-        JPanel filePanel = createCollapsiblePanel("Fichiers", new WorkspaceFileSelector(context.project()));
+        JPanel filePanel = createCollapsiblePanel("Fichiers", filesSelector);
 
         // On place les deux dans un JSplitPane vertical
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, filePanel, scrollPane);
         splitPane.setResizeWeight(0.0); // priorité à la zone du bas (prompt)
-        splitPane.setOneTouchExpandable(false); // ou true si tu veux les flèches
+        splitPane.setOneTouchExpandable(false);
         splitPane.setBorder(null);
 
-        // Taille initiale raisonnable
+        // Taille initiale avec espace pour le header
         splitPane.setDividerLocation(120);
 
-        // 🔁 Callback quand on replie le panneau fichiers
         AbstractButton toggleButton = (AbstractButton) ((JPanel) filePanel.getComponent(0)).getComponent(0);
         toggleButton.addActionListener(e -> {
-            boolean collapsed = !filePanel.getComponent(1).isVisible();
-            filePanel.getComponent(1).setVisible(collapsed); // toggle visibility
+            // Récupère l'état de repli actuel
+            boolean currentlyCollapsed = !filePanel.getComponent(1).isVisible();
 
-            // Si fermé, donne toute la hauteur au prompt
+            // Inverse l'état
+            filePanel.getComponent(1).setVisible(!currentlyCollapsed);
+
+            // SOLUTION : Toujours garder une hauteur minimale pour le header
             SwingUtilities.invokeLater(() -> {
-                if (!collapsed) {
-                    splitPane.setDividerLocation(0); // tout en bas = prompt prend tout
+                if (currentlyCollapsed) {
+                    // Si on déplie, on rétablit la taille par défaut
+                    splitPane.setDividerLocation(120);
                 } else {
-                    splitPane.setDividerLocation(120); // valeur par défaut
+                    // Si on replie, on garde une hauteur pour le header
+                    int headerHeight = filePanel.getComponent(0).getPreferredSize().height;
+                    splitPane.setDividerLocation(headerHeight);
                 }
+
+                // Force la mise à jour du layout
                 filePanel.revalidate();
                 splitPane.revalidate();
             });
@@ -164,7 +171,6 @@ public class OllamaContent {
 
     private JPanel createCollapsiblePanel(String title, WorkspaceFileSelector fileSelector) {
         JPanel panel = new JPanel(new BorderLayout());
-
 
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
@@ -197,52 +203,28 @@ public class OllamaContent {
         headerPanel.add(Box.createRigidArea(new Dimension(5, 0)));
         headerPanel.add(removeButton);
 
-
-        JPanel contentPanel = new JPanel(new BorderLayout());
+        JPanel contentContainer = new JPanel(new BorderLayout());
         JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileList());
-
-
-        fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 120));
         fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-
-        contentPanel.add(fileScrollPane, BorderLayout.CENTER);
+        contentContainer.add(fileScrollPane, BorderLayout.CENTER);
 
         panel.add(headerPanel, BorderLayout.NORTH);
-        panel.add(contentPanel, BorderLayout.CENTER);
-
+        panel.add(contentContainer, BorderLayout.CENTER);
 
         final boolean[] isCollapsed = {false};
 
         toggleButton.addActionListener(e -> {
             isCollapsed[0] = !isCollapsed[0];
-            contentPanel.setVisible(!isCollapsed[0]);
+            contentContainer.setVisible(!isCollapsed[0]);
             toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + title);
 
-
-            if (isCollapsed[0]) {
-                fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 0));
-            } else {
-                fileScrollPane.setPreferredSize(new Dimension(Integer.MAX_VALUE, 120));
-            }
-
-            SwingUtilities.invokeLater(() -> {
-                panel.revalidate();
-                panel.repaint();
-                Container parent = panel.getParent();
-                if (parent != null) {
-                    parent.revalidate();
-                    parent.repaint();
-                }
-            });
+            // Pas besoin de changer la taille préférée ici
+            // La gestion de la hauteur est faite dans createInputPanel()
         });
 
         return panel;
-    }
-
-
-
-    private JPanel createConversationPanel() {
+    }   private JPanel createConversationPanel() {
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
 

@@ -6,11 +6,11 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.components.JBList;
+import com.intellij.util.ui.JBUI;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -42,7 +42,7 @@ public class WorkspaceFileSelector extends JPanel {
      */
     public WorkspaceFileSelector(@NotNull Project project) {
         super(new BorderLayout(5, 5));
-        setBorder(new EmptyBorder(10, 10, 10, 10));
+        setBorder(JBUI.Borders.empty(10));
 
         this.fileListModel = new DefaultListModel<>();
         this.fileList = new JBList<>(fileListModel);
@@ -96,12 +96,6 @@ public class WorkspaceFileSelector extends JPanel {
 
     }
 
-    /**
-     * Action déclenchée par le bouton "Ajouter".
-     * Ouvre un JFileChooser pour permettre à l'utilisateur de sélectionner des fichiers.
-     *
-     * @param e L'événement d'action.
-     */
     public void addFilesAction(ActionEvent e) {
         JFileChooser fileChooser = new JFileChooser();
 
@@ -126,12 +120,6 @@ public class WorkspaceFileSelector extends JPanel {
         }
     }
 
-    /**
-     * Action déclenchée par le bouton "Supprimer".
-     * Supprime les fichiers actuellement sélectionnés dans la JList.
-     *
-     * @param e L'événement d'action.
-     */
     public void removeFilesAction(ActionEvent e) {
         int[] selectedIndices = fileList.getSelectedIndices();
 
@@ -164,10 +152,7 @@ public class WorkspaceFileSelector extends JPanel {
                                                       boolean isSelected, boolean cellHasFocus) {
             Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
 
-            if (c instanceof JLabel && value instanceof File) {
-                JLabel label = (JLabel) c;
-                File file = (File) value;
-
+            if (c instanceof JLabel label && value instanceof File file) {
                 label.setText(file.getName());
 
                 Icon icon = FileSystemView.getFileSystemView().getSystemIcon(file);

@@ -14,7 +14,7 @@ repositories {
     }
 }
 
-val langchain4jVersion = "1.1.0-rc1"
+val langchain4jVersion = "1.3.0"
 val apacheLuceneVersion = "9.12.1"
 val mockitoVersion = "5.16.1"
 val lombokVersion = "1.18.38"
