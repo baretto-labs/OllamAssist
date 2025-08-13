@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.3.0"
+version = "1.4.1"
 
 repositories {
     mavenCentral()
@@ -16,14 +16,14 @@ repositories {
 
 val langchain4jVersion = "1.3.0"
 val apacheLuceneVersion = "9.12.1"
-val mockitoVersion = "5.16.1"
+val mockitoVersion = "5.18.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"
 val junitVintageVersion = "5.11.0-M2"
 val junitEngineVersion = "5.11.4"
 val junitLegacyVersion = "4.13.2"
 val assertjVersion = "3.27.0"
-val testcontainersVersion = "1.19.1"
+val testcontainersVersion = "1.21.3"
 val rsyntaxtextareaVersion = "3.6.0"
 
 sourceSets {
@@ -50,10 +50,10 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-easy-rag:1.1.0-beta7") {
+    implementation("dev.langchain4j:langchain4j-easy-rag:1.2.0-beta8") {
         exclude(group = "xml-apis")
     }
-    implementation("dev.langchain4j:langchain4j-reactor:1.1.0-beta7")
+    implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
@@ -84,7 +84,6 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "243"
-            untilBuild = provider { null }
         }
         changeNotes = "Mise à jour vers IntelliJ Platform Gradle Plugin 2.6.0"
     }
@@ -113,7 +112,6 @@ tasks {
 
     patchPluginXml {
         sinceBuild.set("243")
-        untilBuild = provider { null }
     }
 
     test {

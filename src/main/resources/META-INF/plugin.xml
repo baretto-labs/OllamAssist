@@ -56,6 +56,14 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.4.1</h2>
+        <UL>
+            <LI>feat: Allow to configure each model to have its own ollama instance.</LI>
+        </UL>
+        <h2>V1.4.0</h2>
+        <UL>
+            <LI>feat: Allow to configure each model to have its own ollama instance.</LI>
+        </UL>
         <h2>V1.3.0</h2>
         <UL>
             <LI>feat: Answers now use Tree-of-Thought reasoning: multiple internal solutions are evaluated, and only the most reliable one is returned.</LI>
@@ -167,6 +175,7 @@
 
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
         <notificationGroup id="index_corrupted" displayType="BALLOON"/>
+        <notificationGroup id="OllamAssist" displayType="BALLOON"/>
      </extensions>
 
     <actions>

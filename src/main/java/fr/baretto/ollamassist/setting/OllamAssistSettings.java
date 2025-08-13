@@ -39,13 +39,31 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState = state;
     }
 
-    public String getOllamaUrl() {
-        return myState.ollamaUrl;
+    public String getChatOllamaUrl() {
+        return myState.chatOllamaUrl;
     }
 
-    public void setOllamaUrl(String url) {
-        myState.ollamaUrl = url;
+    public void setChatOllamaUrl(String url) {
+        myState.chatOllamaUrl = url;
     }
+
+    public String getCompletionOllamaUrl() {
+        return myState.completionOllamaUrl;
+    }
+
+    public void setCompletionOllamaUrl(String url) {
+        myState.completionOllamaUrl = url;
+    }
+
+    public String getEmbeddingOllamaUrl() {
+        return myState.embeddingOllamaUrl;
+    }
+
+    public void setEmbeddingOllamaUrl(String url) {
+        myState.embeddingOllamaUrl = url;
+    }
+
+    
 
     public String getChatModelName() {
         return myState.chatModelName;
@@ -64,19 +82,19 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
     }
 
     public String getEmbeddingModelName() {
-        return myState.getEmbeddingModelName();
+        return myState.embeddingModelName;
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
         myState.embeddingModelName = embeddingModelName;
     }
 
-    public int getIndexationSize() {
-        return myState.indexationSize;
-    }
-
     public void setIndexationSize(int numberOfDocuments) {
         myState.indexationSize = numberOfDocuments;
+    }
+
+    public int getIndexationSize() {
+        return myState.indexationSize;
     }
 
     public Duration getTimeoutDuration() {
@@ -105,7 +123,9 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
     @Getter
     public static class State {
-        public String ollamaUrl = DEFAULT_URL;
+        public String chatOllamaUrl = DEFAULT_URL;
+        public String completionOllamaUrl = DEFAULT_URL;
+        public String embeddingOllamaUrl = DEFAULT_URL;
         public String chatModelName = "llama3.1";
         public String completionModelName = "llama3.1";
         public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;

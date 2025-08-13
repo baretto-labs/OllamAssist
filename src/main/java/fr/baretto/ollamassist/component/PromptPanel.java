@@ -151,7 +151,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private List<String> fetchAvailableModels() {
         try {
             return new ArrayList<>(OllamaModels.builder()
-                    .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
+                    .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .build()
                     .availableModels()
                     .content()

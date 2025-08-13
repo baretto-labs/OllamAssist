@@ -10,9 +10,9 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
+import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
-import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -24,6 +24,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.concurrent.CompletableFuture;
 
 public class PrerequisitesPanel extends SimpleToolWindowPanel {
 
@@ -31,17 +32,21 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private final JBLabel ollamaLabel = new JBLabel();
     private final JBLabel chatModelLabel = new JBLabel();
     private final JBLabel autocompleteModelLabel = new JBLabel();
+    private final JBLabel embeddingModelLabel = new JBLabel();
     private final JPanel restartPanel = new JPanel();
     private final JBLabel restartMessage = new JBLabel();
     private final JButton restartButton = new JButton();
     private final JBLabel ollamaDownloadLink = new JBLabel();
     private final JBTextField chatModelCommandField = new JBTextField();
     private final JBTextField autocompleteModelCommandField = new JBTextField();
+    private final JBTextField embeddingModelCommandField = new JBTextField();
     private final JButton copyChatCommandButton = new JButton("Copy");
     private final JButton copyAutocompleteCommandButton = new JButton("Copy");
+    private final JButton copyEmbeddingCommandButton = new JButton("Copy");
     private final JPanel ollamaHelpPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
     private final JPanel chatModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel autocompleteModelHelpPanel = new JPanel(new BorderLayout(5, 0));
+    private final JPanel embeddingModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel loadingLabel = new LoadingPanel("OllamAssist starting ... ");
     private final Project project;
 
@@ -52,6 +57,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         ComponentCustomizer.applyHoverEffect(restartButton);
         ComponentCustomizer.applyHoverEffect(copyAutocompleteCommandButton);
         ComponentCustomizer.applyHoverEffect(copyChatCommandButton);
+        ComponentCustomizer.applyHoverEffect(copyEmbeddingCommandButton);
     }
 
     private void initPanel() {
@@ -118,6 +124,21 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         JPanel autocompleteCommandPanel = createCommandPanel(autocompleteModelCommandField, copyAutocompleteCommandButton, autocompleteModelName);
         autocompleteModelHelpPanel.add(autocompleteCommandPanel);
         contentPanel.add(autocompleteModelHelpPanel, gbc);
+
+        String embeddingModelName = OllamAssistSettings.getInstance().getEmbeddingModelName();
+        gbc.gridy++;
+        gbc.insets.top = 15;
+        contentPanel.add(new JBLabel(embeddingModelName + " (Embedding):"), gbc);
+
+        gbc.gridy++;
+        gbc.insets.top = 2;
+        contentPanel.add(embeddingModelLabel, gbc);
+
+        gbc.gridy++;
+        embeddingModelHelpPanel.add(new JBLabel("Install with:"));
+        JPanel embeddingCommandPanel = createCommandPanel(embeddingModelCommandField, copyEmbeddingCommandButton, embeddingModelName);
+        embeddingModelHelpPanel.add(embeddingCommandPanel);
+        contentPanel.add(embeddingModelHelpPanel, gbc);
 
         gbc.gridy++;
         gbc.insets.top = 30;
@@ -197,6 +218,10 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         autocompleteModelCommandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         autocompleteModelCommandField.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
+        embeddingModelCommandField.setBackground(UIUtil.getPanelBackground());
+        embeddingModelCommandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        embeddingModelCommandField.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+
         copyChatCommandButton.setIcon(IconUtils.COPY);
         copyChatCommandButton.setText("");
         copyChatCommandButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
@@ -205,43 +230,56 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         copyAutocompleteCommandButton.setText("");
         copyAutocompleteCommandButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
+        copyEmbeddingCommandButton.setIcon(IconUtils.COPY);
+        copyEmbeddingCommandButton.setText("");
+        copyEmbeddingCommandButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+
         restartButton.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
     }
 
     private void checkPrerequisitesAsync() {
-        prerequisiteService.isOllamaRunningAsync().thenCombine(
-                prerequisiteService.isChatModelAvailableAsync(),
-                (ollamaReady, chatModelReady) -> {
-                    prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
-                        ApplicationManager.getApplication().invokeLater(() ->
-                                updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
-                        if (Boolean.TRUE.equals(ollamaReady) && Boolean.TRUE.equals(chatModelReady) && Boolean.TRUE.equals(autocompleteModelReady)) {
-                            project.getService(OllamaService.class).init();
-                            LightModelAssistant.get();
+        OllamAssistSettings settings = OllamAssistSettings.getInstance();
 
-                            ApplicationManager.getApplication()
-                                    .getMessageBus()
-                                    .syncPublisher(ModelAvailableNotifier.TOPIC)
-                                    .onModelAvailable();
-                        }
+        CompletableFuture<Boolean> ollamaRunningFuture = prerequisiteService.isOllamaRunningAsync(settings.getChatOllamaUrl());
+        CompletableFuture<Boolean> chatModelFuture = prerequisiteService.isChatModelAvailableAsync(settings.getChatOllamaUrl(), settings.getChatModelName());
+        CompletableFuture<Boolean> autocompleteModelFuture = prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName());
+        CompletableFuture<Boolean> embeddingModelFuture = prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName());
 
-                    });
-                    return null;
-                }
-        );
+        CompletableFuture.allOf(ollamaRunningFuture, chatModelFuture, autocompleteModelFuture, embeddingModelFuture)
+                .thenAccept(v -> {
+                    boolean ollamaReady = ollamaRunningFuture.join();
+                    boolean chatModelReady = chatModelFuture.join();
+                    boolean autocompleteModelReady = autocompleteModelFuture.join();
+                    boolean embeddingModelReady = embeddingModelFuture.join();
+
+                    ApplicationManager.getApplication().invokeLater(() ->
+                            updateUI(ollamaReady, chatModelReady, autocompleteModelReady, embeddingModelReady));
+
+                    if (ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady) {
+                        project.getService(OllamaService.class).init();
+                        LightModelAssistant.get();
+
+                        ApplicationManager.getApplication()
+                                .getMessageBus()
+                                .syncPublisher(ModelAvailableNotifier.TOPIC)
+                                .onModelAvailable();
+                    }
+                });
     }
 
 
-    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady) {
+    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady, boolean embeddingModelReady) {
         updateLabel(ollamaLabel, ollamaReady, ollamaReady ? "Ollama running" : "Ollama unavailable");
         updateLabel(chatModelLabel, chatModelReady, chatModelReady ? "Model available" : "Model not found");
         updateLabel(autocompleteModelLabel, autocompleteModelReady, autocompleteModelReady ? "Model available" : "Model not found");
+        updateLabel(embeddingModelLabel, embeddingModelReady, embeddingModelReady ? "Model available" : "Model not found");
 
         ollamaHelpPanel.setVisible(!ollamaReady);
         chatModelHelpPanel.setVisible(!chatModelReady);
         autocompleteModelHelpPanel.setVisible(!autocompleteModelReady);
+        embeddingModelHelpPanel.setVisible(!embeddingModelReady);
 
-        boolean allReady = ollamaReady && chatModelReady && autocompleteModelReady;
+        boolean allReady = ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady;
         restartPanel.setVisible(!allReady);
         loadingLabel.setVisible(allReady);
     }

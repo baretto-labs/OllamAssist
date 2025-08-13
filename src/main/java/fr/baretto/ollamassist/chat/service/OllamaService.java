@@ -74,7 +74,7 @@ public final class OllamaService implements Disposable, SettingsListener {
             OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
                     .temperature(0.2)
                     .topK(70)
-                    .baseUrl(OllamAssistSettings.getInstance().getOllamaUrl())
+                    .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                     .build();

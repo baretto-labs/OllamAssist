@@ -25,7 +25,9 @@ import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
 
 public class ConfigurationPanel extends JPanel {
 
-    private final JBTextField ollamaUrl = new JBTextField(DEFAULT_URL);
+    private final JBTextField chatOllamaUrl = new JBTextField(DEFAULT_URL);
+    private final JBTextField completionOllamaUrl = new JBTextField(DEFAULT_URL);
+    private final JBTextField embeddingOllamaUrl = new JBTextField(DEFAULT_URL);
     private final ComboBox<String> chatModel;
     private final ComboBox<String> completionModel;
     private final ComboBox<String> embeddingModel;
@@ -39,15 +41,16 @@ public class ConfigurationPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(JBUI.Borders.empty(10));
 
-        add(createLabeledField("Ollama URL:", ollamaUrl, "The URL of the Ollama server."));
-
         chatModel = createComboBox();
+        add(createOllamaUrlField("Chat Ollama URL:", chatOllamaUrl, "The URL of the Ollama server for chat.", chatModel, false));
         add(createLabeledField("Chat model:", chatModel, "The model should be loaded before use."));
 
         completionModel = createComboBox();
+        add(createOllamaUrlField("Completion Ollama URL:", completionOllamaUrl, "The URL of the Ollama server for completion.", completionModel, false));
         add(createLabeledField("Completion model:", completionModel, "The model should be loaded before use."));
 
         embeddingModel = createComboBox();
+        add(createOllamaUrlField("Embedding Ollama URL:", embeddingOllamaUrl, "The URL of the Ollama server for embedding.", embeddingModel, true));
         add(createLabeledField("Embedding model:", embeddingModel,
                 "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use. " +
                         "For example: nomic-embed-text. " +
@@ -59,10 +62,14 @@ public class ConfigurationPanel extends JPanel {
                 "The maximum number of documents indexed during a batch indexation"));
         add(createClearEmbeddingButton());
 
+    }
+
+    private JPanel createOllamaUrlField(String label, JBTextField ollamaUrl, String message, ComboBox<String> modelComboBox, boolean isEmbedding) {
+        JPanel panel = createLabeledField(label, ollamaUrl, message);
         ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                new Thread(() -> updateAvailableModels()).start();
+                new Thread(() -> updateAvailableModels(ollamaUrl, modelComboBox, isEmbedding)).start();
             }
 
             @Override
@@ -70,6 +77,7 @@ public class ConfigurationPanel extends JPanel {
                 ollamaUrl.setBackground(UIManager.getColor("TextField.background"));
             }
         });
+        return panel;
     }
 
     private ComboBox<String> createComboBox() {
@@ -156,13 +164,31 @@ public class ConfigurationPanel extends JPanel {
                 .clear();
     }
 
-    public String getOllamaUrl() {
-        return ollamaUrl.getText().trim();
+    public String getChatOllamaUrl() {
+        return chatOllamaUrl.getText().trim();
     }
 
-    public void setOllamaUrl(String url) {
-        ollamaUrl.setText(url.trim());
-        updateAvailableModels();
+    public void setChatOllamaUrl(String url) {
+        chatOllamaUrl.setText(url.trim());
+        updateAvailableModels(chatOllamaUrl, chatModel, false);
+    }
+
+    public String getCompletionOllamaUrl() {
+        return completionOllamaUrl.getText().trim();
+    }
+
+    public void setCompletionOllamaUrl(String url) {
+        completionOllamaUrl.setText(url.trim());
+        updateAvailableModels(completionOllamaUrl, completionModel, false);
+    }
+
+    public String getEmbeddingOllamaUrl() {
+        return embeddingOllamaUrl.getText().trim();
+    }
+
+    public void setEmbeddingOllamaUrl(String url) {
+        embeddingOllamaUrl.setText(url.trim());
+        updateAvailableModels(embeddingOllamaUrl, embeddingModel, true);
     }
 
     public int getMaxDocuments() {
@@ -213,7 +239,7 @@ public class ConfigurationPanel extends JPanel {
         embeddingModel.setSelectedItem(embeddingModelName.trim());
     }
 
-    private List<OllamaModel> fetchAvailableModels() {
+    private List<OllamaModel> fetchAvailableModels(JBTextField ollamaUrl) {
         try {
             return OllamaModels.builder()
                     .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText())
@@ -225,18 +251,20 @@ public class ConfigurationPanel extends JPanel {
         }
     }
 
-    private void updateAvailableModels() {
-        List<String> availableModels = fetchAvailableModels().stream()
+    private void updateAvailableModels(JBTextField ollamaUrl, ComboBox<String> comboBox, boolean isEmbedding) {
+        List<String> availableModels = fetchAvailableModels(ollamaUrl).stream()
                 .map(OllamaModel::getName)
                 .toList();
 
-        List<String> availableModelsFoEmbedding = new ArrayList<>(availableModels);
-        availableModelsFoEmbedding.add(DEFAULT_EMBEDDING_MODEL);
-
-        updateComboBox(chatModel, availableModels, OllamAssistSettings.getInstance().getChatModelName());
-        updateComboBox(completionModel, availableModels, OllamAssistSettings.getInstance().getCompletionModelName());
-        updateComboBox(embeddingModel, availableModelsFoEmbedding, OllamAssistSettings.getInstance().getEmbeddingModelName());
+        if (isEmbedding) {
+            List<String> availableModelsForEmbedding = new ArrayList<>(availableModels);
+            availableModelsForEmbedding.add(DEFAULT_EMBEDDING_MODEL);
+            updateComboBox(comboBox, availableModelsForEmbedding, (String) comboBox.getSelectedItem());
+        } else {
+            updateComboBox(comboBox, availableModels, (String) comboBox.getSelectedItem());
+        }
     }
+
 
     private void updateComboBox(ComboBox<String> comboBox, List<String> items, String selectedValue) {
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
