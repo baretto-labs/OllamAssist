@@ -1,167 +1,215 @@
 package fr.baretto.ollamassist.component;
 
+import com.intellij.ide.FileIconProvider;
+import com.intellij.openapi.fileChooser.FileChooser;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
 import com.intellij.openapi.fileEditor.FileEditorManagerListener;
+import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.components.JBList;
+import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.JBUI;
+import fr.baretto.ollamassist.chat.ui.IconUtils;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileSystemView;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
-/**
- * WorkspaceFileSelector est un composant Swing autonome qui permet à l'utilisateur
- * de gérer une liste de fichiers.
- * <p>
- * Caractéristiques :
- * - Affiche les fichiers avec leur icône et leur nom, simulant un explorateur de fichiers.
- * - Permet d'ajouter un ou plusieurs fichiers via un sélecteur de fichiers natif.
- * - Permet de supprimer les fichiers sélectionnés dans la liste.
- * - Le composant est encapsulé dans un JPanel et peut être facilement intégré
- * dans n'importe quelle fenêtre Swing (comme un JFrame ou une Tool Window de plugin IntelliJ).
- */
 public class WorkspaceFileSelector extends JPanel {
 
-    private final DefaultListModel<File> fileListModel;
+    private final DefaultTableModel tableModel;
     @Getter
-    private final JBList<File> fileList;
+    private final JBTable fileTable;
     private final @NotNull Project project;
 
-    /**
-     * Construit le panneau de sélection de fichiers.
-     */
     public WorkspaceFileSelector(@NotNull Project project) {
         super(new BorderLayout(5, 5));
         setBorder(JBUI.Borders.empty(10));
 
-        this.fileListModel = new DefaultListModel<>();
-        this.fileList = new JBList<>(fileListModel);
-        this.project = project;
-        this.fileList.setCellRenderer(new FileCellRenderer());
-        this.fileList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        this.fileList.setVisibleRowCount(15);
+        // Colonnes pour le tableau
+        String[] columnNames = {"Fichier", "Chemin", "Date de modification"};
+        this.tableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
 
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 2) return Date.class;
+                return String.class;
+            }
+        };
+
+        this.fileTable = new JBTable(tableModel);
+        this.project = project;
+
+        // Configuration de la table
+        fileTable.setAutoCreateRowSorter(true);
+        fileTable.setFillsViewportHeight(true);
+        fileTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+
+        // Définir le renderer personnalisé pour la colonne "Fichier"
+        fileTable.getColumnModel().getColumn(0).setCellRenderer(new FileIconRenderer());
+
+        // Ajuster les largeurs de colonnes
+        fileTable.getColumnModel().getColumn(0).setPreferredWidth(200);
+        fileTable.getColumnModel().getColumn(1).setPreferredWidth(400);
+        fileTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+
+        // Barre d'outils avec boutons
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
+        toolBar.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
 
-
-        JButton addButton = new JButton("Ajouter...");
-        addButton.setIcon(UIManager.getIcon("FileChooser.newFolderIcon"));
-        addButton.addActionListener(this::addFilesAction);
-
-        JButton removeButton = new JButton("Supprimer");
-        removeButton.setIcon(UIManager.getIcon("Tree.closedIcon"));
-        removeButton.addActionListener(this::removeFilesAction);
+        JButton addButton = createToolbarButton(IconUtils.ADD_TO_CONTEXT, "Ajouter des fichiers", this::addFilesAction);
+        JButton removeButton = createToolbarButton(IconUtils.REMOVE_TO_CONTEXT, "Supprimer les fichiers sélectionnés", this::removeFilesAction);
 
         toolBar.add(addButton);
         toolBar.add(removeButton);
 
+        // Gestion de la sélection
         removeButton.setEnabled(false);
-        fileList.addListSelectionListener(e -> {
+        fileTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                removeButton.setEnabled(fileList.getSelectedIndex() != -1);
+                removeButton.setEnabled(fileTable.getSelectedRowCount() > 0);
             }
         });
 
-
         add(toolBar, BorderLayout.NORTH);
-        add(new JScrollPane(fileList), BorderLayout.CENTER);
+        add(new JScrollPane(fileTable), BorderLayout.CENTER);
 
+        // Abonnement aux événements
         FileEditorManagerListener listener = new FileEditorManagerListener() {
             @Override
             public void selectionChanged(@NotNull FileEditorManagerEvent event) {
                 VirtualFile newFile = event.getNewFile();
                 if (newFile != null) {
                     File physicalFile = VfsUtilCore.virtualToIoFile(newFile);
-                    if (!fileListModel.contains(physicalFile)) {
-                        fileListModel.addElement(physicalFile);
-                    }
-                    fileList.setSelectedValue(physicalFile, true);
+                    addFileToTable(physicalFile);
                 }
             }
         };
 
         project.getMessageBus().connect().subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, listener);
-
-
     }
 
-    public void addFilesAction(ActionEvent e) {
-        JFileChooser fileChooser = new JFileChooser();
+    private JButton createToolbarButton(Icon icon, String tooltip, java.awt.event.ActionListener listener) {
+        JButton button = new JButton(icon);
+        button.setToolTipText(tooltip);
+        button.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setPreferredSize(new Dimension(24, 24));
+        button.addActionListener(listener);
+        return button;
+    }
 
-        VirtualFile baseDir = project.getBaseDir();
-        if (baseDir != null) {
-            File baseFile = VfsUtilCore.virtualToIoFile(baseDir);
-            fileChooser.setCurrentDirectory(baseFile);
+    private void addFileToTable(File file) {
+        // Vérifier si le fichier est déjà présent
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            String path = (String) tableModel.getValueAt(i, 1);
+            if (path.equals(file.getAbsolutePath())) {
+                return;
+            }
         }
 
-        fileChooser.setMultiSelectionEnabled(true);
-        fileChooser.setDialogTitle("Sélectionner des fichiers à ajouter");
+        // Ajouter une nouvelle ligne
+        Object[] rowData = {
+                file, // On stocke le fichier pour le renderer
+                file.getAbsolutePath(),
+                new Date(file.lastModified())
+        };
+        tableModel.addRow(rowData);
+    }
 
-        int option = fileChooser.showOpenDialog(this);
 
-        if (option == JFileChooser.APPROVE_OPTION) {
-            File[] selectedFiles = fileChooser.getSelectedFiles();
-            for (File file : selectedFiles) {
-                if (!fileListModel.contains(file)) {
-                    fileListModel.addElement(file);
-                }
-            }
+    public void addFilesAction(ActionEvent e) {
+        FileChooserDescriptor descriptor = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor();
+        descriptor.setTitle("Add Files to OllamAssist Context");
+        descriptor.setDescription("Select files to add to context");
+
+
+        VirtualFile[] selectedVirtualFiles = FileChooser.chooseFiles(descriptor, project, null);
+
+        for (VirtualFile vFile : selectedVirtualFiles) {
+            File file = VfsUtilCore.virtualToIoFile(vFile);
+            addFileToTable(file);
         }
     }
 
     public void removeFilesAction(ActionEvent e) {
-        int[] selectedIndices = fileList.getSelectedIndices();
+        int[] selectedRows = fileTable.getSelectedRows();
+        Arrays.sort(selectedRows);
 
-        Arrays.sort(selectedIndices);
-
-        for (int i = selectedIndices.length - 1; i >= 0; i--) {
-            fileListModel.removeElementAt(selectedIndices[i]);
+        for (int i = selectedRows.length - 1; i >= 0; i--) {
+            int modelRow = fileTable.convertRowIndexToModel(selectedRows[i]);
+            tableModel.removeRow(modelRow);
         }
     }
 
-    /**
-     * Renvoie la liste des fichiers actuellement présents dans le sélecteur.
-     *
-     * @return Une List<File> contenant les fichiers.
-     */
     public List<File> getSelectedFiles() {
         List<File> files = new ArrayList<>();
-        for (int i = 0; i < fileListModel.getSize(); i++) {
-            files.add(fileListModel.getElementAt(i));
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            files.add((File) tableModel.getValueAt(i, 0));
         }
         return files;
     }
 
+
     /**
-     * CellRenderer personnalisé pour afficher une icône de fichier et son nom.
+     * Renderer personnalisé pour afficher les fichiers avec leur icône spécifique
      */
-    private static class FileCellRenderer extends DefaultListCellRenderer {
+    private static class FileIconRenderer extends DefaultTableCellRenderer {
         @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                      boolean isSelected, boolean cellHasFocus) {
-            Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus,
+                                                       int row, int column) {
 
-            if (c instanceof JLabel label && value instanceof File file) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column
+            );
+
+            if (value instanceof File file) {
+                // Obtenir l'icône spécifique au type de fichier
+                Icon fileIcon = getFileIcon(file);
+
                 label.setText(file.getName());
-
-                Icon icon = FileSystemView.getFileSystemView().getSystemIcon(file);
-                label.setIcon(icon);
-
+                label.setIcon(fileIcon);
                 label.setIconTextGap(5);
             }
 
-            return c;
+            return label;
+        }
+
+        private Icon getFileIcon(File file) {
+            try {
+                // Obtenir le FileType à partir de l'extension
+                String fileName = file.getName();
+                FileTypeManager fileTypeManager = FileTypeManager.getInstance();
+                FileType fileType = fileTypeManager.getFileTypeByFileName(fileName);
+
+                // Retourner l'icône du type de fichier
+                return fileType.getIcon();
+            } catch (Exception e) {
+                // Icône par défaut si nécessaire
+                return IconLoader.getIcon("/general/file.svg", WorkspaceFileSelector.class);
+            }
         }
     }
 }

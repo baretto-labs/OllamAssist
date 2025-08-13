@@ -24,6 +24,8 @@ public class IconUtils {
             AllIcons.Process.Step_8);
     public static final Icon SUBMIT = load("/icons/submit.svg");
     public static final Icon NEW_CONVERSATION = load("/icons/new_conversation.svg");
+    public static final Icon ADD_TO_CONTEXT = AllIcons.Actions.AddFile;
+    public static final Icon REMOVE_TO_CONTEXT = AllIcons.General.Remove;
     public static final Icon DELETE_CONVERSATION = AllIcons.General.Delete;
     public static final Icon INSERT = load("/icons/insert.svg");
     public static final Icon COPY = load("/icons/copy.svg");

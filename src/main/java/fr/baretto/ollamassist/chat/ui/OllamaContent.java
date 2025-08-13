@@ -2,14 +2,17 @@ package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
+import com.intellij.util.ui.JBUI;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
@@ -23,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -124,49 +129,48 @@ public class OllamaContent {
     }
 
     private JComponent createInputPanel() {
-        // Panel pour la saisie de prompt
         JBScrollPane scrollPane = new JBScrollPane(promptInput);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        // Panneau des fichiers repliable
-        JPanel filePanel = createCollapsiblePanel("Fichiers", filesSelector);
+        JPanel filePanel = createCollapsiblePanel("Context", filesSelector);
 
-        // On place les deux dans un JSplitPane vertical
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, filePanel, scrollPane);
-        splitPane.setResizeWeight(0.0); // priorité à la zone du bas (prompt)
-        splitPane.setOneTouchExpandable(false);
-        splitPane.setBorder(null);
+        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.0f);
+        splitter.setFirstComponent(filePanel);
+        splitter.setSecondComponent(scrollPane);
+        splitter.setHonorComponentsMinimumSize(true);
 
-        // Taille initiale avec espace pour le header
-        splitPane.setDividerLocation(120);
+        int[] initialSize = {150};
 
         AbstractButton toggleButton = (AbstractButton) ((JPanel) filePanel.getComponent(0)).getComponent(0);
         toggleButton.addActionListener(e -> {
-            // Récupère l'état de repli actuel
             boolean currentlyCollapsed = !filePanel.getComponent(1).isVisible();
-
-            // Inverse l'état
             filePanel.getComponent(1).setVisible(!currentlyCollapsed);
 
-            // SOLUTION : Toujours garder une hauteur minimale pour le header
             SwingUtilities.invokeLater(() -> {
                 if (currentlyCollapsed) {
-                    // Si on déplie, on rétablit la taille par défaut
-                    splitPane.setDividerLocation(120);
+                    // On déplie : on remet la taille initiale
+                    splitter.setProportion(initialSize[0] / (float) Math.max(splitter.getHeight(), initialSize[0] + 100));
                 } else {
-                    // Si on replie, on garde une hauteur pour le header
+                    // On replie : on garde une hauteur pour le header
                     int headerHeight = filePanel.getComponent(0).getPreferredSize().height;
-                    splitPane.setDividerLocation(headerHeight);
+                    splitter.setProportion(headerHeight / (float) Math.max(splitter.getHeight(), headerHeight + 100));
                 }
 
                 // Force la mise à jour du layout
                 filePanel.revalidate();
-                splitPane.revalidate();
+                splitter.revalidate();
             });
         });
 
-        return splitPane;
+        splitter.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                initialSize[0] = splitter.getFirstComponent().getHeight();
+            }
+        });
+
+        return splitter;
     }
 
     private JPanel createCollapsiblePanel(String title, WorkspaceFileSelector fileSelector) {
@@ -182,29 +186,53 @@ public class OllamaContent {
         toggleButton.setContentAreaFilled(false);
         toggleButton.setHorizontalAlignment(SwingConstants.LEFT);
 
-        JButton addButton = new JButton("Add to context...");
-        addButton.setIcon(UIManager.getIcon("FileChooser.newFolderIcon"));
+        JButton addButton = new JButton(IconUtils.ADD_TO_CONTEXT);
+        addButton.setToolTipText("Add to context"); // Ajouter un tooltip pour l'accessibilité
+        addButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4)); // Réduire les marges internes
+        addButton.setContentAreaFilled(false); // Fond transparent
+        addButton.setFocusPainted(false); // Pas de bordure de focus
+        addButton.setPreferredSize(new Dimension(24, 24)); // Taille fixe petite
         addButton.addActionListener(fileSelector::addFilesAction);
+        ComponentCustomizer.applyHoverEffect(addButton);
 
-        JButton removeButton = new JButton("Supprimer");
-        removeButton.setIcon(UIManager.getIcon("Tree.closedIcon"));
+        JButton removeButton = new JButton(IconUtils.REMOVE_TO_CONTEXT);
+        removeButton.setToolTipText("Remove from context"); // Ajouter un tooltip
+        removeButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        removeButton.setContentAreaFilled(false);
+        removeButton.setFocusPainted(false);
+        removeButton.setPreferredSize(new Dimension(24, 24)); // Taille fixe petite
         removeButton.setEnabled(false);
         removeButton.addActionListener(fileSelector::removeFilesAction);
+        ComponentCustomizer.applyHoverEffect(removeButton);
 
-        fileSelector.getFileList().addListSelectionListener(e -> {
+
+        JLabel tokenCountLabel = new JLabel("Tokens: 0");
+        tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
+        tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        tokenCountLabel.setForeground(JBColor.GRAY);
+        fileSelector.getFileTable().getModel().addTableModelListener(e -> {
+            updateTokenCount(fileSelector, tokenCountLabel);
+        });
+
+
+        fileSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                removeButton.setEnabled(fileSelector.getFileList().getSelectedIndex() != -1);
+                removeButton.setEnabled(fileSelector.getFileTable().getSelectedRowCount() > 0);
             }
         });
 
         headerPanel.add(toggleButton);
+        headerPanel.add(tokenCountLabel);
         headerPanel.add(Box.createHorizontalGlue());
         headerPanel.add(addButton);
         headerPanel.add(Box.createRigidArea(new Dimension(5, 0)));
         headerPanel.add(removeButton);
+        updateTokenCount(fileSelector, tokenCountLabel);
 
         JPanel contentContainer = new JPanel(new BorderLayout());
-        JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileList());
+        JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileTable());
+        fileScrollPane.setMinimumSize(new Dimension(0, 100)); // Hauteur minimale raisonnable
+        fileScrollPane.setPreferredSize(new Dimension(0, 150)); // Hauteur préférée équilibrée
         fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         contentContainer.add(fileScrollPane, BorderLayout.CENTER);
@@ -218,13 +246,37 @@ public class OllamaContent {
             isCollapsed[0] = !isCollapsed[0];
             contentContainer.setVisible(!isCollapsed[0]);
             toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + title);
-
-            // Pas besoin de changer la taille préférée ici
-            // La gestion de la hauteur est faite dans createInputPanel()
         });
 
         return panel;
-    }   private JPanel createConversationPanel() {
+    }
+
+    private void updateTokenCount(WorkspaceFileSelector fileSelector, JLabel tokenLabel) {
+        new SwingWorker<Long, Void>() {
+            @Override
+            protected Long doInBackground() {
+                long totalTokens = 0;
+                for (File file : fileSelector.getSelectedFiles()) {
+                    if (file.exists() && file.isFile()) {
+                        totalTokens += file.length() / 4;
+                    }
+                }
+                return totalTokens;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    long tokenCount = get();
+                    tokenLabel.setText("Tokens: " + tokenCount);
+                } catch (Exception e) {
+                    tokenLabel.setText("Tokens: ?");
+                }
+            }
+        }.execute();
+    }
+
+    private JPanel createConversationPanel() {
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
 
