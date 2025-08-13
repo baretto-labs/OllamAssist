@@ -70,7 +70,6 @@ public class WorkspaceFileSelector extends JPanel {
 
         fileTable.getColumnModel().getColumn(0).setCellRenderer(new FileIconRenderer());
 
-        // Renderer pour la colonne Tokens
         fileTable.setDefaultRenderer(Integer.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -78,9 +77,7 @@ public class WorkspaceFileSelector extends JPanel {
                                                            int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-                if (c instanceof JLabel && value instanceof Integer) {
-                    JLabel label = (JLabel) c;
-                    int tokenCount = (Integer) value;
+                if (c instanceof JLabel label && value instanceof Integer tokenCount) {
                     label.setText(String.format("%,d tokens", tokenCount));
                     label.setHorizontalAlignment(SwingConstants.RIGHT);
                 }
@@ -113,18 +110,6 @@ public class WorkspaceFileSelector extends JPanel {
         add(toolBar, BorderLayout.NORTH);
         add(new JScrollPane(fileTable), BorderLayout.CENTER);
 
-        FileEditorManagerListener listener = new FileEditorManagerListener() {
-            @Override
-            public void selectionChanged(@NotNull FileEditorManagerEvent event) {
-                VirtualFile newFile = event.getNewFile();
-                if (newFile != null) {
-                    File physicalFile = VfsUtilCore.virtualToIoFile(newFile);
-                    addFileToTable(physicalFile);
-                }
-            }
-        };
-
-        project.getMessageBus().connect().subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, listener);
     }
 
     private JButton createToolbarButton(Icon icon, String tooltip, java.awt.event.ActionListener listener) {
@@ -158,13 +143,10 @@ public class WorkspaceFileSelector extends JPanel {
 
     private int estimateTokenCount(File file) {
         try {
-            // Lire le contenu du fichier
-            String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-
-            // Estimation simple : 1 token ≈ 4 caractères
+            String content = Files.readString(file.toPath());
             return (int) Math.ceil(content.length() / 4.0);
         } catch (Exception e) {
-            return 0; // Retourner 0 en cas d'erreur
+            return 0;
         }
     }
 
@@ -186,21 +168,19 @@ public class WorkspaceFileSelector extends JPanel {
         int[] selectedRows = fileTable.getSelectedRows();
         List<File> filesToRemove = new ArrayList<>();
 
-        // Collecter les fichiers à supprimer
+
         for (int viewRow : selectedRows) {
             int modelRow = fileTable.convertRowIndexToModel(viewRow);
             File file = (File) tableModel.getValueAt(modelRow, 0);
             filesToRemove.add(file);
         }
 
-        // Supprimer les lignes en ordre inverse
         Arrays.sort(selectedRows);
         for (int i = selectedRows.length - 1; i >= 0; i--) {
             int modelRow = fileTable.convertRowIndexToModel(selectedRows[i]);
             tableModel.removeRow(modelRow);
         }
 
-        // Supprimer les fichiers du contexte
         for (File file : filesToRemove) {
             workspaceContextRetriever.removeFile(file);
         }
@@ -212,21 +192,6 @@ public class WorkspaceFileSelector extends JPanel {
             files.add((File) tableModel.getValueAt(i, 0));
         }
         return files;
-    }
-
-    public void addFileIfNotPresent(File file) {
-        boolean exists = false;
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            File existingFile = (File) tableModel.getValueAt(i, 0);
-            if (existingFile.getAbsolutePath().equals(file.getAbsolutePath())) {
-                exists = true;
-                break;
-            }
-        }
-
-        if (!exists) {
-            addFileToTable(file);
-        }
     }
 
     public int getTotalTokens() {

@@ -253,7 +253,6 @@ public class OllamaContent {
         new SwingWorker<Integer, Void>() {
             @Override
             protected Integer doInBackground() {
-
                 return fileSelector.getTotalTokens();
             }
 
@@ -292,18 +291,6 @@ public class OllamaContent {
         }
 
         promptInput.toggleGenerationState(false);
-    }
-
-    private void addActiveFileToContext() {
-        FileEditorManager fileEditorManager = FileEditorManager.getInstance(context.project());
-        VirtualFile[] selectedFiles = fileEditorManager.getSelectedFiles();
-
-        if (selectedFiles.length > 0) {
-            // Prendre uniquement le premier fichier (fichier actif)
-            VirtualFile activeFile = selectedFiles[0];
-            File file = VfsUtilCore.virtualToIoFile(activeFile);
-            filesSelector.addFileIfNotPresent(file);
-        }
     }
 
     private void logException(Throwable throwable) {
