@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.5.0</h2>
+        <UL>
+            <LI>feat: Add file context selector for AI assistant.</LI>
+        </UL>
         <h2>V1.4.1</h2>
         <UL>
             <LI>feat: Allow to configure each model to have its own ollama instance.</LI>
