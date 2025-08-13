@@ -34,7 +34,7 @@ public class ShouldBeIndexed implements PathMatcher {
             return false;
         }
         try {
-            return Files.isRegularFile(path) && path.toFile().length()>0;
+            return Files.isRegularFile(path) && path.toFile().length() > 0;
         } catch (SecurityException e) {
             return false;
         }

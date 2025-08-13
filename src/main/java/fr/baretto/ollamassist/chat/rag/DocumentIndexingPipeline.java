@@ -25,16 +25,14 @@ public class DocumentIndexingPipeline implements AutoCloseable {
 
     private final LuceneEmbeddingStore<TextSegment> embeddingStore;
     private final Project project;
-    private EmbeddingStoreIngestor ingestor;
     private final Map<String, AtomicInteger> fileRetries = new ConcurrentHashMap<>();
-
     private final LinkedBlockingDeque<String> processingQueue = new LinkedBlockingDeque<>();
     private final Set<String> pendingDocumentIds = ConcurrentHashMap.newKeySet();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ReentrantLock processingLock = new ReentrantLock(true);
     private final Phaser processingPhaser = new Phaser(1);
     private final AtomicInteger totalIndexedDocuments = new AtomicInteger(0);
-
+    private EmbeddingStoreIngestor ingestor;
     private volatile boolean isRunning = false;
 
     public DocumentIndexingPipeline(Project project) {

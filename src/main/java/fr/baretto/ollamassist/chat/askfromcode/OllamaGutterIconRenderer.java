@@ -15,7 +15,7 @@ import java.util.Objects;
 @NoArgsConstructor
 public class OllamaGutterIconRenderer extends GutterIconRenderer {
 
-    private  Editor editor;
+    private Editor editor;
     private int lineNumber;
 
 
@@ -50,7 +50,7 @@ public class OllamaGutterIconRenderer extends GutterIconRenderer {
         return "OllamAssist inline chat";
     }
 
-    public void update(Editor editor, int lineNumber){
+    public void update(Editor editor, int lineNumber) {
         this.editor = editor;
         this.lineNumber = lineNumber;
     }

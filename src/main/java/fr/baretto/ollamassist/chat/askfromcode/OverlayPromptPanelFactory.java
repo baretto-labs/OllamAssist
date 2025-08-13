@@ -21,7 +21,6 @@ import java.util.WeakHashMap;
 
 public class OverlayPromptPanelFactory {
 
-    private final Map<Editor, Inlay<?>> activeInlays = new WeakHashMap<>();
     private static final PromptPanel PROMPT_PANEL = new PromptPanel();
     private static final AskFromCodeAction ASK_FROM_CODE_ACTION = new AskFromCodeAction(PROMPT_PANEL);
 
@@ -39,6 +38,7 @@ public class OverlayPromptPanelFactory {
         PROMPT_PANEL.getEditorTextField().addKeyListener(keyListener);
     }
 
+    private final Map<Editor, Inlay<?>> activeInlays = new WeakHashMap<>();
 
     public void showOverlayPromptPanel(Editor editor, int startOffset) {
         updateOverlayPromptPanel(editor);

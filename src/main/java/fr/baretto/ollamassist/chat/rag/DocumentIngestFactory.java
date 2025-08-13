@@ -42,7 +42,7 @@ public class DocumentIngestFactory {
     public static EmbeddingModel createEmbeddingModel() {
         EmbeddingModel embeddingModel;
         if (StringUtils.equalsIgnoreCase(DEFAULT_EMBEDDING_MODEL, OllamAssistSettings.getInstance().getEmbeddingModelName())
-        || org.apache.commons.lang3.StringUtils.isBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
+                || org.apache.commons.lang3.StringUtils.isBlank(OllamAssistSettings.getInstance().getEmbeddingModelName())) {
             embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
         } else {
             OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = new OllamaEmbeddingModel.OllamaEmbeddingModelBuilder();

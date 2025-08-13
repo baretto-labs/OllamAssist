@@ -53,7 +53,7 @@ public class LightModelService {
 
 
     public String getFileExtension(Editor editor) {
-        try{
+        try {
             FileEditorManager fileEditorManager = FileEditorManager.getInstance(editor.getProject());
             VirtualFile file = fileEditorManager.getSelectedFiles().length > 0 ? fileEditorManager.getSelectedFiles()[0] : null;
 

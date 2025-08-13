@@ -8,27 +8,6 @@ import java.util.*;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MyersDiff {
 
-    public enum Operation { EQUAL, INSERT, DELETE }
-
-    public static class Edit {
-        public final Operation op;
-        public final String line;
-
-        public Edit(Operation op, String line) {
-            this.op = op;
-            this.line = line;
-        }
-
-        @Override
-        public String toString() {
-            return switch (op) {
-                case INSERT -> "+ " + line;
-                case DELETE -> "- " + line;
-                case EQUAL  -> "  " + line;
-            };
-        }
-    }
-
     public static List<Edit> computeDiff(List<String> a, List<String> b) {
         int N = a.size();
         int M = b.size();
@@ -140,5 +119,26 @@ public class MyersDiff {
             }
         }
         return sb.toString();
+    }
+
+    public enum Operation {EQUAL, INSERT, DELETE}
+
+    public static class Edit {
+        public final Operation op;
+        public final String line;
+
+        public Edit(Operation op, String line) {
+            this.op = op;
+            this.line = line;
+        }
+
+        @Override
+        public String toString() {
+            return switch (op) {
+                case INSERT -> "+ " + line;
+                case DELETE -> "- " + line;
+                case EQUAL -> "  " + line;
+            };
+        }
     }
 }

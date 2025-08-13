@@ -235,7 +235,7 @@ public class ConfigurationPanel extends JPanel {
 
         updateComboBox(chatModel, availableModels, OllamAssistSettings.getInstance().getChatModelName());
         updateComboBox(completionModel, availableModels, OllamAssistSettings.getInstance().getCompletionModelName());
-        updateComboBox(embeddingModel, availableModelsFoEmbedding,OllamAssistSettings.getInstance().getEmbeddingModelName());
+        updateComboBox(embeddingModel, availableModelsFoEmbedding, OllamAssistSettings.getInstance().getEmbeddingModelName());
     }
 
     private void updateComboBox(ComboBox<String> comboBox, List<String> items, String selectedValue) {

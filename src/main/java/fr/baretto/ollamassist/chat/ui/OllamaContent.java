@@ -1,6 +1,9 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.OnePixelSplitter;
@@ -18,7 +21,6 @@ import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
-import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +31,6 @@ import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.io.File;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -149,15 +150,12 @@ public class OllamaContent {
 
             SwingUtilities.invokeLater(() -> {
                 if (currentlyCollapsed) {
-                    // On déplie : on remet la taille initiale
                     splitter.setProportion(initialSize[0] / (float) Math.max(splitter.getHeight(), initialSize[0] + 100));
                 } else {
-                    // On replie : on garde une hauteur pour le header
                     int headerHeight = filePanel.getComponent(0).getPreferredSize().height;
                     splitter.setProportion(headerHeight / (float) Math.max(splitter.getHeight(), headerHeight + 100));
                 }
 
-                // Force la mise à jour du layout
                 filePanel.revalidate();
                 splitter.revalidate();
             });
@@ -187,20 +185,20 @@ public class OllamaContent {
         toggleButton.setHorizontalAlignment(SwingConstants.LEFT);
 
         JButton addButton = new JButton(IconUtils.ADD_TO_CONTEXT);
-        addButton.setToolTipText("Add to context"); // Ajouter un tooltip pour l'accessibilité
-        addButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4)); // Réduire les marges internes
-        addButton.setContentAreaFilled(false); // Fond transparent
-        addButton.setFocusPainted(false); // Pas de bordure de focus
-        addButton.setPreferredSize(new Dimension(24, 24)); // Taille fixe petite
+        addButton.setToolTipText("Add to context");
+        addButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        addButton.setContentAreaFilled(false);
+        addButton.setFocusPainted(false);
+        addButton.setPreferredSize(new Dimension(24, 24));
         addButton.addActionListener(fileSelector::addFilesAction);
         ComponentCustomizer.applyHoverEffect(addButton);
 
         JButton removeButton = new JButton(IconUtils.REMOVE_TO_CONTEXT);
-        removeButton.setToolTipText("Remove from context"); // Ajouter un tooltip
+        removeButton.setToolTipText("Remove from context");
         removeButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         removeButton.setContentAreaFilled(false);
         removeButton.setFocusPainted(false);
-        removeButton.setPreferredSize(new Dimension(24, 24)); // Taille fixe petite
+        removeButton.setPreferredSize(new Dimension(24, 24));
         removeButton.setEnabled(false);
         removeButton.addActionListener(fileSelector::removeFilesAction);
         ComponentCustomizer.applyHoverEffect(removeButton);
@@ -252,16 +250,11 @@ public class OllamaContent {
     }
 
     private void updateTokenCount(WorkspaceFileSelector fileSelector, JLabel tokenLabel) {
-        new SwingWorker<Long, Void>() {
+        new SwingWorker<Integer, Void>() {
             @Override
-            protected Long doInBackground() {
-                long totalTokens = 0;
-                for (File file : fileSelector.getSelectedFiles()) {
-                    if (file.exists() && file.isFile()) {
-                        totalTokens += file.length() / 4;
-                    }
-                }
-                return totalTokens;
+            protected Integer doInBackground() {
+
+                return fileSelector.getTotalTokens();
             }
 
             @Override
@@ -299,6 +292,32 @@ public class OllamaContent {
         }
 
         promptInput.toggleGenerationState(false);
+    }
+
+    private void addActiveFileToContext() {
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(context.project());
+        VirtualFile[] selectedFiles = fileEditorManager.getSelectedFiles();
+
+        if (selectedFiles.length > 0) {
+            // Prendre uniquement le premier fichier (fichier actif)
+            VirtualFile activeFile = selectedFiles[0];
+            File file = VfsUtilCore.virtualToIoFile(activeFile);
+            filesSelector.addFileIfNotPresent(file);
+        }
+    }
+
+    private void logException(Throwable throwable) {
+        log.error("Exception: " + throwable);
+        done(ChatResponse.builder().finishReason(FinishReason.OTHER).aiMessage(AiMessage.from(throwable.getMessage())).build());
+    }
+
+    private void done(ChatResponse chatResponse) {
+        outputPanel.finalizeMessage(chatResponse);
+        promptInput.toggleGenerationState(false);
+    }
+
+    private void publish(String token) {
+        outputPanel.appendToken(token);
     }
 
     @Builder
@@ -351,20 +370,6 @@ public class OllamaContent {
             };
         }
 
-    }
-
-    private void logException(Throwable throwable) {
-        log.error("Exception: " + throwable);
-        done(ChatResponse.builder().finishReason(FinishReason.OTHER).aiMessage(AiMessage.from(throwable.getMessage())).build());
-    }
-
-    private void done(ChatResponse chatResponse) {
-        outputPanel.finalizeMessage(chatResponse);
-        promptInput.toggleGenerationState(false);
-    }
-
-    private void publish(String token) {
-        outputPanel.appendToken(token);
     }
 
 }

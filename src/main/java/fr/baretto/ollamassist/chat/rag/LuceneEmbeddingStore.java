@@ -288,7 +288,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
             );
 
             List<EmbeddingMatch<EMBEDDED>> matches = new ArrayList<>();
-            Set<String> files = new HashSet<>();
+
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
                 Document doc = searcher.storedFields().document(scoreDoc.doc);
 
@@ -300,15 +300,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 metadata.put(LAST_INDEXED_DATE, lastIndexedDate);
 
                 if (scoreDoc.score > dynamicThreshold) {
-                  //  String path = metadata.getString("absolute_directory_path") + '/' + metadata.getString("file_name");
-                   // try {
-                   //     if (!files.contains(path)) {
-                   //         matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(readFileContentFromId(path), metadata)));
-                   //         files.add(path);
-                   //     }
-                   // } catch (Exception e) {
-                        matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(embeddedText, metadata)));
-                   // }
+                    matches.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(embeddedText, metadata)));
                 }
             }
             return new EmbeddingSearchResult<>(matches);

@@ -24,10 +24,6 @@ public class ModelSelector extends JPanel {
     private transient ModelLoader modelLoader;
     private boolean isLoaded = false;
 
-    public interface ModelLoader {
-        List<String> loadModels();
-    }
-
     public ModelSelector() {
         setLayout(new BorderLayout());
 
@@ -106,7 +102,7 @@ public class ModelSelector extends JPanel {
         comboBox.setModel(comboBoxModel);
 
         models.stream()
-                .filter(model-> model.startsWith(savedModel))
+                .filter(model -> model.startsWith(savedModel))
                 .findFirst()
                 .ifPresent(comboBoxModel::setSelectedItem);
 
@@ -130,6 +126,10 @@ public class ModelSelector extends JPanel {
                 "Loading Error",
                 JOptionPane.ERROR_MESSAGE
         );
+    }
+
+    public interface ModelLoader {
+        List<String> loadModels();
     }
 
     private static class LoadingListRenderer extends DefaultListCellRenderer {

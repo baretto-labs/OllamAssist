@@ -1,11 +1,7 @@
 package fr.baretto.ollamassist.chat.rag;
 
-import com.intellij.openapi.util.NlsSafe;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
-import org.apache.lucene.store.FSDirectory;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -26,29 +22,13 @@ import java.util.Set;
 @Slf4j
 public class IndexRegistry {
 
+    public static final Charset CHARSET = StandardCharsets.UTF_8;
     private static final String USER_HOME = System.getProperty("user.home");
     public static final String OLLAMASSIST_DIR = USER_HOME + File.separator + ".ollamassist";
-    public static final Charset CHARSET = StandardCharsets.UTF_8;
     private static final String PROJECTS_FILE = OLLAMASSIST_DIR + File.separator + "indexed_projects.txt";
     private static final String SEPARATOR = ",";
     private final Set<String> currentIndexations = new HashSet<>();
 
-
-
-    public static class ProjectMetadata {
-        @Getter
-        private final LocalDate lastIndexedDate;
-        private final boolean isCorrupted;
-
-        ProjectMetadata(LocalDate lastIndexedDate, boolean isCorrupted) {
-            this.lastIndexedDate = lastIndexedDate;
-            this.isCorrupted = isCorrupted;
-        }
-
-        public boolean isCorrupted() {
-            return isCorrupted;
-        }
-    }
 
     public IndexRegistry() {
         ensureDirectoryExists();
@@ -71,7 +51,6 @@ public class IndexRegistry {
         LocalDate lastIndexedDate = metadata.getLastIndexedDate();
         return lastIndexedDate != null && lastIndexedDate.isAfter(sevenDaysAgo);
     }
-
 
     public void markAsCurrentIndexation(String projectId) {
         currentIndexations.add(projectId);
@@ -185,6 +164,21 @@ public class IndexRegistry {
             }
         } catch (IOException e) {
             log.error("Error creating indexed projects file", e);
+        }
+    }
+
+    public static class ProjectMetadata {
+        @Getter
+        private final LocalDate lastIndexedDate;
+        private final boolean isCorrupted;
+
+        ProjectMetadata(LocalDate lastIndexedDate, boolean isCorrupted) {
+            this.lastIndexedDate = lastIndexedDate;
+            this.isCorrupted = isCorrupted;
+        }
+
+        public boolean isCorrupted() {
+            return isCorrupted;
         }
     }
 }

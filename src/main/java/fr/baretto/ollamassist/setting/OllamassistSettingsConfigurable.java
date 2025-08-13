@@ -13,13 +13,13 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     private ConfigurationPanel configurationPanel;
 
+    public OllamassistSettingsConfigurable(Project project) {
+        configurationPanel = new ConfigurationPanel(project);
+    }
+
     @Override
     public @Nls(capitalization = Nls.Capitalization.Title) String getDisplayName() {
         return "OllamAssist Settings";
-    }
-
-    public OllamassistSettingsConfigurable(Project project) {
-        configurationPanel = new ConfigurationPanel(project);
     }
 
     @Nullable

@@ -9,7 +9,7 @@ import java.awt.*;
 public class LoadingPanel extends JPanel {
 
 
-    public LoadingPanel(String message){
+    public LoadingPanel(String message) {
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         this.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 

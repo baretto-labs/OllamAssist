@@ -12,12 +12,12 @@ import java.util.List;
 public class ContextRetriever implements ContentRetriever {
 
     private final ContentRetriever contentRetriever;
-    private final FocusContextProvider focusContextProvider;
+    private final WorkspaceContextRetriever workspaceContextProvider;
 
 
     public ContextRetriever(ContentRetriever contentRetriever, Project project) {
         this.contentRetriever = contentRetriever;
-        this.focusContextProvider = project.getService(FocusedWindowContextProvider.class);
+        this.workspaceContextProvider = project.getService(WorkspaceContextRetriever.class);
     }
 
 
@@ -25,11 +25,13 @@ public class ContextRetriever implements ContentRetriever {
     public List<Content> retrieve(Query query) {
         List<Content> results = new ArrayList<>(contentRetriever.retrieve(query));
 
-        Content cursorContext = focusContextProvider.get(query);
-
-        if (cursorContext != null && isRelevant(cursorContext) && !containsContent(results, cursorContext)) {
-            results.add(cursorContext);
-        }
+        results.addAll(workspaceContextProvider.get()
+                .stream()
+                .filter(content ->
+                        content != null
+                                && isRelevant(content)
+                                && !containsContent(results, content))
+                .toList());
 
         return results;
     }

@@ -1,6 +1,5 @@
 package fr.baretto.ollamassist.component;
 
-import com.intellij.ide.FileIconProvider;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
@@ -14,10 +13,10 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.JBUI;
+import fr.baretto.ollamassist.chat.rag.WorkspaceContextRetriever;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -25,6 +24,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -36,13 +37,16 @@ public class WorkspaceFileSelector extends JPanel {
     @Getter
     private final JBTable fileTable;
     private final @NotNull Project project;
+    private final WorkspaceContextRetriever workspaceContextRetriever;
 
     public WorkspaceFileSelector(@NotNull Project project) {
         super(new BorderLayout(5, 5));
+
+        workspaceContextRetriever = project.getService(WorkspaceContextRetriever.class);
+
         setBorder(JBUI.Borders.empty(10));
 
-        // Colonnes pour le tableau
-        String[] columnNames = {"Fichier", "Chemin", "Date de modification"};
+        String[] columnNames = {"File", "Tokens", "Modification Date"};
         this.tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -51,39 +55,54 @@ public class WorkspaceFileSelector extends JPanel {
 
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                if (columnIndex == 2) return Date.class;
-                return String.class;
+                if (columnIndex == 1) return Integer.class; // Tokens
+                if (columnIndex == 2) return Date.class;   // Date
+                return Object.class;                       // File
             }
         };
 
         this.fileTable = new JBTable(tableModel);
         this.project = project;
 
-        // Configuration de la table
         fileTable.setAutoCreateRowSorter(true);
         fileTable.setFillsViewportHeight(true);
         fileTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
-        // Définir le renderer personnalisé pour la colonne "Fichier"
         fileTable.getColumnModel().getColumn(0).setCellRenderer(new FileIconRenderer());
 
-        // Ajuster les largeurs de colonnes
+        // Renderer pour la colonne Tokens
+        fileTable.setDefaultRenderer(Integer.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus,
+                                                           int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                if (c instanceof JLabel && value instanceof Integer) {
+                    JLabel label = (JLabel) c;
+                    int tokenCount = (Integer) value;
+                    label.setText(String.format("%,d tokens", tokenCount));
+                    label.setHorizontalAlignment(SwingConstants.RIGHT);
+                }
+
+                return c;
+            }
+        });
+
         fileTable.getColumnModel().getColumn(0).setPreferredWidth(200);
-        fileTable.getColumnModel().getColumn(1).setPreferredWidth(400);
+        fileTable.getColumnModel().getColumn(1).setPreferredWidth(100); // Largeur réduite pour les tokens
         fileTable.getColumnModel().getColumn(2).setPreferredWidth(150);
 
-        // Barre d'outils avec boutons
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
         toolBar.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
 
-        JButton addButton = createToolbarButton(IconUtils.ADD_TO_CONTEXT, "Ajouter des fichiers", this::addFilesAction);
-        JButton removeButton = createToolbarButton(IconUtils.REMOVE_TO_CONTEXT, "Supprimer les fichiers sélectionnés", this::removeFilesAction);
+        JButton addButton = createToolbarButton(IconUtils.ADD_TO_CONTEXT, "Add files", this::addFilesAction);
+        JButton removeButton = createToolbarButton(IconUtils.REMOVE_TO_CONTEXT, "Remove files", this::removeFilesAction);
 
         toolBar.add(addButton);
         toolBar.add(removeButton);
 
-        // Gestion de la sélection
         removeButton.setEnabled(false);
         fileTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -94,7 +113,6 @@ public class WorkspaceFileSelector extends JPanel {
         add(toolBar, BorderLayout.NORTH);
         add(new JScrollPane(fileTable), BorderLayout.CENTER);
 
-        // Abonnement aux événements
         FileEditorManagerListener listener = new FileEditorManagerListener() {
             @Override
             public void selectionChanged(@NotNull FileEditorManagerEvent event) {
@@ -121,45 +139,70 @@ public class WorkspaceFileSelector extends JPanel {
     }
 
     private void addFileToTable(File file) {
-        // Vérifier si le fichier est déjà présent
         for (int i = 0; i < tableModel.getRowCount(); i++) {
-            String path = (String) tableModel.getValueAt(i, 1);
-            if (path.equals(file.getAbsolutePath())) {
+            File existingFile = (File) tableModel.getValueAt(i, 0);
+            if (existingFile.getAbsolutePath().equals(file.getAbsolutePath())) {
                 return;
             }
         }
 
-        // Ajouter une nouvelle ligne
+        int tokenCount = estimateTokenCount(file);
+
         Object[] rowData = {
-                file, // On stocke le fichier pour le renderer
-                file.getAbsolutePath(),
+                file,
+                tokenCount,
                 new Date(file.lastModified())
         };
         tableModel.addRow(rowData);
     }
 
+    private int estimateTokenCount(File file) {
+        try {
+            // Lire le contenu du fichier
+            String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+
+            // Estimation simple : 1 token ≈ 4 caractères
+            return (int) Math.ceil(content.length() / 4.0);
+        } catch (Exception e) {
+            return 0; // Retourner 0 en cas d'erreur
+        }
+    }
 
     public void addFilesAction(ActionEvent e) {
         FileChooserDescriptor descriptor = FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor();
         descriptor.setTitle("Add Files to OllamAssist Context");
         descriptor.setDescription("Select files to add to context");
 
-
         VirtualFile[] selectedVirtualFiles = FileChooser.chooseFiles(descriptor, project, null);
 
         for (VirtualFile vFile : selectedVirtualFiles) {
             File file = VfsUtilCore.virtualToIoFile(vFile);
             addFileToTable(file);
+            workspaceContextRetriever.addFile(file);
         }
     }
 
     public void removeFilesAction(ActionEvent e) {
         int[] selectedRows = fileTable.getSelectedRows();
-        Arrays.sort(selectedRows);
+        List<File> filesToRemove = new ArrayList<>();
 
+        // Collecter les fichiers à supprimer
+        for (int viewRow : selectedRows) {
+            int modelRow = fileTable.convertRowIndexToModel(viewRow);
+            File file = (File) tableModel.getValueAt(modelRow, 0);
+            filesToRemove.add(file);
+        }
+
+        // Supprimer les lignes en ordre inverse
+        Arrays.sort(selectedRows);
         for (int i = selectedRows.length - 1; i >= 0; i--) {
             int modelRow = fileTable.convertRowIndexToModel(selectedRows[i]);
             tableModel.removeRow(modelRow);
+        }
+
+        // Supprimer les fichiers du contexte
+        for (File file : filesToRemove) {
+            workspaceContextRetriever.removeFile(file);
         }
     }
 
@@ -171,6 +214,31 @@ public class WorkspaceFileSelector extends JPanel {
         return files;
     }
 
+    public void addFileIfNotPresent(File file) {
+        boolean exists = false;
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            File existingFile = (File) tableModel.getValueAt(i, 0);
+            if (existingFile.getAbsolutePath().equals(file.getAbsolutePath())) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            addFileToTable(file);
+        }
+    }
+
+    public int getTotalTokens() {
+        int total = 0;
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            Object tokenValue = tableModel.getValueAt(i, 1);
+            if (tokenValue instanceof Integer tokenSize) {
+                total += tokenSize;
+            }
+        }
+        return total;
+    }
 
     /**
      * Renderer personnalisé pour afficher les fichiers avec leur icône spécifique
@@ -186,7 +254,6 @@ public class WorkspaceFileSelector extends JPanel {
             );
 
             if (value instanceof File file) {
-                // Obtenir l'icône spécifique au type de fichier
                 Icon fileIcon = getFileIcon(file);
 
                 label.setText(file.getName());
@@ -199,15 +266,12 @@ public class WorkspaceFileSelector extends JPanel {
 
         private Icon getFileIcon(File file) {
             try {
-                // Obtenir le FileType à partir de l'extension
                 String fileName = file.getName();
                 FileTypeManager fileTypeManager = FileTypeManager.getInstance();
                 FileType fileType = fileTypeManager.getFileTypeByFileName(fileName);
 
-                // Retourner l'icône du type de fichier
                 return fileType.getIcon();
             } catch (Exception e) {
-                // Icône par défaut si nécessaire
                 return IconLoader.getIcon("/general/file.svg", WorkspaceFileSelector.class);
             }
         }

@@ -59,24 +59,24 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         return myState.completionModelName;
     }
 
-    public String getEmbeddingModelName() {
-        return myState.getEmbeddingModelName();
-    }
-
     public void setCompletionModelName(String modelName) {
         myState.completionModelName = modelName;
+    }
+
+    public String getEmbeddingModelName() {
+        return myState.getEmbeddingModelName();
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
         myState.embeddingModelName = embeddingModelName;
     }
 
-    public void setIndexationSize(int numberOfDocuments) {
-        myState.indexationSize = numberOfDocuments;
-    }
-
     public int getIndexationSize() {
         return myState.indexationSize;
+    }
+
+    public void setIndexationSize(int numberOfDocuments) {
+        myState.indexationSize = numberOfDocuments;
     }
 
     public Duration getTimeoutDuration() {

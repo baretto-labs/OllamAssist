@@ -138,7 +138,6 @@ public class PromptPanel extends JPanel implements Disposable {
         });
 
 
-
         setBackground(UIUtil.getPanelBackground());
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(JBColor.border(), 1),

@@ -10,9 +10,9 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -215,15 +215,15 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                     prerequisiteService.isAutocompleteModelAvailableAsync().thenAccept(autocompleteModelReady -> {
                         ApplicationManager.getApplication().invokeLater(() ->
                                 updateUI(ollamaReady, chatModelReady, autocompleteModelReady));
-                       if(Boolean.TRUE.equals(ollamaReady) && Boolean.TRUE.equals(chatModelReady) && Boolean.TRUE.equals(autocompleteModelReady)){
-                           project.getService(OllamaService.class).init();
-                           LightModelAssistant.get();
+                        if (Boolean.TRUE.equals(ollamaReady) && Boolean.TRUE.equals(chatModelReady) && Boolean.TRUE.equals(autocompleteModelReady)) {
+                            project.getService(OllamaService.class).init();
+                            LightModelAssistant.get();
 
-                           ApplicationManager.getApplication()
-                                   .getMessageBus()
-                                   .syncPublisher(ModelAvailableNotifier.TOPIC)
-                                   .onModelAvailable();
-                       }
+                            ApplicationManager.getApplication()
+                                    .getMessageBus()
+                                    .syncPublisher(ModelAvailableNotifier.TOPIC)
+                                    .onModelAvailable();
+                        }
 
                     });
                     return null;

@@ -35,7 +35,7 @@ public class SuggestionEnterAction {
 
             private void insertSuggestion(Editor editor) {
                 ApplicationManager.getApplication().runWriteAction(() -> {
-                    try{
+                    try {
                         editor.getDocument().insertString(offset, suggestionManager.getCurrentSuggestion());
                         PsiDocumentManager psiDocumentManager = PsiDocumentManager.getInstance(editor.getProject());
                         psiDocumentManager.commitDocument(editor.getDocument());
