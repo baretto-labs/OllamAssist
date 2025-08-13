@@ -17,13 +17,14 @@ import java.util.List;
 public class ContextRetriever implements ContentRetriever {
 
     private final ContentRetriever contentRetriever;
-    private final FocusContextProvider focusContextProvider;
+    private final WorkspaceContextRetriever workspaceContextProvider;
     private final OllamAssistSettings settings;
+
 
 
     public ContextRetriever(ContentRetriever contentRetriever, Project project) {
         this.contentRetriever = contentRetriever;
-        this.focusContextProvider = new FocusedWindowContextProvider(project);
+        this.workspaceContextProvider = project.getService(WorkspaceContextRetriever.class);
         this.settings = OllamAssistSettings.getInstance();
     }
 
@@ -32,12 +33,13 @@ public class ContextRetriever implements ContentRetriever {
     public List<Content> retrieve(Query query) {
         try {
             List<Content> results = new ArrayList<>(contentRetriever.retrieve(query));
-
-            Content cursorContext = focusContextProvider.get(query);
-
-            if (cursorContext != null && isRelevant(cursorContext) && !containsContent(results, cursorContext)) {
-                results.add(cursorContext);
-            }
+            results.addAll(workspaceContextProvider.get()
+                .stream()
+                .filter(content ->
+                        content != null
+                                && isRelevant(content)
+                                && !containsContent(results, content))
+                .toList());
 
             return results;
         } catch (InternalServerException e) {

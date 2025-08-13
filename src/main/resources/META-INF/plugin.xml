@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.5.0</h2>
+        <UL>
+            <LI>feat: Add file context selector for AI assistant.</LI>
+        </UL>
         <h2>V1.4.1</h2>
         <UL>
             <LI>feat: Allow to configure each model to have its own ollama instance.</LI>
@@ -161,6 +165,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.FilesUtil"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIndexingPipeline"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.service.OllamaService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.WorkspaceContextRetriever"/>
 
 
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.SelectionGutterIcon"/>

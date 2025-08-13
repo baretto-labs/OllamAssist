@@ -44,11 +44,11 @@ public final class OllamaService implements Disposable, SettingsListener {
         messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
         project.getMessageBus().connect().subscribe(ChatModelModifiedNotifier.TOPIC,
                 (ChatModelModifiedNotifier) () -> new Task.Backgroundable(project, "Reload chat model") {
-            @Override
-            public void run(@NotNull ProgressIndicator indicator) {
-                assistant = initAssistant();
-            }
-        }.queue());
+                    @Override
+                    public void run(@NotNull ProgressIndicator indicator) {
+                        assistant = initAssistant();
+                    }
+                }.queue());
 
 
     }

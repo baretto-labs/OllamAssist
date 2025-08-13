@@ -63,8 +63,8 @@ public class SelectionGutterIcon {
 
             editor.getComponent().addHierarchyListener(e -> {
                 if ((e.getChangeFlags() & HierarchyEvent.PARENT_CHANGED) != 0 && editor.getComponent().getParent() == null) {
-                        Disposer.dispose(disposable);
-                    }
+                    Disposer.dispose(disposable);
+                }
             });
 
             return disposable;

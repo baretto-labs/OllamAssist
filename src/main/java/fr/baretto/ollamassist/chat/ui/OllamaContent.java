@@ -1,20 +1,26 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.OnePixelSplitter;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
+import com.intellij.util.ui.JBUI;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
+import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
-import fr.baretto.ollamassist.setting.SettingsListener;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +28,9 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,6 +43,7 @@ public class OllamaContent {
     @Getter
     private final JPanel contentPanel = new JPanel();
     private final PromptPanel promptInput = new PromptPanel();
+    private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
     private final PrerequisitesPanel prerequisitesPanel;
     private final AskToChatAction askToChatAction;
@@ -43,6 +53,7 @@ public class OllamaContent {
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
+        filesSelector = new WorkspaceFileSelector(toolWindow.getProject());
         prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
         askToChatAction = new AskToChatAction(promptInput, context);
         promptInput.addActionMap(askToChatAction);
@@ -68,7 +79,6 @@ public class OllamaContent {
                 });
             }
         });
-
 
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
@@ -104,26 +114,159 @@ public class OllamaContent {
     }
 
     private JPanel createSplitter() {
-        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.75f);
-        splitter.setFirstComponent(outputPanel);
-        splitter.setSecondComponent(createInputPanel());
+        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.70f);
+
+        JPanel messagesPanel = new JPanel(new BorderLayout());
+        messagesPanel.add(outputPanel, BorderLayout.CENTER);
+
+        JComponent inputPanel = createInputPanel();
+
+        splitter.setFirstComponent(messagesPanel);
+        splitter.setSecondComponent(inputPanel);
         splitter.setHonorComponentsMinimumSize(true);
+        splitter.setResizeEnabled(true);
+
         return splitter;
     }
 
     private JComponent createInputPanel() {
-        JPanel submitPanel = new JPanel(new BorderLayout());
-        submitPanel.setMinimumSize(new Dimension(Integer.MAX_VALUE, 100));
-        submitPanel.setPreferredSize(new Dimension(Integer.MAX_VALUE, 100));
-        JPanel promptsPanel = new JPanel();//@TODO add context file management
-        submitPanel.add(promptsPanel, BorderLayout.NORTH);
         JBScrollPane scrollPane = new JBScrollPane(promptInput);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER); // Pas de scrollbar verticale
-        submitPanel.add(scrollPane, BorderLayout.CENTER);
-        return submitPanel;
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        JPanel filePanel = createCollapsiblePanel("Context", filesSelector);
+
+        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.0f);
+        splitter.setFirstComponent(filePanel);
+        splitter.setSecondComponent(scrollPane);
+        splitter.setHonorComponentsMinimumSize(true);
+
+        int[] initialSize = {150};
+
+        AbstractButton toggleButton = (AbstractButton) ((JPanel) filePanel.getComponent(0)).getComponent(0);
+        toggleButton.addActionListener(e -> {
+            boolean currentlyCollapsed = !filePanel.getComponent(1).isVisible();
+            filePanel.getComponent(1).setVisible(!currentlyCollapsed);
+
+            SwingUtilities.invokeLater(() -> {
+                if (currentlyCollapsed) {
+                    splitter.setProportion(initialSize[0] / (float) Math.max(splitter.getHeight(), initialSize[0] + 100));
+                } else {
+                    int headerHeight = filePanel.getComponent(0).getPreferredSize().height;
+                    splitter.setProportion(headerHeight / (float) Math.max(splitter.getHeight(), headerHeight + 100));
+                }
+
+                filePanel.revalidate();
+                splitter.revalidate();
+            });
+        });
+
+        splitter.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                initialSize[0] = splitter.getFirstComponent().getHeight();
+            }
+        });
+
+        return splitter;
     }
 
+    private JPanel createCollapsiblePanel(String title, WorkspaceFileSelector fileSelector) {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+        JButton toggleButton = new JButton("▼ " + title);
+        toggleButton.setBorderPainted(false);
+        toggleButton.setFocusPainted(false);
+        toggleButton.setContentAreaFilled(false);
+        toggleButton.setHorizontalAlignment(SwingConstants.LEFT);
+
+        JButton addButton = new JButton(IconUtils.ADD_TO_CONTEXT);
+        addButton.setToolTipText("Add to context");
+        addButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        addButton.setContentAreaFilled(false);
+        addButton.setFocusPainted(false);
+        addButton.setPreferredSize(new Dimension(24, 24));
+        addButton.addActionListener(fileSelector::addFilesAction);
+        ComponentCustomizer.applyHoverEffect(addButton);
+
+        JButton removeButton = new JButton(IconUtils.REMOVE_TO_CONTEXT);
+        removeButton.setToolTipText("Remove from context");
+        removeButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        removeButton.setContentAreaFilled(false);
+        removeButton.setFocusPainted(false);
+        removeButton.setPreferredSize(new Dimension(24, 24));
+        removeButton.setEnabled(false);
+        removeButton.addActionListener(fileSelector::removeFilesAction);
+        ComponentCustomizer.applyHoverEffect(removeButton);
+
+
+        JLabel tokenCountLabel = new JLabel("Tokens: 0");
+        tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
+        tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        tokenCountLabel.setForeground(JBColor.GRAY);
+        fileSelector.getFileTable().getModel().addTableModelListener(e -> {
+            updateTokenCount(fileSelector, tokenCountLabel);
+        });
+
+
+        fileSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                removeButton.setEnabled(fileSelector.getFileTable().getSelectedRowCount() > 0);
+            }
+        });
+
+        headerPanel.add(toggleButton);
+        headerPanel.add(tokenCountLabel);
+        headerPanel.add(Box.createHorizontalGlue());
+        headerPanel.add(addButton);
+        headerPanel.add(Box.createRigidArea(new Dimension(5, 0)));
+        headerPanel.add(removeButton);
+        updateTokenCount(fileSelector, tokenCountLabel);
+
+        JPanel contentContainer = new JPanel(new BorderLayout());
+        JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileTable());
+        fileScrollPane.setMinimumSize(new Dimension(0, 100)); // Hauteur minimale raisonnable
+        fileScrollPane.setPreferredSize(new Dimension(0, 150)); // Hauteur préférée équilibrée
+        fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        contentContainer.add(fileScrollPane, BorderLayout.CENTER);
+
+        panel.add(headerPanel, BorderLayout.NORTH);
+        panel.add(contentContainer, BorderLayout.CENTER);
+
+        final boolean[] isCollapsed = {false};
+
+        toggleButton.addActionListener(e -> {
+            isCollapsed[0] = !isCollapsed[0];
+            contentContainer.setVisible(!isCollapsed[0]);
+            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + title);
+        });
+
+        return panel;
+    }
+
+    private void updateTokenCount(WorkspaceFileSelector fileSelector, JLabel tokenLabel) {
+        new SwingWorker<Integer, Void>() {
+            @Override
+            protected Integer doInBackground() {
+                return fileSelector.getTotalTokens();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    long tokenCount = get();
+                    tokenLabel.setText("Tokens: " + tokenCount);
+                } catch (Exception e) {
+                    tokenLabel.setText("Tokens: ?");
+                }
+            }
+        }.execute();
+    }
 
     private JPanel createConversationPanel() {
         JPanel container = new JPanel();
@@ -148,6 +291,20 @@ public class OllamaContent {
         }
 
         promptInput.toggleGenerationState(false);
+    }
+
+    private void logException(Throwable throwable) {
+        log.error("Exception: " + throwable);
+        done(ChatResponse.builder().finishReason(FinishReason.OTHER).aiMessage(AiMessage.from(throwable.getMessage())).build());
+    }
+
+    private void done(ChatResponse chatResponse) {
+        outputPanel.finalizeMessage(chatResponse);
+        promptInput.toggleGenerationState(false);
+    }
+
+    private void publish(String token) {
+        outputPanel.appendToken(token);
     }
 
     @Builder
@@ -200,20 +357,6 @@ public class OllamaContent {
             };
         }
 
-    }
-
-    private void logException(Throwable throwable) {
-        log.error("Exception: " + throwable);
-        done(ChatResponse.builder().finishReason(FinishReason.OTHER).aiMessage(AiMessage.from(throwable.getMessage())).build());
-    }
-
-    private void done(ChatResponse chatResponse) {
-        outputPanel.finalizeMessage(chatResponse);
-        promptInput.toggleGenerationState(false);
-    }
-
-    private void publish(String token) {
-        outputPanel.appendToken(token);
     }
 
 }

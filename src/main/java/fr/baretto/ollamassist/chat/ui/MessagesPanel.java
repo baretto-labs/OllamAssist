@@ -53,7 +53,7 @@ public class MessagesPanel extends JPanel {
         connection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) this::clearAll);
     }
 
-    private void clearAll(){
+    private void clearAll() {
         container.removeAll();
         container.repaint();
         container.revalidate();
