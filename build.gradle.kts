@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.1.20"
     id("org.jetbrains.intellij.platform") version "2.6.0"
+    id("org.sonarqube") version "4.3.0.3225"
 }
 
 group = "fr.baretto"
@@ -139,5 +140,14 @@ tasks {
 
     build {
         dependsOn("buildPlugin")
+    }
+
+    sonarqube {
+        properties {
+            property("sonar.projectKey", "OllamAssist")
+            property("sonar.organization", "baretto-labs")
+            property("sonar.host.url", "https://sonarcloud.io")
+            property("sonar.login", System.getenv("SONAR_TOKEN"))
+        }
     }
 }
