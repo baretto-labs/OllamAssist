@@ -60,6 +60,9 @@ import java.util.concurrent.*;
  */
 public class ContextRetriever implements ContentRetriever {
 
+    private static final String NOTIFICATION_GROUP_ID = "OllamAssist";
+
+
     private final ContentRetriever contentRetriever;
     private final WorkspaceContextRetriever workspaceContextProvider;
     private final OllamAssistSettings settings;
@@ -119,7 +122,7 @@ public class ContextRetriever implements ContentRetriever {
 
         } catch (TimeoutException e) {
             Notifications.Bus.notify(new Notification(
-                    "OllamAssist",
+                    NOTIFICATION_GROUP_ID,
                     "Timeout",
                     "Context retrieval took longer than 2 seconds and was aborted.",
                     NotificationType.WARNING
@@ -133,11 +136,11 @@ public class ContextRetriever implements ContentRetriever {
                     "The selected embedding model '%s' at '%s' does not support embeddings.<br>Server response: %s<br>Please select a different model in the settings.",
                     modelName, url, serverResponse
             );
-            Notifications.Bus.notify(new Notification("OllamAssist", "Model error", errorMessage, NotificationType.ERROR));
+            Notifications.Bus.notify(new Notification(NOTIFICATION_GROUP_ID, "Model error", errorMessage, NotificationType.ERROR));
             return Collections.emptyList();
         } catch (Exception e) {
             Notifications.Bus.notify(new Notification(
-                    "OllamAssist",
+                    NOTIFICATION_GROUP_ID,
                     "Error",
                     "An unexpected error occurred while retrieving context.",
                     NotificationType.ERROR

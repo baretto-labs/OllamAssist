@@ -20,12 +20,16 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class DuckDuckGoContentRetriever implements ContentRetriever {
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(2);
     private static final String HTML_SEARCH_URL = "https://html.duckduckgo.com/html/";
     private static final String API_SEARCH_URL = "https://api.duckduckgo.com/";
+    private static final String PROTOCOL_HTTP = "http://";
+    private static final String PROTOCOL_HTTPS = "https://";
+    private static final String FIRST_URL = "FirstURL";
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -107,8 +111,7 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         return parseApiResponse(response.body());
     }
 
-    private List<SearchResult> parseHtmlResults(org.jsoup.nodes.Document doc) {
-        List<SearchResult> results = new ArrayList<>();
+    List<SearchResult> parseHtmlResults(org.jsoup.nodes.Document doc) {
 
         String[] selectors = {"div.web-result", "div.result", ".links_main"};
         Elements resultElements = new Elements();
@@ -118,86 +121,81 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
             if (!resultElements.isEmpty()) break;
         }
 
-        for (Element element : resultElements) {
-            if (results.size() >= maxResults) break;
+        return new ArrayList<>(resultElements.stream()
+                .map(element -> {
+                    Element titleElement = element.selectFirst("h2 a, .result__title a, h3 a");
+                    if (titleElement == null) return null;
 
-            Element titleElement = element.selectFirst("h2 a, .result__title a, h3 a");
-            if (titleElement == null) continue;
+                    String title = titleElement.text().trim();
+                    String url = titleElement.attr("href");
+                    if (title.isEmpty() || !isValidUrl(url)) return null;
 
-            String title = titleElement.text().trim();
-            String url = titleElement.attr("href");
+                    Element snippetElement = element.selectFirst(".result__snippet, .snippet");
+                    String snippet = snippetElement != null ? snippetElement.text().trim() : "";
 
-            if (title.isEmpty() || !isValidUrl(url)) continue;
-
-            String snippet = "";
-            Element snippetElement = element.selectFirst(".result__snippet, .snippet");
-            if (snippetElement != null) {
-                snippet = snippetElement.text().trim();
-            }
-
-            results.add(new SearchResult(title, cleanUrl(url), snippet));
-        }
-
-        return results;
+                    return new SearchResult(title, cleanUrl(url), snippet);
+                })
+                .filter(Objects::nonNull)
+                .limit(maxResults)
+                .toList());
     }
 
-    private List<SearchResult> parseApiResponse(String json) {
-        List<SearchResult> results = new ArrayList<>();
-
+    List<SearchResult> parseApiResponse(String json) {
         try {
             JsonNode rootNode = objectMapper.readTree(json);
+            List<SearchResult> results = new ArrayList<>();
 
-            String abstractText = cleanText(getJsonText(rootNode, "Abstract"));
-            String abstractUrl = getJsonText(rootNode, "AbstractURL");
-            if (!abstractText.isEmpty() && !abstractUrl.isEmpty()) {
-                results.add(new SearchResult("Abstract", abstractUrl, abstractText));
-            }
+            addAbstract(rootNode, results);
+            addAnswer(rootNode, results);
+            addResultsNode(rootNode.get("Results"), results);
+            addRelatedTopics(rootNode.get("RelatedTopics"), results);
 
-            String answer = cleanText(getJsonText(rootNode, "Answer"));
-            if (!answer.isEmpty()) {
-                results.add(new SearchResult("Answer", "https://duckduckgo.com", answer));
-            }
-
-            JsonNode resultsNode = rootNode.get("Results");
-            if (resultsNode != null && resultsNode.isArray()) {
-                for (JsonNode node : resultsNode) {
-                    String title = cleanText(getJsonText(node, "Text"));
-                    String url = getJsonText(node, "FirstURL");
-                    if (!title.isEmpty() && !url.isEmpty()) {
-                        results.add(new SearchResult(title, url, ""));
-                    }
-                }
-            }
-
-            JsonNode topicsNode = rootNode.get("RelatedTopics");
-            if (topicsNode != null && topicsNode.isArray()) {
-                for (JsonNode node : topicsNode) {
-                    if (node.has("Text")) {
-                        String title = cleanText(getJsonText(node, "Text"));
-                        String url = getJsonText(node, "FirstURL");
-                        if (!title.isEmpty() && !url.isEmpty()) {
-                            results.add(new SearchResult(title, url, ""));
-                        }
-                    }
-                    else if (node.has("Topics")) {
-                        for (JsonNode sub : node.get("Topics")) {
-                            String title = cleanText(getJsonText(sub, "Text"));
-                            String url = getJsonText(sub, "FirstURL");
-                            if (!title.isEmpty() && !url.isEmpty()) {
-                                results.add(new SearchResult(title, url, ""));
-                            }
-                        }
-                    }
-                }
-            }
-
-        } catch (Exception ignored) {
+            return results.stream().limit(maxResults).toList();
+        } catch (Exception e) {
+            return List.of();
         }
-
-        return results.stream().limit(maxResults).toList();
     }
 
-    private static String cleanText(String html) {
+    private void addAbstract(JsonNode rootNode, List<SearchResult> results) {
+        String abstractText = cleanText(getJsonText(rootNode, "Abstract"));
+        String abstractUrl = getJsonText(rootNode, "AbstractURL");
+        if (!abstractText.isEmpty() && !abstractUrl.isEmpty()) {
+            results.add(new SearchResult("Abstract", abstractUrl, abstractText));
+        }
+    }
+
+    private void addAnswer(JsonNode rootNode, List<SearchResult> results) {
+        String answer = cleanText(getJsonText(rootNode, "Answer"));
+        if (!answer.isEmpty()) {
+            results.add(new SearchResult("Answer", "https://duckduckgo.com", answer));
+        }
+    }
+
+    private void addResultsNode(JsonNode resultsNode, List<SearchResult> results) {
+        if (resultsNode == null || !resultsNode.isArray()) return;
+        resultsNode.forEach(node -> {
+            String title = cleanText(getJsonText(node, "Text"));
+            String url = getJsonText(node, FIRST_URL);
+            if (!title.isEmpty() && !url.isEmpty()) {
+                results.add(new SearchResult(title, url, ""));
+            }
+        });
+    }
+
+    private void addRelatedTopics(JsonNode topicsNode, List<SearchResult> results) {
+        if (topicsNode == null || !topicsNode.isArray()) return;
+
+        topicsNode.forEach(node -> {
+            if (node.has("Text")) {
+                addResultsNode(node, results);
+            } else if (node.has("Topics")) {
+                addResultsNode(node.get("Topics"), results);
+            }
+        });
+    }
+
+
+    static String cleanText(String html) {
         if (html == null || html.isBlank()) return "";
         return Jsoup.parse(html).text().trim();
     }
@@ -207,18 +205,18 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         return field != null && !field.isNull() ? field.asText("").trim() : "";
     }
 
-    private static boolean isValidUrl(String url) {
+    static boolean isValidUrl(String url) {
         if (url == null || url.isEmpty()) return false;
         if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
-        return url.startsWith("https://") || url.startsWith("http://") || url.startsWith("//");
+        return url.startsWith(PROTOCOL_HTTPS) || url.startsWith(PROTOCOL_HTTP) || url.startsWith("//");
     }
 
-    private static String cleanUrl(String url) {
+    static String cleanUrl(String url) {
         if (url.startsWith("//")) {
             url = "https:" + url;
         }
-        if (url.startsWith("http://")) {
-            url = url.replace("http://", "https://");
+        if (url.startsWith(PROTOCOL_HTTP)) {
+            url = url.replace(PROTOCOL_HTTP, PROTOCOL_HTTPS);
         }
         return url;
     }
