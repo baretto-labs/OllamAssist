@@ -82,10 +82,6 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() == 202) {
-            throw new IOException("DuckDuckGo HTML search blocked");
-        }
-
         org.jsoup.nodes.Document doc = Jsoup.parse(response.body());
         List<SearchResult> results = parseHtmlResults(doc);
 
@@ -151,20 +147,17 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         try {
             JsonNode rootNode = objectMapper.readTree(json);
 
-            // 1. Abstract
             String abstractText = cleanText(getJsonText(rootNode, "Abstract"));
             String abstractUrl = getJsonText(rootNode, "AbstractURL");
             if (!abstractText.isEmpty() && !abstractUrl.isEmpty()) {
                 results.add(new SearchResult("Abstract", abstractUrl, abstractText));
             }
 
-            // 2. Answer
             String answer = cleanText(getJsonText(rootNode, "Answer"));
             if (!answer.isEmpty()) {
                 results.add(new SearchResult("Answer", "https://duckduckgo.com", answer));
             }
 
-            // 3. Résultats standards
             JsonNode resultsNode = rootNode.get("Results");
             if (resultsNode != null && resultsNode.isArray()) {
                 for (JsonNode node : resultsNode) {
@@ -176,7 +169,6 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
                 }
             }
 
-            // 4. RelatedTopics (souvent beaucoup de contenu)
             JsonNode topicsNode = rootNode.get("RelatedTopics");
             if (topicsNode != null && topicsNode.isArray()) {
                 for (JsonNode node : topicsNode) {
@@ -187,7 +179,6 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
                             results.add(new SearchResult(title, url, ""));
                         }
                     }
-                    // Certains RelatedTopics contiennent "Topics" imbriqués
                     else if (node.has("Topics")) {
                         for (JsonNode sub : node.get("Topics")) {
                             String title = cleanText(getJsonText(sub, "Text"));
@@ -206,27 +197,23 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         return results.stream().limit(maxResults).toList();
     }
 
-    /**
-     * Supprime toutes les balises HTML et scripts, ne garde que le texte brut.
-     */
-    private String cleanText(String html) {
+    private static String cleanText(String html) {
         if (html == null || html.isBlank()) return "";
-        // Utilisation de Jsoup pour parser et nettoyer
         return Jsoup.parse(html).text().trim();
     }
 
-    private String getJsonText(JsonNode node, String fieldName) {
+    private static String getJsonText(JsonNode node, String fieldName) {
         JsonNode field = node.get(fieldName);
         return field != null && !field.isNull() ? field.asText("").trim() : "";
     }
 
-    private boolean isValidUrl(String url) {
+    private static boolean isValidUrl(String url) {
         if (url == null || url.isEmpty()) return false;
         if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
         return url.startsWith("https://") || url.startsWith("http://") || url.startsWith("//");
     }
 
-    private String cleanUrl(String url) {
+    private static String cleanUrl(String url) {
         if (url.startsWith("//")) {
             url = "https:" + url;
         }
