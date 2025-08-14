@@ -38,6 +38,7 @@ public class PromptPanel extends JPanel implements Disposable {
             BorderFactory.createLineBorder(UIUtil.getFocusedBorderColor(), 1),
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
     );
+    private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
 
     private EditorTextField editorTextField;
     private JButton sendButton;
@@ -118,7 +119,7 @@ public class PromptPanel extends JPanel implements Disposable {
 
         JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightControlPanel.setOpaque(false);
-        rightControlPanel.add(modelSelector); // Maintenant initialisé
+        rightControlPanel.add(modelSelector);
         rightControlPanel.add(sendButton);
         rightControlPanel.add(stopButton);
 
@@ -157,7 +158,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private JToggleButton createWebSearchButton() {
         JToggleButton button = new JToggleButton(IconUtils.WEB_SEARCH_DISABLED);
         button.setSelected(webSearchEnabled);
-        button.setToolTipText("Enable web search");
+        button.setToolTipText(ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO);
         button.setPreferredSize(new Dimension(30, 30));
         button.setFocusPainted(false);
         button.setOpaque(true);
@@ -169,7 +170,6 @@ public class PromptPanel extends JPanel implements Disposable {
             updateWebSearchButtonState(button);
         });
 
-        //ComponentCustomizer.applyHoverEffect(button);
         updateWebSearchButtonState(button);
 
         return button;
@@ -178,10 +178,10 @@ public class PromptPanel extends JPanel implements Disposable {
     private void updateWebSearchButtonState(JToggleButton button) {
         if (webSearchEnabled) {
             button.setIcon(IconUtils.WEB_SEARCH_ENABLED);
-            button.setToolTipText("Web search enabled");
+            button.setToolTipText("Web search enabled with DuckDuckGO");
         } else {
             button.setIcon(IconUtils.WEB_SEARCH_DISABLED);
-            button.setToolTipText("Enable web search");
+            button.setToolTipText(ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO);
         }
         OllamAssistSettings
                 .getInstance()

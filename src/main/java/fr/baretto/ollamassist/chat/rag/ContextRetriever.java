@@ -145,6 +145,7 @@ public class ContextRetriever implements ContentRetriever {
                     "An unexpected error occurred while retrieving context.",
                     NotificationType.ERROR
             ));
+            Thread.currentThread().interrupt();
             return Collections.emptyList();
         }
     }
