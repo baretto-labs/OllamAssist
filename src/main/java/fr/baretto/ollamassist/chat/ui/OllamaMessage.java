@@ -13,7 +13,7 @@ import java.awt.event.ComponentEvent;
 
 public class OllamaMessage extends JPanel {
 
-    private final Context context;
+    private final transient Context context;
     private final JPanel mainPanel;
     private final JLabel currentHeaderPanel;
     private boolean inCodeBlock = false;
@@ -28,7 +28,6 @@ public class OllamaMessage extends JPanel {
         headerPanel.setOpaque(false);
         currentHeaderPanel = createHeaderLabel();
         headerPanel.add(currentHeaderPanel, BorderLayout.WEST);
-        //headerPanel.add(createDeleteButton(), BorderLayout.EAST);
 
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -58,39 +57,48 @@ public class OllamaMessage extends JPanel {
     public void append(String token) {
         SwingUtilities.invokeLater(() -> {
             String[] parts = token.split("``", -1);
-
             for (int i = 0; i < parts.length; i++) {
-                String part = parts[i];
-                part = part.replace("`", "");
-                if (inCodeBlock) {
-                    if (isLanguageNotDetected) {
-                        String syntaxtStyle = detectSyntaxStyle(token);
-                        if (!syntaxtStyle.isEmpty()) {
-                            latestCodeBlock.applyStyle(syntaxtStyle);
-                            isLanguageNotDetected = false;
-                            break;
-                        }
-                    }
-                    latestCodeBlock.appendText(part);
-                    latestCodeBlock.adjustSizeToContent();
-
-                    if (i < parts.length - 1) {
-                        endCodeBlock();
-                    }
-                } else {
-                    String cleanedPart = part.replace("`", "");
-
-                    currentTextArea.append(cleanedPart);
-                    currentTextArea.setCaretPosition(currentTextArea.getDocument().getLength());
-
-                    if (i < parts.length - 1) {
-                        startCodeBlock();
-                    }
-                }
+                processPart(parts[i], i < parts.length - 1);
             }
             revalidate();
             repaint();
         });
+    }
+
+    private void processPart(String part, boolean hasNextPart) {
+        part = part.replace("`", "");
+
+        if (inCodeBlock) {
+            handleCodeBlockPart(part, hasNextPart);
+        } else {
+            handleTextPart(part, hasNextPart);
+        }
+    }
+
+    private void handleCodeBlockPart(String part, boolean hasNextPart) {
+        if (isLanguageNotDetected) {
+            String syntaxStyle = detectSyntaxStyle(part);
+            if (!syntaxStyle.isEmpty()) {
+                latestCodeBlock.applyStyle(syntaxStyle);
+                isLanguageNotDetected = false;
+            }
+        }
+
+        latestCodeBlock.appendText(part);
+        latestCodeBlock.adjustSizeToContent();
+
+        if (hasNextPart) {
+            endCodeBlock();
+        }
+    }
+
+    private void handleTextPart(String part, boolean hasNextPart) {
+        currentTextArea.append(part);
+        currentTextArea.setCaretPosition(currentTextArea.getDocument().getLength());
+
+        if (hasNextPart) {
+            startCodeBlock();
+        }
     }
 
     private String detectSyntaxStyle(String language) {
@@ -141,7 +149,7 @@ public class OllamaMessage extends JPanel {
         return header;
     }
 
-    public void finalize(ChatResponse chatResponse) {
+    public void finalizeResponse(ChatResponse chatResponse) {
         if (currentHeaderPanel != null) {
             if (chatResponse.finishReason() == FinishReason.OTHER) {
                 currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ERROR_ICON);

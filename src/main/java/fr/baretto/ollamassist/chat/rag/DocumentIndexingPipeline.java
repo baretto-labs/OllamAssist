@@ -72,8 +72,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
 
     public boolean addDocument(String filePath) {
         if (pendingDocumentIds.add(filePath)) {
-            processingQueue.offer(filePath);
-            return true;
+            return processingQueue.offer(filePath);
         }
         return false;
     }
@@ -201,14 +200,6 @@ public class DocumentIndexingPipeline implements AutoCloseable {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    public int getPendingDocumentCount() {
-        return processingQueue.size();
-    }
-
-    public int getTotalIndexedDocuments() {
-        return totalIndexedDocuments.get();
     }
 
     private static class ProcessingException extends RuntimeException {

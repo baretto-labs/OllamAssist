@@ -15,7 +15,7 @@ public class MessagesPanel extends JPanel {
     private final JPanel container = new JPanel(new GridBagLayout());
     private final JBScrollPane scrollPane;
     private OllamaMessage latestOllamaMessage;
-    private Context context;
+    private transient Context context;
     private PresentationPanel presentationPanel = new PresentationPanel();
     private boolean autoScrollEnabled = true;
 
@@ -108,7 +108,7 @@ public class MessagesPanel extends JPanel {
     }
 
     public void finalizeMessage(ChatResponse chatResponse) {
-        latestOllamaMessage.finalize(chatResponse);
+        latestOllamaMessage.finalizeResponse(chatResponse);
         latestOllamaMessage = null;
     }
 
