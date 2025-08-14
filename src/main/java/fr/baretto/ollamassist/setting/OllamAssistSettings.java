@@ -63,7 +63,6 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.embeddingOllamaUrl = url;
     }
 
-    
 
     public String getChatModelName() {
         return myState.chatModelName;
@@ -121,6 +120,14 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.sources = sources;
     }
 
+    public void setWebSearchEnabled(boolean webSearchEnabled) {
+        myState.webSearchEnabled = webSearchEnabled;
+    }
+
+    public boolean webSearchEnabled() {
+        return myState.webSearchEnabled;
+    }
+
     @Getter
     public static class State {
         public String chatOllamaUrl = DEFAULT_URL;
@@ -132,7 +139,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String timeout = "300";
         public String sources = "src/";
         public int indexationSize = 5000;
+        public boolean webSearchEnabled = false;
     }
-
 
 }

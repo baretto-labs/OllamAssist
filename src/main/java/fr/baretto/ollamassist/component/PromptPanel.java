@@ -45,6 +45,8 @@ public class PromptPanel extends JPanel implements Disposable {
     private ModelSelector modelSelector;
     private JButton stopButton;
     private boolean isGenerating = false;
+    private JToggleButton webSearchButton;
+    private boolean webSearchEnabled = false;
 
     public PromptPanel() {
         super(new BorderLayout());
@@ -93,29 +95,35 @@ public class PromptPanel extends JPanel implements Disposable {
             settings.setUseSoftWraps(true);
         });
 
+        modelSelector = new ModelSelector();
+        modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
+        modelSelector.setModelLoader(this::fetchAvailableModels);
 
         sendButton = createSubmitButton();
-
         stopButton = createStopButton();
         stopButton.setVisible(false);
 
         ComponentCustomizer.applyHoverEffect(sendButton);
         ComponentCustomizer.applyHoverEffect(stopButton);
 
+
+        webSearchButton = createWebSearchButton();
+
         JPanel controlPanel = new JPanel(new BorderLayout(10, 0));
         controlPanel.setOpaque(false);
 
-        modelSelector = new ModelSelector();
-        modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
-        modelSelector.setModelLoader(this::fetchAvailableModels);
-        JPanel comboButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        comboButtonPanel.setOpaque(false);
-        comboButtonPanel.add(modelSelector);
-        comboButtonPanel.add(sendButton);
-        comboButtonPanel.add(stopButton);
+        JPanel leftControlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftControlPanel.setOpaque(false);
+        leftControlPanel.add(webSearchButton);
 
-        controlPanel.add(comboButtonPanel, BorderLayout.EAST);
+        JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        rightControlPanel.setOpaque(false);
+        rightControlPanel.add(modelSelector); // Maintenant initialisé
+        rightControlPanel.add(sendButton);
+        rightControlPanel.add(stopButton);
 
+        controlPanel.add(leftControlPanel, BorderLayout.WEST);
+        controlPanel.add(rightControlPanel, BorderLayout.EAST);
 
         JPanel container = new JPanel(new BorderLayout());
         container.add(editorTextField, BorderLayout.CENTER);
@@ -137,7 +145,6 @@ public class PromptPanel extends JPanel implements Disposable {
             }
         });
 
-
         setBackground(UIUtil.getPanelBackground());
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(JBColor.border(), 1),
@@ -145,8 +152,42 @@ public class PromptPanel extends JPanel implements Disposable {
         ));
 
         add(container, BorderLayout.CENTER);
-
     }
+
+    private JToggleButton createWebSearchButton() {
+        JToggleButton button = new JToggleButton(IconUtils.WEB_SEARCH_DISABLED);
+        button.setSelected(webSearchEnabled);
+        button.setToolTipText("Enable web search");
+        button.setPreferredSize(new Dimension(30, 30));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        button.setMargin(JBUI.emptyInsets());
+
+        button.addActionListener(e -> {
+            webSearchEnabled = button.isSelected();
+            updateWebSearchButtonState(button);
+        });
+
+        //ComponentCustomizer.applyHoverEffect(button);
+        updateWebSearchButtonState(button);
+
+        return button;
+    }
+
+    private void updateWebSearchButtonState(JToggleButton button) {
+        if (webSearchEnabled) {
+            button.setIcon(IconUtils.WEB_SEARCH_ENABLED);
+            button.setToolTipText("Web search enabled");
+        } else {
+            button.setIcon(IconUtils.WEB_SEARCH_DISABLED);
+            button.setToolTipText("Enable web search");
+        }
+        OllamAssistSettings
+                .getInstance()
+                .setWebSearchEnabled(webSearchEnabled);
+    }
+
 
     private List<String> fetchAvailableModels() {
         try {

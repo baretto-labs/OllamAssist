@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.1.20"
     id("org.jetbrains.intellij.platform") version "2.6.0"
+    id("org.sonarqube") version "4.3.0.3225"
 }
 
 group = "fr.baretto"
@@ -55,6 +56,10 @@ dependencies {
     }
     implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
+    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+
+
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-analysis-common:$apacheLuceneVersion")
@@ -135,5 +140,14 @@ tasks {
 
     build {
         dependsOn("buildPlugin")
+    }
+
+    sonarqube {
+        properties {
+            property("sonar.projectKey", "OllamAssist")
+            property("sonar.organization", "baretto-labs")
+            property("sonar.host.url", "https://sonarcloud.io")
+            property("sonar.login", System.getenv("SONAR_TOKEN"))
+        }
     }
 }

@@ -87,8 +87,8 @@ public final class OllamaService implements Disposable, SettingsListener {
                             EmbeddingStoreContentRetriever
                                     .builder()
                                     .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
-                                    .dynamicMaxResults(query -> 3)
-                                    .dynamicMinScore(query -> 0.70)
+                                    .dynamicMaxResults(query -> 2)
+                                    .dynamicMinScore(query -> 0.85)
                                     .embeddingStore(embeddingStore)
                                     .build(),
                             project))

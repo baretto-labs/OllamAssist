@@ -10,6 +10,7 @@ import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
+import lombok.extern.slf4j.Slf4j;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
@@ -21,13 +22,17 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED;
+
+@Slf4j
 public class SyntaxHighlighterPanel extends JPanel {
     private static final String INSERT = "Insert";
     private static final String COPY_TO_CLIPBOARD = "Copy to clipboard";
     private final RSyntaxTextArea codeBlock;
     private final JScrollPane scrollPane;
     private final JPanel parentPanel;
-    private final Context context;
+    private final transient Context context;
     private final JLabel languageLabel = new JLabel();
 
 
@@ -43,7 +48,7 @@ public class SyntaxHighlighterPanel extends JPanel {
         codeBlock.setEditable(false);
         updateTheme();
 
-        scrollPane = new JBScrollPane(codeBlock, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane = new JBScrollPane(codeBlock, VERTICAL_SCROLLBAR_AS_NEEDED, HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         JPanel headerPanel = new JPanel(new BorderLayout());
 
@@ -99,7 +104,7 @@ public class SyntaxHighlighterPanel extends JPanel {
             Theme theme = Theme.load(in);
             theme.apply(codeBlock);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 

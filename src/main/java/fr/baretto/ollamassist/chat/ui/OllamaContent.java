@@ -208,9 +208,9 @@ public class OllamaContent {
         tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
         tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
         tokenCountLabel.setForeground(JBColor.GRAY);
-        fileSelector.getFileTable().getModel().addTableModelListener(e -> {
-            updateTokenCount(fileSelector, tokenCountLabel);
-        });
+        fileSelector.getFileTable().getModel().addTableModelListener(e ->
+                updateTokenCount(fileSelector, tokenCountLabel)
+        );
 
 
         fileSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
@@ -263,6 +263,7 @@ public class OllamaContent {
                     tokenLabel.setText("Tokens: " + tokenCount);
                 } catch (Exception e) {
                     tokenLabel.setText("Tokens: ?");
+                    Thread.currentThread().interrupt();
                 }
             }
         }.execute();

@@ -44,7 +44,8 @@ public class IconUtils {
             AllIcons.Process.Big.Step_6,
             AllIcons.Process.Big.Step_7,
             AllIcons.Process.Big.Step_8);
-
+    public static final Icon WEB_SEARCH_DISABLED =  load("/icons/web_search_disabled.svg");
+    public static final Icon WEB_SEARCH_ENABLED =  load("/icons/web_search_enabled.svg");
     public static final Icon STOP = AllIcons.Run.Stop;
 
     public static Icon load(String path) {
