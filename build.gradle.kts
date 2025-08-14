@@ -55,6 +55,10 @@ dependencies {
     }
     implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
+    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+
+
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
     implementation("org.apache.lucene:lucene-analysis-common:$apacheLuceneVersion")
