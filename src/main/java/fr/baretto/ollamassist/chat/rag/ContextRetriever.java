@@ -89,8 +89,10 @@ public class ContextRetriever implements ContentRetriever {
     public List<Content> retrieve(Query query) {
 
         try {
-            CompletableFuture<List<Content>> retrieverFuture =
-                    CompletableFuture.supplyAsync(() -> contentRetriever.retrieve(query), executor);
+            CompletableFuture<List<Content>> retrieverFuture = CompletableFuture.completedFuture(Collections.emptyList());
+            if (settings.ragEnabled()) {
+                CompletableFuture.supplyAsync(() -> contentRetriever.retrieve(query), executor);
+            }
 
             CompletableFuture<List<Content>> workspaceFuture =
                     CompletableFuture.supplyAsync(() ->

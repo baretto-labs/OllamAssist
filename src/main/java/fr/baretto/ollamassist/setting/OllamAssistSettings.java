@@ -124,8 +124,16 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.webSearchEnabled = webSearchEnabled;
     }
 
+    public void setRAGEnabled(boolean ragEnabled) {
+        myState.ragEnabled = ragEnabled;
+    }
+
     public boolean webSearchEnabled() {
         return myState.webSearchEnabled;
+    }
+
+    public boolean ragEnabled() {
+        return myState.ragEnabled;
     }
 
     @Getter
@@ -140,6 +148,7 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String sources = "src/";
         public int indexationSize = 5000;
         public boolean webSearchEnabled = false;
+        public boolean ragEnabled = false;
     }
 
 }

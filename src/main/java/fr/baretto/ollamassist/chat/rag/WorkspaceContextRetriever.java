@@ -1,14 +1,18 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import dev.langchain4j.rag.content.Content;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -34,6 +38,15 @@ public class WorkspaceContextRetriever {
 
 
     public List<Content> get() {
+        Application application = ApplicationManager.getApplication();
+
+        if (application.isReadAccessAllowed()) {
+            return doGet();
+        }
+        return application.runReadAction((Computable<List<Content>>) this::doGet);
+    }
+
+    @NotNull List<Content> doGet() {
         try {
             List<Content> contents = new ArrayList<>();
             if (!filesByPath.isEmpty()) {
@@ -57,7 +70,6 @@ public class WorkspaceContextRetriever {
                     }
                 }
             }
-
 
             Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
             if (editor == null) {

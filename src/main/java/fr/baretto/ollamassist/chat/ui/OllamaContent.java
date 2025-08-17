@@ -42,7 +42,7 @@ public class OllamaContent {
     private final Context context;
     @Getter
     private final JPanel contentPanel = new JPanel();
-    private final PromptPanel promptInput = new PromptPanel();
+    private final PromptPanel promptInput;
     private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
     private final PrerequisitesPanel prerequisitesPanel;
@@ -53,6 +53,7 @@ public class OllamaContent {
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
+        promptInput = new PromptPanel(toolWindow.getProject());
         filesSelector = new WorkspaceFileSelector(toolWindow.getProject());
         prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
         askToChatAction = new AskToChatAction(promptInput, context);

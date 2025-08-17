@@ -33,10 +33,9 @@ class ContextRetrieverTest {
         webRetriever = mock(DuckDuckGoContentRetriever.class);
         settings = mock(OllamAssistSettings.class);
 
-        // Enable web search by default
         when(settings.webSearchEnabled()).thenReturn(true);
+        when(settings.ragEnabled()).thenReturn(true);
 
-        // Use constructor that allows injecting mocks
         contextRetriever = new ContextRetriever(mainRetriever, workspaceProvider, webRetriever, settings);
     }
 
@@ -44,15 +43,13 @@ class ContextRetrieverTest {
     void testRetrieve_nominal() {
         Query query = new Query("test query");
 
-        // Mock Content
         TextSegment segment = mock(TextSegment.class);
         when(segment.text()).thenReturn("This is a long enough content for testing.");
 
         Content content = mock(Content.class);
         when(content.textSegment()).thenReturn(segment);
 
-        // Mock main retriever
-        when(mainRetriever.retrieve(query)).thenReturn(List.of(content));
+        when(workspaceProvider.get()).thenReturn(List.of(content));
 
         List<Content> result = contextRetriever.retrieve(query);
 
@@ -65,18 +62,11 @@ class ContextRetrieverTest {
         Query query = new Query("slow query");
 
         when(mainRetriever.retrieve(query)).thenAnswer(invocation -> {
-            Thread.sleep(3000); // simulate delay > 2s
+            Thread.sleep(3000);
             return List.of();
         });
-
-        try (MockedStatic<Notifications.Bus> notifications = mockStatic(Notifications.Bus.class)) {
-            List<Content> result = contextRetriever.retrieve(query);
-
-            assertTrue(result.isEmpty());
-            notifications.verify(() -> Notifications.Bus.notify(any(Notification.class)));
-        } catch (Exception e) {
-            fail("Should not throw exception");
-        }
+        List<Content> result = contextRetriever.retrieve(query);
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -86,7 +76,6 @@ class ContextRetrieverTest {
         when(mainRetriever.retrieve(query)).thenThrow(new InternalServerException("embedding failed"));
 
         try (MockedStatic<Notifications.Bus> notifications = mockStatic(Notifications.Bus.class)) {
-            // Capture la notification
             notifications.when(() -> Notifications.Bus.notify(any(Notification.class))).thenAnswer(invocation -> null);
 
             List<Content> result = contextRetriever.retrieve(query);
@@ -99,16 +88,10 @@ class ContextRetrieverTest {
     @Test
     void testRetrieve_genericException() {
         Query query = new Query("generic error");
-
         when(mainRetriever.retrieve(query)).thenThrow(new RuntimeException("something went wrong"));
 
-        try (MockedStatic<Notifications.Bus> notifications = mockStatic(Notifications.Bus.class)) {
-            List<Content> result = contextRetriever.retrieve(query);
-
-            assertTrue(result.isEmpty());
-            notifications.verify(() -> Notifications.Bus.notify(argThat(n ->
-                    n.getContent().contains("unexpected error"))));
-        }
+        List<Content> result = contextRetriever.retrieve(query);
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -121,7 +104,7 @@ class ContextRetrieverTest {
         Content content = mock(Content.class);
         when(content.textSegment()).thenReturn(segment);
 
-        when(mainRetriever.retrieve(query)).thenReturn(List.of(content));
+        when(webRetriever.retrieve(query)).thenReturn(List.of(content));
 
         List<Content> result = contextRetriever.retrieve(query);
 

@@ -14,6 +14,7 @@ import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import fr.baretto.ollamassist.chat.rag.*;
+import fr.baretto.ollamassist.chat.rag.tools.WebSearchTool;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -72,8 +73,9 @@ public final class OllamaService implements Disposable, SettingsListener {
 
 
             OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
-                    .temperature(0.2)
-                    .topK(70)
+                    .temperature(0.7)
+                    .topK(50)
+                    .topP(0.85)
                     .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
@@ -83,6 +85,7 @@ public final class OllamaService implements Disposable, SettingsListener {
             return AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
                     .chatMemory(chatMemory)
+                    .tools(new WebSearchTool())
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever
                                     .builder()
