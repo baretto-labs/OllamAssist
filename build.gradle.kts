@@ -38,7 +38,10 @@ sourceSets {
 }
 
 configurations {
-    maybeCreate("benchmarkImplementation").extendsFrom(configurations["implementation"], configurations["testImplementation"])
+    maybeCreate("benchmarkImplementation").extendsFrom(
+        configurations["implementation"],
+        configurations["testImplementation"]
+    )
     maybeCreate("benchmarkRuntimeOnly").extendsFrom(configurations["runtimeOnly"], configurations["testRuntimeOnly"])
 }
 
@@ -48,11 +51,18 @@ dependencies {
         bundledPlugins("Git4Idea")
     }
 
+
+    implementation("ai.djl:api:0.28.0")
+    implementation("ai.djl.huggingface:tokenizers:0.28.0")
+
+
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-easy-rag:1.2.0-beta8") {
         exclude(group = "xml-apis")
+        exclude(group = "ai.djl", module = "api")
+        exclude(group = "ai.djl.huggingface", module = "tokenizers")
     }
     implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
@@ -85,6 +95,8 @@ dependencies {
     add("benchmarkImplementation", "org.testcontainers:junit-jupiter:$testcontainersVersion")
     add("benchmarkImplementation", "org.testcontainers:postgresql:$testcontainersVersion")
 }
+
+
 
 intellijPlatform {
     pluginConfiguration {
