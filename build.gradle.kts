@@ -58,7 +58,8 @@ dependencies {
     implementation("org.codehaus.plexus:plexus-utils:3.4.1")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2")
 
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")

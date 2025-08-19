@@ -21,7 +21,6 @@ class ContextRetrieverTest {
 
     private ContentRetriever mainRetriever;
     private WorkspaceContextRetriever workspaceProvider;
-    private DuckDuckGoContentRetriever webRetriever;
     private OllamAssistSettings settings;
 
     private ContextRetriever contextRetriever;
@@ -30,13 +29,12 @@ class ContextRetrieverTest {
     void setUp() {
         mainRetriever = mock(ContentRetriever.class);
         workspaceProvider = mock(WorkspaceContextRetriever.class);
-        webRetriever = mock(DuckDuckGoContentRetriever.class);
         settings = mock(OllamAssistSettings.class);
 
         when(settings.webSearchEnabled()).thenReturn(true);
         when(settings.ragEnabled()).thenReturn(true);
 
-        contextRetriever = new ContextRetriever(mainRetriever, workspaceProvider, webRetriever, settings);
+        contextRetriever = new ContextRetriever(mainRetriever, workspaceProvider, settings);
     }
 
     @Test
@@ -94,21 +92,4 @@ class ContextRetrieverTest {
         assertTrue(result.isEmpty());
     }
 
-    @Test
-    void testRetrieve_webSearchDisabled() {
-        Query query = new Query("test query");
-
-        TextSegment segment = mock(TextSegment.class);
-        when(segment.text()).thenReturn("This is content for webSearchDisabled test.");
-
-        Content content = mock(Content.class);
-        when(content.textSegment()).thenReturn(segment);
-
-        when(webRetriever.retrieve(query)).thenReturn(List.of(content));
-
-        List<Content> result = contextRetriever.retrieve(query);
-
-        assertEquals(1, result.size());
-        assertEquals("This is content for webSearchDisabled test.", result.get(0).textSegment().text());
-    }
 }

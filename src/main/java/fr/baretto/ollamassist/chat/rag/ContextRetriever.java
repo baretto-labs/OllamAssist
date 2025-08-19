@@ -66,21 +66,18 @@ public class ContextRetriever implements ContentRetriever {
     private final ContentRetriever contentRetriever;
     private final WorkspaceContextRetriever workspaceContextProvider;
     private final OllamAssistSettings settings;
-    private final DuckDuckGoContentRetriever webSearchContentRetriever;
     private final ExecutorService executor = Executors.newFixedThreadPool(3);
 
     public ContextRetriever(ContentRetriever contentRetriever, Project project) {
         this.contentRetriever = contentRetriever;
         this.workspaceContextProvider = project.getService(WorkspaceContextRetriever.class);
-        this.webSearchContentRetriever = new DuckDuckGoContentRetriever(2);
         this.settings = OllamAssistSettings.getInstance();
     }
 
     public ContextRetriever(ContentRetriever contentRetriever, WorkspaceContextRetriever workspaceProvider,
-                            DuckDuckGoContentRetriever webRetriever, OllamAssistSettings settings) {
+                            OllamAssistSettings settings) {
         this.contentRetriever = contentRetriever;
         this.workspaceContextProvider = workspaceProvider;
-        this.webSearchContentRetriever = webRetriever;
         this.settings = settings;
     }
 
@@ -99,27 +96,19 @@ public class ContextRetriever implements ContentRetriever {
                             workspaceContextProvider.get().stream()
                                     .filter(content -> content != null
                                             && isRelevant(content)
-                                            && !containsContent(new ArrayList<>(), content))
+                                            && notContainsContent(new ArrayList<>(), content))
                                     .toList(), executor);
 
-            CompletableFuture<List<Content>> webFuture = CompletableFuture.completedFuture(Collections.emptyList());
-            if (settings.webSearchEnabled()) {
-                webFuture = CompletableFuture.supplyAsync(() -> webSearchContentRetriever.retrieve(query), executor);
-            }
 
             CompletableFuture<Void> allDone =
-                    CompletableFuture.allOf(retrieverFuture, workspaceFuture, webFuture);
+                    CompletableFuture.allOf(retrieverFuture, workspaceFuture);
 
-            allDone.get(2, TimeUnit.SECONDS);
+            allDone.get(3, TimeUnit.SECONDS);
 
             List<Content> results = new ArrayList<>(safeGet(retrieverFuture));
             results.addAll(safeGet(workspaceFuture).stream()
-                    .filter(content -> !containsContent(results, content))
+                    .filter(content -> notContainsContent(results, content))
                     .toList());
-            results.addAll(safeGet(webFuture).stream()
-                    .filter(content -> !containsContent(results, content))
-                    .toList());
-
             return results;
 
         } catch (TimeoutException e) {
@@ -164,8 +153,8 @@ public class ContextRetriever implements ContentRetriever {
         return text != null && text.length() > 30;
     }
 
-    private boolean containsContent(List<Content> results, Content content) {
+    private boolean notContainsContent(List<Content> results, Content content) {
         return results.stream()
-                .anyMatch(c -> c.textSegment().text().equals(content.textSegment().text()));
+                .noneMatch(c -> c.textSegment().text().equals(content.textSegment().text()));
     }
 }

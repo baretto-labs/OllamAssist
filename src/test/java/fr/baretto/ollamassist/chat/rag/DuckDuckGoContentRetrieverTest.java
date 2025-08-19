@@ -1,5 +1,8 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.query.Query;
+import org.assertj.core.api.Assertions;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +76,7 @@ class DuckDuckGoContentRetrieverTest {
                 }
                 """;
 
-        List<?> results = retriever.parseApiResponse(json);
+        List<?> results = retriever.mapResponse(json);
         assertEquals(2, results.size());
     }
 
@@ -88,7 +91,7 @@ class DuckDuckGoContentRetrieverTest {
                 }
                 """;
 
-        List<?> results = retriever.parseApiResponse(json);
+        List<?> results = retriever.mapResponse(json);
         assertEquals(2, results.size());
     }
 
@@ -105,13 +108,29 @@ class DuckDuckGoContentRetrieverTest {
                 }
                 """;
 
-        List<?> results = retriever.parseApiResponse(json);
+        List<?> results = retriever.mapResponse(json);
         assertEquals(1, results.size());
     }
 
     @Test
-    void parseApiResponse_withEmptyJson_shouldReturnEmptyList() {
-        List<?> results = retriever.parseApiResponse("{}");
+    void mapResponse_withEmptyJson_shouldReturnEmptyList() {
+        List<?> results = retriever.mapResponse("{}");
         assertTrue(results.isEmpty());
+    }
+
+
+    @Test
+    void shouldRetrieveResultsFromDuckDuckGo() {
+        DuckDuckGoContentRetriever retriever = new DuckDuckGoContentRetriever(3);
+
+        List<Content> results = retriever.retrieve(new Query("OllamAssist"));
+
+        Assertions.assertThat(results).isNotEmpty();
+
+        results.forEach(content -> {
+            Assertions.assertThat(content.textSegment()).isNotNull();
+        });
+
+        results.forEach(content -> System.out.println( content.textSegment()));
     }
 }
