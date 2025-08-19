@@ -18,13 +18,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public class DuckDuckGoContentRetriever implements ContentRetriever {
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
     private static final String HTML_SEARCH_URL = "https://html.duckduckgo.com/html/";
     private static final String API_SEARCH_URL = "https://api.duckduckgo.com/";
     private static final String PROTOCOL_HTTP = "http://";
@@ -48,15 +47,14 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
     public List<Content> retrieve(Query query) {
         List<SearchResult> results;
         try {
-            results = performHtmlSearch(query.text());
+            results = htmlSearch(query.text());
         } catch (Exception e) {
             try {
-                results = performApiSearch(query.text());
+                results = apiSearch(query.text());
             } catch (Exception ex) {
-                results = Collections.emptyList();
+                results = List.of();
             }
         }
-
         return results.stream()
                 .map(r -> {
                     StringBuilder sb = new StringBuilder();
@@ -72,7 +70,7 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
                 .toList();
     }
 
-    private List<SearchResult> performHtmlSearch(String query) throws IOException, InterruptedException {
+    private List<SearchResult> htmlSearch(String query) throws IOException, InterruptedException {
         String formData = "q=" + URLEncoder.encode(query, StandardCharsets.UTF_8) + "&b=&kl=us-en";
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -96,7 +94,7 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         return results;
     }
 
-    private List<SearchResult> performApiSearch(String query) throws IOException, InterruptedException {
+    private List<SearchResult> apiSearch(String query) throws IOException, InterruptedException {
         String url = API_SEARCH_URL + "?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
                 + "&format=json&no_html=1&skip_disambig=1";
 
@@ -108,7 +106,7 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        return parseApiResponse(response.body());
+        return mapResponse(response.body());
     }
 
     List<SearchResult> parseHtmlResults(org.jsoup.nodes.Document doc) {
@@ -140,7 +138,7 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
                 .toList());
     }
 
-    List<SearchResult> parseApiResponse(String json) {
+    List<SearchResult> mapResponse(String json) {
         try {
             JsonNode rootNode = objectMapper.readTree(json);
             List<SearchResult> results = new ArrayList<>();

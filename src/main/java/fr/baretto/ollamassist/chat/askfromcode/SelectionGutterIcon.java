@@ -11,13 +11,14 @@ import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.event.HierarchyEvent;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-
+@Slf4j
 public class SelectionGutterIcon {
 
     private final Map<Editor, Disposable> editorDisposables = new WeakHashMap<>();
@@ -93,16 +94,21 @@ public class SelectionGutterIcon {
         CaretListener caretListener = new CaretListener() {
             @Override
             public void caretPositionChanged(@NotNull CaretEvent event) {
-                RangeHighlighter highlighter = activeHighlighters.get(editor);
-                if (highlighter != null && event.getCaret() != null) {
-                    int currentLine = editor.getDocument().getLineNumber(event.getCaret().getOffset());
-                    int highlighterLine = editor.getDocument().getLineNumber(highlighter.getStartOffset());
+                try {
+                    RangeHighlighter highlighter = activeHighlighters.get(editor);
+                    if (highlighter != null && event.getCaret() != null) {
+                        int currentLine = editor.getDocument().getLineNumber(event.getCaret().getOffset());
+                        int highlighterLine = editor.getDocument().getLineNumber(highlighter.getStartOffset());
 
-                    if (currentLine != highlighterLine) {
-                        removeGutterIcon(editor);
+                        if (currentLine != highlighterLine) {
+                            removeGutterIcon(editor);
+                        }
                     }
+                } catch (Exception e) {
+                    log.debug("exception during removing gutter icon", e);
                 }
             }
+
         };
         editor.getCaretModel().addCaretListener(caretListener);
         Disposer.register(parentDisposable, () ->

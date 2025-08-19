@@ -276,6 +276,6 @@ public class ConfigurationPanel extends JPanel {
     public void triggerCleanAllDatabase() {
         project.getMessageBus()
                 .syncPublisher(StoreNotifier.TOPIC)
-                .indexCorrupted();
+                .clearDatabaseAndRunIndexation();
     }
 }

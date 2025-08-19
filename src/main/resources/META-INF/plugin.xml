@@ -179,7 +179,6 @@
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
 
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
-        <notificationGroup id="index_corrupted" displayType="BALLOON"/>
         <notificationGroup id="OllamAssist" displayType="BALLOON"/>
      </extensions>
 

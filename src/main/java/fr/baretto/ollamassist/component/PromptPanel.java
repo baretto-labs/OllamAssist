@@ -11,6 +11,7 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorSettings;
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
@@ -18,6 +19,7 @@ import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import fr.baretto.ollamassist.events.StoreNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -39,6 +41,8 @@ public class PromptPanel extends JPanel implements Disposable {
             BorderFactory.createEmptyBorder(0, 0, 0, 0)
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
+    private static final String ENABLE_RAG = "Enable RAG search";
+    private Project project;
 
     private EditorTextField editorTextField;
     private JButton sendButton;
@@ -47,10 +51,19 @@ public class PromptPanel extends JPanel implements Disposable {
     private JButton stopButton;
     private boolean isGenerating = false;
     private JToggleButton webSearchButton;
-    private boolean webSearchEnabled = false;
+    private JToggleButton ragSearchhButton;
+    private boolean webSearchEnabled = OllamAssistSettings.getInstance().webSearchEnabled();
+    private boolean ragEnabled = OllamAssistSettings.getInstance().ragEnabled();
 
     public PromptPanel() {
         super(new BorderLayout());
+        setupUI();
+        setActions();
+    }
+
+    public PromptPanel(final Project project) {
+        super(new BorderLayout());
+        this.project = project;
         setupUI();
         setActions();
     }
@@ -108,14 +121,9 @@ public class PromptPanel extends JPanel implements Disposable {
         ComponentCustomizer.applyHoverEffect(stopButton);
 
 
-        webSearchButton = createWebSearchButton();
-
         JPanel controlPanel = new JPanel(new BorderLayout(10, 0));
         controlPanel.setOpaque(false);
 
-        JPanel leftControlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        leftControlPanel.setOpaque(false);
-        leftControlPanel.add(webSearchButton);
 
         JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightControlPanel.setOpaque(false);
@@ -123,7 +131,17 @@ public class PromptPanel extends JPanel implements Disposable {
         rightControlPanel.add(sendButton);
         rightControlPanel.add(stopButton);
 
-        controlPanel.add(leftControlPanel, BorderLayout.WEST);
+
+        if (project != null) {
+            JPanel leftControlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            leftControlPanel.setOpaque(false);
+            ragSearchhButton = createRagSearchButton();
+            webSearchButton = createWebSearchButton();
+            leftControlPanel.add(webSearchButton);
+            leftControlPanel.add(ragSearchhButton);
+            controlPanel.add(leftControlPanel, BorderLayout.WEST);
+        }
+
         controlPanel.add(rightControlPanel, BorderLayout.EAST);
 
         JPanel container = new JPanel(new BorderLayout());
@@ -153,6 +171,42 @@ public class PromptPanel extends JPanel implements Disposable {
         ));
 
         add(container, BorderLayout.CENTER);
+    }
+
+    private JToggleButton createRagSearchButton() {
+        JToggleButton button = new JToggleButton(IconUtils.RAG_SEARCH_DISABLED);
+        button.setSelected(ragEnabled);
+        button.setToolTipText(ENABLE_RAG);
+        button.setPreferredSize(new Dimension(30, 30));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        button.setMargin(JBUI.emptyInsets());
+
+        button.addActionListener(e -> {
+            ragEnabled = button.isSelected();
+            updateRagSearchButtonState(button);
+        });
+
+        updateRagSearchButtonState(button);
+
+        return button;
+    }
+
+    private void updateRagSearchButtonState(JToggleButton button) {
+        OllamAssistSettings
+                .getInstance()
+                .setRAGEnabled(ragEnabled);
+        if (ragEnabled) {
+            button.setIcon(IconUtils.RAG_SEARCH_ENABLED);
+            button.setToolTipText("RAG search enabled");
+            project.getMessageBus()
+                    .syncPublisher(StoreNotifier.TOPIC)
+                    .clearDatabaseAndRunIndexation();
+        } else {
+            button.setIcon(IconUtils.RAG_SEARCH_DISABLED);
+            button.setToolTipText(ENABLE_RAG);
+        }
     }
 
     private JToggleButton createWebSearchButton() {
