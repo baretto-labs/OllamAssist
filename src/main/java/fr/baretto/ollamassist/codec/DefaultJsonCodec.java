@@ -22,7 +22,7 @@ public class DefaultJsonCodec implements Json.JsonCodec {
         try {
             return mapper.writeValueAsString(object);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new Langchain4jSerializationException("Failed to convert into Json", e);
         }
     }
 
@@ -31,7 +31,7 @@ public class DefaultJsonCodec implements Json.JsonCodec {
         try {
             return mapper.readValue(json, clazz);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new Langchain4jSerializationException("Failed to convert from Json",e);
         }
     }
 
@@ -41,7 +41,14 @@ public class DefaultJsonCodec implements Json.JsonCodec {
             JavaType javaType = mapper.getTypeFactory().constructType(type);
             return mapper.readValue(json, javaType);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize JSON to " + type, e);
+            throw new Langchain4jSerializationException("Failed to deserialize JSON to " + type, e);
+        }
+    }
+
+    private static class Langchain4jSerializationException extends RuntimeException {
+
+        Langchain4jSerializationException(String message, Exception exception){
+            super(message, exception);
         }
     }
 }
