@@ -119,11 +119,11 @@ class DuckDuckGoContentRetrieverTest {
     }
 
 
-    @Test
-    void shouldRetrieveResultsFromDuckDuckGo() {
-        DuckDuckGoContentRetriever retriever = new DuckDuckGoContentRetriever(3);
 
-        List<Content> results = retriever.retrieve(new Query("OllamAssist"));
+    void shouldRetrieveResultsFromDuckDuckGo() {
+        DuckDuckGoContentRetriever duckDuckGoContentRetriever = new DuckDuckGoContentRetriever(3);
+
+        List<Content> results = duckDuckGoContentRetriever.retrieve(new Query("OllamAssist"));
 
         Assertions.assertThat(results).isNotEmpty();
 

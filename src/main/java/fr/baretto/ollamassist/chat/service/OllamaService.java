@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.chat.service;
 
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -18,23 +19,24 @@ import fr.baretto.ollamassist.chat.rag.tools.WebSearchTool;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
-import fr.baretto.ollamassist.setting.SettingsListener;
+import fr.baretto.ollamassist.setting.ModelListener;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 
+@Service(Service.Level.PROJECT)
 @Slf4j
-public final class OllamaService implements Disposable, SettingsListener {
+public final class OllamaService implements Disposable, ModelListener {
 
     private final Project project;
-    private ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(15);
+    private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(25);
     private LuceneEmbeddingStore<TextSegment> embeddingStore;
     private ProjectFileListener projectFileListener;
     @Getter
     private Assistant assistant;
     private MessageBusConnection messageBusConnection;
-    private DocumentIndexingPipeline documentIndexingPipeline;
+    private final DocumentIndexingPipeline documentIndexingPipeline;
 
 
     public OllamaService(@NotNull Project project) {
@@ -60,7 +62,7 @@ public final class OllamaService implements Disposable, SettingsListener {
         this.messageBusConnection = ApplicationManager.getApplication().getMessageBus().connect();
         this.messageBusConnection.setDefaultHandler(() -> {
         });
-        this.messageBusConnection.subscribe(SettingsListener.TOPIC, this);
+        this.messageBusConnection.subscribe(ModelListener.TOPIC, this);
         this.assistant = initAssistant();
     }
 
@@ -82,10 +84,15 @@ public final class OllamaService implements Disposable, SettingsListener {
                     .build();
 
 
-            return AiServices.builder(Assistant.class)
+            AiServices<Assistant> assistantAiServices = AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
-                    .chatMemory(chatMemory)
-                    .tools(new WebSearchTool())
+                    .chatMemory(chatMemory);
+
+            if (OllamAssistSettings.getInstance().webSearchEnabled()) {
+                assistantAiServices.tools(new WebSearchTool());
+            }
+
+            return assistantAiServices
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever
                                     .builder()
@@ -117,7 +124,7 @@ public final class OllamaService implements Disposable, SettingsListener {
     }
 
     @Override
-    public void settingsChanged(OllamAssistSettings.State newState) {
+    public void reloadModel() {
         this.assistant = initAssistant();
     }
 }

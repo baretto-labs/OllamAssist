@@ -78,8 +78,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             settings.setIndexationSize(configurationPanel.getMaxDocuments());
 
             ApplicationManager.getApplication().getMessageBus()
-                    .syncPublisher(SettingsListener.TOPIC)
-                    .settingsChanged(settings.getState());
+                    .syncPublisher(ModelListener.TOPIC)
+                    .reloadModel();
 
             if (shouldCleanAllDatabase) {
                 configurationPanel.triggerCleanAllDatabase();

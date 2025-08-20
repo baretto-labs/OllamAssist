@@ -1,9 +1,6 @@
 package fr.baretto.ollamassist.chat.ui;
 
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VfsUtilCore;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.OnePixelSplitter;
@@ -21,6 +18,7 @@ import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
+import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +28,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -45,8 +42,6 @@ public class OllamaContent {
     private final PromptPanel promptInput;
     private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
-    private final PrerequisitesPanel prerequisitesPanel;
-    private final AskToChatAction askToChatAction;
     private boolean isAvailable = false;
     private ChatThread currentChatThread;
 
@@ -55,8 +50,8 @@ public class OllamaContent {
         this.context = new Context(toolWindow.getProject());
         promptInput = new PromptPanel(toolWindow.getProject());
         filesSelector = new WorkspaceFileSelector(toolWindow.getProject());
-        prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
-        askToChatAction = new AskToChatAction(promptInput, context);
+        PrerequisitesPanel prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
+        AskToChatAction askToChatAction = new AskToChatAction(promptInput, context);
         promptInput.addActionMap(askToChatAction);
         outputPanel.addContexte(context);
         contentPanel.add(prerequisitesPanel);
@@ -135,7 +130,7 @@ public class OllamaContent {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 
-        JPanel filePanel = createCollapsiblePanel("Context", filesSelector);
+        JPanel filePanel = createCollapsiblePanel(filesSelector);
 
         OnePixelSplitter splitter = new OnePixelSplitter(true, 0.0f);
         splitter.setFirstComponent(filePanel);
@@ -172,14 +167,14 @@ public class OllamaContent {
         return splitter;
     }
 
-    private JPanel createCollapsiblePanel(String title, WorkspaceFileSelector fileSelector) {
+    private JPanel createCollapsiblePanel(WorkspaceFileSelector fileSelector) {
         JPanel panel = new JPanel(new BorderLayout());
 
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        JButton toggleButton = new JButton("▼ " + title);
+        JButton toggleButton = new JButton();
         toggleButton.setBorderPainted(false);
         toggleButton.setFocusPainted(false);
         toggleButton.setContentAreaFilled(false);
@@ -204,7 +199,6 @@ public class OllamaContent {
         removeButton.addActionListener(fileSelector::removeFilesAction);
         ComponentCustomizer.applyHoverEffect(removeButton);
 
-
         JLabel tokenCountLabel = new JLabel("Tokens: 0");
         tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
         tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
@@ -212,7 +206,6 @@ public class OllamaContent {
         fileSelector.getFileTable().getModel().addTableModelListener(e ->
                 updateTokenCount(fileSelector, tokenCountLabel)
         );
-
 
         fileSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -230,8 +223,8 @@ public class OllamaContent {
 
         JPanel contentContainer = new JPanel(new BorderLayout());
         JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileTable());
-        fileScrollPane.setMinimumSize(new Dimension(0, 100)); // Hauteur minimale raisonnable
-        fileScrollPane.setPreferredSize(new Dimension(0, 150)); // Hauteur préférée équilibrée
+        fileScrollPane.setMinimumSize(new Dimension(0, 100));
+        fileScrollPane.setPreferredSize(new Dimension(0, 150));
         fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         contentContainer.add(fileScrollPane, BorderLayout.CENTER);
@@ -239,17 +232,20 @@ public class OllamaContent {
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(contentContainer, BorderLayout.CENTER);
 
-        final boolean[] isCollapsed = {false};
+        boolean[] isCollapsed = {OllamAssistSettings.getInstance().getUIState()};
+
+        contentContainer.setVisible(!isCollapsed[0]);
+        toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
 
         toggleButton.addActionListener(e -> {
             isCollapsed[0] = !isCollapsed[0];
             contentContainer.setVisible(!isCollapsed[0]);
-            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + title);
+            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
+            OllamAssistSettings.getInstance().setUIState(isCollapsed[0]);
         });
 
         return panel;
     }
-
     private void updateTokenCount(WorkspaceFileSelector fileSelector, JLabel tokenLabel) {
         new SwingWorker<Integer, Void>() {
             @Override

@@ -128,12 +128,20 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.ragEnabled = ragEnabled;
     }
 
+    public void setUIState(boolean isCollapsed) {
+        myState.uistate = isCollapsed;
+    }
+
     public boolean webSearchEnabled() {
         return myState.webSearchEnabled;
     }
 
     public boolean ragEnabled() {
         return myState.ragEnabled;
+    }
+
+    public boolean getUIState() {
+        return myState.uistate;
     }
 
     @Getter
@@ -149,6 +157,9 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public int indexationSize = 5000;
         public boolean webSearchEnabled = false;
         public boolean ragEnabled = false;
+
+        // Persiste configuration for UI component, currently used only for the chat context
+        public boolean uistate = false;
     }
 
 }

@@ -25,9 +25,9 @@ import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
 
 public class ConfigurationPanel extends JPanel {
 
-    private final JBTextField chatOllamaUrl = new JBTextField(DEFAULT_URL);
-    private final JBTextField completionOllamaUrl = new JBTextField(DEFAULT_URL);
-    private final JBTextField embeddingOllamaUrl = new JBTextField(DEFAULT_URL);
+    private final JBTextField chatOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getChatOllamaUrl());
+    private final JBTextField completionOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getCompletionOllamaUrl());
+    private final JBTextField embeddingOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl());
     private final ComboBox<String> chatModel;
     private final ComboBox<String> completionModel;
     private final ComboBox<String> embeddingModel;

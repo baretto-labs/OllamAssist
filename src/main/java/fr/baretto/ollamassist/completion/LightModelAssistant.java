@@ -7,7 +7,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
-import fr.baretto.ollamassist.setting.SettingsListener;
+import fr.baretto.ollamassist.setting.ModelListener;
 
 
 public class LightModelAssistant {
@@ -16,7 +16,7 @@ public class LightModelAssistant {
     LightModelAssistant() {
         ApplicationManager.getApplication().getMessageBus()
                 .connect()
-                .subscribe(SettingsListener.TOPIC, (SettingsListener) LightModelAssistant::reloadModel);
+                .subscribe(ModelListener.TOPIC, (ModelListener) LightModelAssistant::reloadModel);
     }
 
     public static LightModelAssistant.Service get() {
@@ -26,7 +26,7 @@ public class LightModelAssistant {
         return service;
     }
 
-    private static void reloadModel(OllamAssistSettings.State state) {
+    private static void reloadModel() {
         service = init();
     }
 

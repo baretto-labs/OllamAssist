@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.4.1"
+version = "1.5.0"
 
 repositories {
     mavenCentral()
@@ -26,6 +26,9 @@ val junitLegacyVersion = "4.13.2"
 val assertjVersion = "3.27.0"
 val testcontainersVersion = "1.21.3"
 val rsyntaxtextareaVersion = "3.6.0"
+val plexusVersion = "3.4.1"
+val jsoupVersion = "1.17.2"
+val jacksonVersion = "2.17.2"
 
 sourceSets {
     create("benchmark") {
@@ -59,17 +62,17 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-easy-rag:1.2.0-beta8") {
+    implementation("dev.langchain4j:langchain4j-easy-rag:1.3.0-beta9") {
         exclude(group = "xml-apis")
         exclude(group = "ai.djl", module = "api")
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
     }
-    implementation("dev.langchain4j:langchain4j-reactor:1.2.0-beta8")
-    implementation("org.codehaus.plexus:plexus-utils:3.4.1")
-    implementation("org.jsoup:jsoup:1.17.2")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2")
+    implementation("dev.langchain4j:langchain4j-reactor:1.3.0-beta9")
+    implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
+    implementation("org.jsoup:jsoup:$jsoupVersion")
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion")
 
 
     implementation("org.apache.lucene:lucene-core:$apacheLuceneVersion")
