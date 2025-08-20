@@ -8,13 +8,18 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.function.Consumer;
 
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
     private ConfigurationPanel configurationPanel;
+    private final Project project;
+    private Consumer<Boolean> changeListener;
 
     public OllamassistSettingsConfigurable(Project project) {
-        configurationPanel = new ConfigurationPanel(project);
+        this.project = project;
     }
 
     @Override
@@ -25,6 +30,21 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Nullable
     @Override
     public JComponent createComponent() {
+        configurationPanel = new ConfigurationPanel(project);
+
+        changeListener = modified -> {
+            if (modified) {
+                try {
+                    Method method = Configurable.class.getDeclaredMethod("fireConfigurationChanged");
+                    method.setAccessible(true);
+                    method.invoke(this);
+                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+
+                }
+            }
+        };
+
+        configurationPanel.addChangeListener(changeListener);
 
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
         configurationPanel.setChatOllamaUrl(settings.getChatOllamaUrl());
@@ -42,9 +62,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Override
     public boolean isModified() {
         if (configurationPanel == null ||
-            configurationPanel.getChatModel() == null ||
-            configurationPanel.getCompletionModel() == null ||
-            configurationPanel.getEmbeddingModel() == null) {
+                configurationPanel.getChatModel() == null ||
+                configurationPanel.getCompletionModel() == null ||
+                configurationPanel.getEmbeddingModel() == null) {
             return false;
         }
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
@@ -121,6 +141,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     @Override
     public void dispose() {
+        if (changeListener != null) {
+            configurationPanel.removeChangeListener(changeListener);
+        }
         configurationPanel = null;
     }
 }
