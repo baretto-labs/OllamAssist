@@ -158,9 +158,9 @@ tasks {
         dependsOn("buildPlugin")
     }
 
-    sonarqube {
+    sonar {
         properties {
-            property("sonar.projectKey", "OllamAssist")
+            property("sonar.projectKey", "baretto-labs_OllamAssist")
             property("sonar.organization", "baretto-labs")
             property("sonar.host.url", "https://sonarcloud.io")
             property("sonar.login", System.getenv("SONAR_TOKEN"))
