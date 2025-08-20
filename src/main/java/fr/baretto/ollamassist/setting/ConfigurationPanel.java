@@ -14,11 +14,16 @@ import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.StoreNotifier;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.FocusEvent;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
 import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
@@ -35,6 +40,7 @@ public class ConfigurationPanel extends JPanel {
     private final JBTextField sources = new JBTextField();
     private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
     private final transient Project project;
+    private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
     public ConfigurationPanel(Project project) {
         this.project = project;
@@ -62,6 +68,54 @@ public class ConfigurationPanel extends JPanel {
                 "The maximum number of documents indexed during a batch indexation"));
         add(createClearEmbeddingButton());
 
+        initializeListeners();
+    }
+
+    public void addChangeListener(Consumer<Boolean> listener) {
+        changeListeners.add(listener);
+    }
+    public void removeChangeListener(Consumer<Boolean> listener){
+        changeListeners.remove(listener);
+    }
+
+    private void notifyChangeListeners() {
+        changeListeners.forEach(listener -> listener.accept(true));
+    }
+
+    private void initializeListeners() {
+        DocumentListener documentListener = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                notifyChangeListeners();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                notifyChangeListeners();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                notifyChangeListeners();
+            }
+        };
+
+        chatOllamaUrl.getDocument().addDocumentListener(documentListener);
+        completionOllamaUrl.getDocument().addDocumentListener(documentListener);
+        embeddingOllamaUrl.getDocument().addDocumentListener(documentListener);
+        timeout.getDocument().addDocumentListener(documentListener);
+        sources.getDocument().addDocumentListener(documentListener);
+        maxDocuments.getDocument().addDocumentListener(documentListener);
+
+
+        ItemListener itemListener = e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                notifyChangeListeners();
+            }
+        };
+        chatModel.addItemListener(itemListener);
+        completionModel.addItemListener(itemListener);
+        embeddingModel.addItemListener(itemListener);
     }
 
     private JPanel createOllamaUrlField(String label, JBTextField ollamaUrl, String message, ComboBox<String> modelComboBox, boolean isEmbedding) {
