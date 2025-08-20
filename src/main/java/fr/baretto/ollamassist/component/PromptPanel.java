@@ -43,11 +43,11 @@ public class PromptPanel extends JPanel implements Disposable {
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
     private static final String ENABLE_RAG = "Enable RAG search";
-    private Project project;
+    private transient Project project;
+    private transient ActionListener listener;
 
     private EditorTextField editorTextField;
     private JButton sendButton;
-    private ActionListener listener;
     private ModelSelector modelSelector;
     private JButton stopButton;
     private boolean isGenerating = false;
