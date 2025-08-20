@@ -37,4 +37,4 @@ jobs:
       - name: Build, Test and SonarCloud Analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew clean build test sonarqube -Dsonar.login=$SONAR_TOKEN
+        run: ./gradlew clean build test

@@ -37,7 +37,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
 
     public DocumentIndexingPipeline(Project project) {
         this.embeddingStore = project.getService(LuceneEmbeddingStore.class);
-        this.ingestor = DocumentIngestFactory.create(embeddingStore, project);
+        this.ingestor = DocumentIngestFactory.create(embeddingStore);
         this.project = project;
         start();
     }
@@ -178,7 +178,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
         try {
             log.warn("Index corruption detected - Recreating index...");
             embeddingStore.recreateIndex();
-            ingestor = DocumentIngestFactory.create(embeddingStore, project);
+            ingestor = DocumentIngestFactory.create(embeddingStore);
 
             log.info("Index recreated - Resuming operations");
         } catch (Exception ex) {
