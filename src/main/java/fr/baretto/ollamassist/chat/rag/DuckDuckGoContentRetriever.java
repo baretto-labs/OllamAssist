@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import lombok.SneakyThrows;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -43,17 +44,15 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
         this.maxResults = maxResults;
     }
 
+    @SneakyThrows
     @Override
     public List<Content> retrieve(Query query) {
         List<SearchResult> results;
         try {
             results = htmlSearch(query.text());
         } catch (Exception e) {
-            try {
                 results = apiSearch(query.text());
-            } catch (Exception ex) {
-                results = List.of();
-            }
+
         }
         return results.stream()
                 .map(r -> {
