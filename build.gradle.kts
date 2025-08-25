@@ -56,7 +56,7 @@ dependencies {
 
 
     implementation("ai.djl:api:0.28.0")
-    implementation("ai.djl.huggingface:tokenizers:0.28.0")
+    implementation("ai.djl.huggingface:tokenizers:0.34.0")
 
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
