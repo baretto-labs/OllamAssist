@@ -12,14 +12,12 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import dev.langchain4j.rag.content.Content;
+import fr.baretto.ollamassist.component.WorkspaceFileSelectorListener;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Provides a focused window of code around the user's caret position.
@@ -31,6 +29,7 @@ public class WorkspaceContextRetriever {
     private static final long MAX_FILE_SIZE = 200L * 1024L;
     private final Project project;
     private Map<String, File> filesByPath = new HashMap<>();
+    private final Set<WorkspaceFileSelectorListener> listeners = new HashSet<>();
 
     public WorkspaceContextRetriever(Project project) {
         this.project = project;
@@ -104,10 +103,14 @@ public class WorkspaceContextRetriever {
 
     public void addFile(File file) {
         filesByPath.put(file.getAbsolutePath(), file);
+        listeners.forEach(listener -> listener.newFileAdded(file));
     }
 
     public void removeFile(File file) {
-        System.err.println("here");
         filesByPath.remove(file.getAbsolutePath());
+    }
+
+    public void subscribe(WorkspaceFileSelectorListener listener) {
+        listeners.add(listener);
     }
 }

@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-public class WorkspaceFileSelector extends JPanel {
+public class WorkspaceFileSelector extends JPanel implements WorkspaceFileSelectorListener {
 
     private final DefaultTableModel tableModel;
     @Getter
@@ -40,7 +40,7 @@ public class WorkspaceFileSelector extends JPanel {
         super(new BorderLayout(5, 5));
 
         workspaceContextRetriever = project.getService(WorkspaceContextRetriever.class);
-
+workspaceContextRetriever.subscribe(this);
         setBorder(JBUI.Borders.empty(10));
 
         String[] columnNames = {"File", "Tokens", "Modification Date"};
@@ -120,24 +120,6 @@ public class WorkspaceFileSelector extends JPanel {
         return button;
     }
 
-    private void addFileToTable(File file) {
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            File existingFile = (File) tableModel.getValueAt(i, 0);
-            if (existingFile.getAbsolutePath().equals(file.getAbsolutePath())) {
-                return;
-            }
-        }
-
-        int tokenCount = estimateTokenCount(file);
-
-        Object[] rowData = {
-                file,
-                tokenCount,
-                new Date(file.lastModified())
-        };
-        tableModel.addRow(rowData);
-    }
-
     private int estimateTokenCount(File file) {
         try {
             String content = Files.readString(file.toPath());
@@ -156,7 +138,7 @@ public class WorkspaceFileSelector extends JPanel {
 
         for (VirtualFile vFile : selectedVirtualFiles) {
             File file = VfsUtilCore.virtualToIoFile(vFile);
-            addFileToTable(file);
+            newFileAdded(file);
             workspaceContextRetriever.addFile(file);
         }
     }
@@ -201,6 +183,26 @@ public class WorkspaceFileSelector extends JPanel {
         }
         return total;
     }
+
+    @Override
+    public void newFileAdded(File file) {
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            File existingFile = (File) tableModel.getValueAt(i, 0);
+            if (existingFile.getAbsolutePath().equals(file.getAbsolutePath())) {
+                return;
+            }
+        }
+
+        int tokenCount = estimateTokenCount(file);
+
+        Object[] rowData = {
+                file,
+                tokenCount,
+                new Date(file.lastModified())
+        };
+        tableModel.addRow(rowData);
+    }
+
 
     /**
      * Renderer personnalisé pour afficher les fichiers avec leur icône spécifique

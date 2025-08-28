@@ -58,7 +58,8 @@
     <change-notes><![CDATA[
         <h2>V1.6.0</h2>
         <UL>
-            <LI>feat: Allow web search for all models.</LI>
+            <LI>feat(context): Add web search capability to all models.</LI>
+            <LI>feat(context): allow adding context dynamically from project view popup menu.</LI>
         </UL>
         <h2>V1.5.0</h2>
         <UL>
@@ -177,14 +178,16 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
 
 
-        <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable" displayName="OllamAssist"/>
+        <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
+                             displayName="OllamAssist"/>
 
 
-        <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup</postStartupActivity>
+        <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup
+        </postStartupActivity>
 
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
         <notificationGroup id="OllamAssist" displayType="BALLOON"/>
-     </extensions>
+    </extensions>
 
     <actions>
         <action id="fr.baretto.ollamassist.MyAutoCompletionAction"
@@ -196,9 +199,22 @@
         </action>
         <action id="AddTestsCommitMessageAction"
                 class="fr.baretto.ollamassist.git.CommitMessageGenerator"
-                text="Write commit Message"
+                text="Write Commit Message"
                 description="Generate commit message with OllamAssist">
             <add-to-group group-id="Vcs.MessageActionGroup" anchor="last"/>
         </action>
+
+
+        <group id="OllamAssistGroup"
+               class="fr.baretto.ollamassist.chat.ui.menu.OllamAssistGroup"
+               text="OllamAssist"
+               popup="true">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <action id="AddToContext"
+                    class="fr.baretto.ollamassist.chat.ui.menu.AddToContextAction"
+                    text="Add to Context"/>
+        </group>
+
+
     </actions>
 </idea-plugin>
