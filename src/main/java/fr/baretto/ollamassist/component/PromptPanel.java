@@ -21,7 +21,6 @@ import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
-import fr.baretto.ollamassist.setting.ModelListener;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -241,10 +240,6 @@ public class PromptPanel extends JPanel implements Disposable {
         OllamAssistSettings
                 .getInstance()
                 .setWebSearchEnabled(webSearchEnabled);
-
-        ApplicationManager.getApplication().getMessageBus()
-                .syncPublisher(ModelListener.TOPIC)
-                .reloadModel();
     }
 
 

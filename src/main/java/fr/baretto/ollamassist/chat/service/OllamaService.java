@@ -88,10 +88,6 @@ public final class OllamaService implements Disposable, ModelListener {
                     .streamingChatModel(model)
                     .chatMemory(chatMemory);
 
-            if (OllamAssistSettings.getInstance().webSearchEnabled()) {
-                assistantAiServices.tools(new WebSearchTool());
-            }
-
             return assistantAiServices
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever

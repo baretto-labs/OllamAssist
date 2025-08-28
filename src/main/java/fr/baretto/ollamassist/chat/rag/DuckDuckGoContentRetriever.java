@@ -2,10 +2,18 @@ package fr.baretto.ollamassist.chat.rag;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.completion.LightModelAssistant;
+import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -22,9 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class DuckDuckGoContentRetriever implements ContentRetriever {
+public class DuckDuckGoContentRetriever {
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(2000);
     private static final String HTML_SEARCH_URL = "https://html.duckduckgo.com/html/";
     private static final String API_SEARCH_URL = "https://api.duckduckgo.com/";
     private static final String PROTOCOL_HTTP = "http://";
@@ -45,13 +53,17 @@ public class DuckDuckGoContentRetriever implements ContentRetriever {
     }
 
     @SneakyThrows
-    @Override
     public List<Content> retrieve(Query query) {
+        String webQuery = LightModelAssistant.get().createWebSearchQuery(query.text());
+        return execute(webQuery);
+    }
+
+    private @NotNull List<Content> execute(String webQuery) throws IOException, InterruptedException {
         List<SearchResult> results;
         try {
-            results = htmlSearch(query.text());
+            results = htmlSearch(webQuery);
         } catch (Exception e) {
-                results = apiSearch(query.text());
+            results = apiSearch(webQuery);
 
         }
         return results.stream()

@@ -91,6 +91,7 @@ public class OllamAssistStartup implements ProjectActivity {
                 EditorListener.attachListeners();
             }
         });
+
         return null;
     }
 }

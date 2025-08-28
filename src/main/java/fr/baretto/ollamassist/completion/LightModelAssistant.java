@@ -122,5 +122,37 @@ public class LightModelAssistant {
                                  feat: add user authentication
                 """)
         String writecommitMessage(@V("gitDiff") String gitDiff);
+
+        @SystemMessage("""
+                You are an assistant specialized in **web search query generation**. \s
+                Your task is to **transform a user input** into a **clear and concise web search query** of a few keywords or a short phrase.
+                
+                ### Guidelines:
+                - Use **natural search keywords** that would work well in Google, Bing, or similar engines. \s
+                - **Remove unnecessary words** or polite phrases (e.g., "please", "can you", "I need"). \s
+                - If the query is vague, infer the **most likely intent** from the context. \s
+                - Keep it **short and precise** (ideally **3–7 words**). \s
+                - Do **not** add quotation marks or special syntax unless explicitly needed. \s
+                
+                ### Examples:
+                **User:** "Can you tell me the weather in Paris tomorrow?" \s
+                **Output:** `weather Paris tomorrow`
+                
+                **User:** "Explain LangChain4j CompletionRequest" \s
+                **Output:** `LangChain4j CompletionRequest explanation`
+                
+                **User:** "How do I train a small Java LLM locally?" \s
+                **Output:** `train small Java LLM locally`
+                
+                **User:** "Please summarize the latest news about Nvidia stocks" \s
+                **Output:** `latest Nvidia stock news`
+                """)
+        @UserMessage("""
+                **Output ONLY the query. Do NOT include notes, explanations, or extra text.**
+                
+                **User Prompt:**
+                {{user_input}}
+                """)
+        String createWebSearchQuery(@V("user_input") String input);
     }
 }

@@ -8,6 +8,7 @@ import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import fr.baretto.ollamassist.component.PluginNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 
 import java.util.ArrayList;
@@ -67,17 +68,22 @@ public class ContextRetriever implements ContentRetriever {
     private final WorkspaceContextRetriever workspaceContextProvider;
     private final OllamAssistSettings settings;
     private final ExecutorService executor = Executors.newFixedThreadPool(3);
+    private final DuckDuckGoContentRetriever duckDuckGoContentRetriever;
+
 
     public ContextRetriever(ContentRetriever contentRetriever, Project project) {
         this.contentRetriever = contentRetriever;
         this.workspaceContextProvider = project.getService(WorkspaceContextRetriever.class);
+        this.duckDuckGoContentRetriever = new DuckDuckGoContentRetriever(2);
         this.settings = OllamAssistSettings.getInstance();
     }
 
     public ContextRetriever(ContentRetriever contentRetriever, WorkspaceContextRetriever workspaceProvider,
+                            DuckDuckGoContentRetriever duckDuckGoContentRetriever,
                             OllamAssistSettings settings) {
         this.contentRetriever = contentRetriever;
         this.workspaceContextProvider = workspaceProvider;
+        this.duckDuckGoContentRetriever = duckDuckGoContentRetriever;
         this.settings = settings;
     }
 
@@ -87,8 +93,15 @@ public class ContextRetriever implements ContentRetriever {
 
         try {
             CompletableFuture<List<Content>> retrieverFuture = CompletableFuture.completedFuture(Collections.emptyList());
+
             if (settings.ragEnabled()) {
-                CompletableFuture.supplyAsync(() -> contentRetriever.retrieve(query), executor);
+                retrieverFuture = CompletableFuture.supplyAsync(() -> contentRetriever.retrieve(query), executor);
+            }
+
+            CompletableFuture<List<Content>> webSearchFuture = CompletableFuture.completedFuture(Collections.emptyList());
+
+            if (settings.webSearchEnabled()) {
+                webSearchFuture = CompletableFuture.supplyAsync(() -> duckDuckGoContentRetriever.retrieve(query), executor);
             }
 
             CompletableFuture<List<Content>> workspaceFuture =
@@ -96,28 +109,27 @@ public class ContextRetriever implements ContentRetriever {
                             workspaceContextProvider.get().stream()
                                     .filter(content -> content != null
                                             && isRelevant(content)
-                                            && notContainsContent(new ArrayList<>(), content))
+                                            && containsNothing(new ArrayList<>(), content))
                                     .toList(), executor);
 
 
             CompletableFuture<Void> allDone =
-                    CompletableFuture.allOf(retrieverFuture, workspaceFuture);
+                    CompletableFuture.allOf(retrieverFuture, webSearchFuture, workspaceFuture);
 
-            allDone.get(3, TimeUnit.SECONDS);
+            allDone.get(5000, TimeUnit.SECONDS);
 
             List<Content> results = new ArrayList<>(safeGet(retrieverFuture));
+            results.addAll(safeGet(webSearchFuture));
             results.addAll(safeGet(workspaceFuture).stream()
-                    .filter(content -> notContainsContent(results, content))
+                    .filter(content -> containsNothing(results, content))
                     .toList());
             return results;
 
         } catch (TimeoutException e) {
-            Notifications.Bus.notify(new Notification(
-                    NOTIFICATION_GROUP_ID,
+            PluginNotifier.notify(NOTIFICATION_GROUP_ID,
                     "Timeout",
                     "Context retrieval took longer than 2 seconds and was aborted.",
-                    NotificationType.WARNING
-            ));
+                    NotificationType.WARNING);
             return Collections.emptyList();
         } catch (InternalServerException e) {
             String modelName = settings.getEmbeddingModelName();
@@ -127,15 +139,15 @@ public class ContextRetriever implements ContentRetriever {
                     "The selected embedding model '%s' at '%s' does not support embeddings.<br>Server response: %s<br>Please select a different model in the settings.",
                     modelName, url, serverResponse
             );
-            Notifications.Bus.notify(new Notification(NOTIFICATION_GROUP_ID, "Model error", errorMessage, NotificationType.ERROR));
+            PluginNotifier.notify(NOTIFICATION_GROUP_ID, "Model error", errorMessage, NotificationType.ERROR);
             return Collections.emptyList();
         } catch (Exception e) {
-            Notifications.Bus.notify(new Notification(
+            PluginNotifier.notify(
                     NOTIFICATION_GROUP_ID,
                     "Error",
                     "An unexpected error occurred while retrieving context.",
                     NotificationType.ERROR
-            ));
+            );
             return Collections.emptyList();
         }
     }
@@ -153,7 +165,7 @@ public class ContextRetriever implements ContentRetriever {
         return text != null && text.length() > 30;
     }
 
-    private boolean notContainsContent(List<Content> results, Content content) {
+    private boolean containsNothing(List<Content> results, Content content) {
         return results.stream()
                 .noneMatch(c -> c.textSegment().text().equals(content.textSegment().text()));
     }

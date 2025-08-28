@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.rag;
 
 import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationDisplayType;
 import com.intellij.notification.Notifications;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InternalServerException;
@@ -21,6 +22,7 @@ class ContextRetrieverTest {
 
     private ContentRetriever mainRetriever;
     private WorkspaceContextRetriever workspaceProvider;
+    private DuckDuckGoContentRetriever duckDuckGoContentRetriever;
     private OllamAssistSettings settings;
 
     private ContextRetriever contextRetriever;
@@ -29,12 +31,14 @@ class ContextRetrieverTest {
     void setUp() {
         mainRetriever = mock(ContentRetriever.class);
         workspaceProvider = mock(WorkspaceContextRetriever.class);
+        duckDuckGoContentRetriever = mock(DuckDuckGoContentRetriever.class);
         settings = mock(OllamAssistSettings.class);
 
-        when(settings.webSearchEnabled()).thenReturn(true);
+        when(settings.webSearchEnabled()).thenReturn(false);
         when(settings.ragEnabled()).thenReturn(true);
 
-        contextRetriever = new ContextRetriever(mainRetriever, workspaceProvider, settings);
+        contextRetriever = new ContextRetriever(mainRetriever, workspaceProvider, duckDuckGoContentRetriever, settings);
+
     }
 
     @Test

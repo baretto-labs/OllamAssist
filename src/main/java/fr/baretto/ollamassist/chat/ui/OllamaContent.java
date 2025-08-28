@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.JBColor;
@@ -84,19 +85,26 @@ public class OllamaContent {
             outputPanel.cancelMessage();
             outputPanel.addUserMessage(message);
             outputPanel.addNewAIMessage();
-
-            currentChatThread = ChatThread.builder()
-                    .tokenStream(context.project()
-                            .getService(OllamaService.class)
-                            .getAssistant()
-                            .chat(message))
-                    .onNext(this::publish)
-                    .onError(this::logException)
-                    .onCompleteResponse(this::done)
-                    .build()
-                    .start();
             promptInput.clear();
             promptInput.toggleGenerationState(true);
+
+            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                TokenStream stream = context.project()
+                        .getService(OllamaService.class)
+                        .getAssistant()
+                        .chat(message);
+
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    currentChatThread = ChatThread.builder()
+                            .tokenStream(stream)
+                            .onNext(this::publish)
+                            .onError(this::logException)
+                            .onCompleteResponse(this::done)
+                            .build()
+                            .start();
+                });
+            });
+
         });
 
 
