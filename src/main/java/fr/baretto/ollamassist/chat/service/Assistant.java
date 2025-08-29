@@ -2,6 +2,8 @@ package fr.baretto.ollamassist.chat.service;
 
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface Assistant {
 
@@ -95,5 +97,16 @@ public interface Assistant {
                - Assumptions beyond documentation
             """)
     TokenStream chat(String message);
+
+
+    @UserMessage("""
+            **Do NOT include notes, explanations, or extra text.**
+            
+            Refactor the following {{code}} in {{language}}, keeping the same functionality.\s
+            Use modern syntax, idiomatic constructs, and best practices.\s
+            Follow naming conventions, clear structure, and include minimal documentation for complex logic.\s
+            Return only the properly formatted refactored code block.
+                """)
+    TokenStream refactor(@V("code") String code, @V("language") String language);
 
 }

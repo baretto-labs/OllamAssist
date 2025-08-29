@@ -40,7 +40,7 @@ public class WorkspaceFileSelector extends JPanel implements WorkspaceFileSelect
         super(new BorderLayout(5, 5));
 
         workspaceContextRetriever = project.getService(WorkspaceContextRetriever.class);
-workspaceContextRetriever.subscribe(this);
+        workspaceContextRetriever.subscribe(this);
         setBorder(JBUI.Borders.empty(10));
 
         String[] columnNames = {"File", "Tokens", "Modification Date"};
