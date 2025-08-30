@@ -99,7 +99,6 @@ public class RefactoringInlayRenderer implements EditorCustomElementRenderer {
         g2.setColor(JBColor.border());
         g2.drawRoundRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1, 8, 8);
 
-        // Centrer le texte dans le bouton
         FontMetrics metrics = g2.getFontMetrics();
         int textX = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
         int textY = bounds.y + (bounds.height - metrics.getHeight()) / 2 + metrics.getAscent();
