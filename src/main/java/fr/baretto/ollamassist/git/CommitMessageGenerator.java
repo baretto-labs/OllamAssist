@@ -14,13 +14,15 @@ import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vcs.ui.Refreshable;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.completion.LightModelAssistant;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.util.Collection;
 
-@Log4j2
+@Slf4j
 public class CommitMessageGenerator extends AnAction {
 
 
@@ -76,7 +78,6 @@ public class CommitMessageGenerator extends AnAction {
     public String generateCommitMessage(Project project) {
         Collection<Change> changes = ChangeListManager.getInstance(project).getAllChanges();
         String gitDiff = DiffGenerator.getDiff(changes, ChangeListManager.getInstance(project).getUnversionedFilesPaths());
-        // gitDiff = DiffOptimizer.filterRelevantLines(gitDiff);
         return MessageCleaner.clean(LightModelAssistant.get().writecommitMessage(gitDiff));
     }
 
