@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 public class ApplyRefactoringAction extends AnAction {
+
     private final Editor editor;
     private final String refactoredText;
 
@@ -25,7 +26,6 @@ public class ApplyRefactoringAction extends AnAction {
         Project project = e.getProject();
         if (project == null) return;
 
-        // Utilise une WriteCommandAction pour que l'action soit annulable (undo)
         WriteCommandAction.runWriteCommandAction(project, "Apply OllamAssist Refactoring", null, () -> {
             Document document = editor.getDocument();
             SelectionModel selectionModel = editor.getSelectionModel();
