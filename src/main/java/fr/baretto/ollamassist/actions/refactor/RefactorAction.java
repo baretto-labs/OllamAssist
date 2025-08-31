@@ -77,7 +77,6 @@ public class RefactorAction extends AnAction {
                             .onError(error ->
                                     latch.countDown()
                             );
-
                     stream.start();
                     latch.await();
 

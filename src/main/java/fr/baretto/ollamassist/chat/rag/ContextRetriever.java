@@ -90,6 +90,10 @@ public class ContextRetriever implements ContentRetriever {
 
     @Override
     public List<Content> retrieve(Query query) {
+        // For a refactoring, websearch/RAG or context should not be used.
+        if (query.text().startsWith("Refactor")) {
+            return List.of();
+        }
 
         try {
             CompletableFuture<List<Content>> retrieverFuture = CompletableFuture.completedFuture(Collections.emptyList());
