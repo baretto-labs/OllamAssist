@@ -17,7 +17,7 @@ repositories {
 
 val langchain4jVersion = "1.3.0"
 val apacheLuceneVersion = "9.12.1"
-val mockitoVersion = "5.18.0"
+val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"
 val junitVintageVersion = "5.11.0-M2"
