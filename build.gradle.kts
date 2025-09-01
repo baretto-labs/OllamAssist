@@ -28,7 +28,7 @@ val testcontainersVersion = "1.21.3"
 val rsyntaxtextareaVersion = "3.6.0"
 val plexusVersion = "3.4.1"
 val jsoupVersion = "1.17.2"
-val jacksonVersion = "2.17.2"
+val jacksonVersion = "2.20.0"
 
 sourceSets {
     create("benchmark") {
