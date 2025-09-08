@@ -15,7 +15,7 @@ repositories {
     }
 }
 
-val langchain4jVersion = "1.3.0"
+val langchain4jVersion = "1.4.0"
 val apacheLuceneVersion = "9.12.1"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
@@ -62,12 +62,12 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-easy-rag:1.3.0-beta9") {
+    implementation("dev.langchain4j:langchain4j-easy-rag:1.4.0-beta10") {
         exclude(group = "xml-apis")
         exclude(group = "ai.djl", module = "api")
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
     }
-    implementation("dev.langchain4j:langchain4j-reactor:1.3.0-beta9")
+    implementation("dev.langchain4j:langchain4j-reactor:1.4.0-beta10")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
