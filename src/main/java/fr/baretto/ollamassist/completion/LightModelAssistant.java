@@ -154,5 +154,6 @@ public class LightModelAssistant {
                 {{user_input}}
                 """)
         String createWebSearchQuery(@V("user_input") String input);
+
     }
 }

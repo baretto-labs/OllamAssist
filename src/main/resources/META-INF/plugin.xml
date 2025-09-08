@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.7.0</h2>
+        <UL>
+            <LI>feat: add refactor menu.</LI>
+        </UL>
         <h2>V1.6.0</h2>
         <UL>
             <LI>feat(context): Add web search capability to all models.</LI>
@@ -203,8 +207,6 @@
                 description="Generate commit message with OllamAssist">
             <add-to-group group-id="Vcs.MessageActionGroup" anchor="last"/>
         </action>
-
-
         <group id="OllamAssistGroup"
                class="fr.baretto.ollamassist.chat.ui.menu.OllamAssistGroup"
                text="OllamAssist"
@@ -215,6 +217,20 @@
                     text="Add to Context"/>
         </group>
 
+        <action id="fr.baretto.ollamassist.actions.refactor.RefactorAction"
+                class="fr.baretto.ollamassist.actions.refactor.RefactorAction"
+                text="Refactor"
+                description="Suggests a refactoring for the selected code using OllamAssist."/>
+
+        <group id="OllamAssist.MainMenu" text="_OllamAssist" popup="true">
+            <add-to-group group-id="MainMenu" anchor="before" relative-to-action="HelpMenu"/>
+            <reference ref="fr.baretto.ollamassist.actions.refactor.RefactorAction"/>
+        </group>
+
+        <group id="OllamAssist.EditorPopupMenu" text="OllamAssist" popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <reference ref="fr.baretto.ollamassist.actions.refactor.RefactorAction"/>
+        </group>
 
     </actions>
 </idea-plugin>
