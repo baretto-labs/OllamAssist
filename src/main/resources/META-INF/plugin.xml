@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.7.0</h2>
+        <UL>
+            <LI>feat: add refactor menu.</LI>
+        </UL>
         <h2>V1.6.0</h2>
         <UL>
             <LI>feat(context): Add web search capability to all models.</LI>
@@ -215,7 +219,7 @@
 
         <action id="fr.baretto.ollamassist.actions.refactor.RefactorAction"
                 class="fr.baretto.ollamassist.actions.refactor.RefactorAction"
-                text="Refactor."
+                text="Refactor"
                 description="Suggests a refactoring for the selected code using OllamAssist."/>
 
         <group id="OllamAssist.MainMenu" text="_OllamAssist" popup="true">
