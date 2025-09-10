@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.actions.refactor;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.command.WriteCommandAction;
@@ -31,7 +32,7 @@ public class ApplyRefactoringAction extends AnAction {
             SelectionModel selectionModel = editor.getSelectionModel();
 
             if (selectionModel.hasSelection()) {
-                int startOffset = selectionModel.getSelectionStart();
+                int startOffset = selectionModel.getSelectionStart() - 1;
                 int endOffset = selectionModel.getSelectionEnd();
                 document.replaceString(startOffset, endOffset, refactoredText);
             }
@@ -41,5 +42,10 @@ public class ApplyRefactoringAction extends AnAction {
     @Override
     public void update(@NotNull AnActionEvent e) {
         e.getPresentation().setEnabled(true);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return super.getActionUpdateThread();
     }
 }

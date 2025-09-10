@@ -91,7 +91,8 @@ public class ContextRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
         // For a refactoring, websearch/RAG or context should not be used.
-        if (query.text().startsWith("Refactor")) {
+        if (query.text().startsWith("**Do NOT include notes, explanations, or extra text.**")
+                && query.text().contains("Refactor the")) {
             return List.of();
         }
 
