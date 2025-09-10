@@ -1,4 +1,4 @@
-package fr.baretto.ollamassist.actions.refactor; // Assure-toi que le package est bon
+package fr.baretto.ollamassist.actions.refactor;
 
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorCustomElementRenderer;

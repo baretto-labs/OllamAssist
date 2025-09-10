@@ -28,7 +28,7 @@ public class LineDiffHighlighter {
         highlighter = editor.getMarkupModel().addRangeHighlighter(
                 range.getStartOffset(),
                 range.getEndOffset(),
-                HighlighterLayer.CARET_ROW - 1, // Juste en dessous du curseur
+                HighlighterLayer.CARET_ROW - 1,
                 attributes,
                 HighlighterTargetArea.EXACT_RANGE
         );
