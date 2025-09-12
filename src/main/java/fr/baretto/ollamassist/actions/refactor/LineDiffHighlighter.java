@@ -1,11 +1,15 @@
 package fr.baretto.ollamassist.actions.refactor;
 
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.markup.*;
+import com.intellij.openapi.editor.markup.HighlighterLayer;
+import com.intellij.openapi.editor.markup.HighlighterTargetArea;
+import com.intellij.openapi.editor.markup.RangeHighlighter;
+import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.ui.JBColor;
 import org.jetbrains.annotations.NotNull;
-import java.awt.Color;
+
+import java.awt.*;
 
 public class LineDiffHighlighter {
     private final Editor editor;

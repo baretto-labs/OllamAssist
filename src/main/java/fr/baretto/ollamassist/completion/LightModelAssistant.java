@@ -6,8 +6,8 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
+import fr.baretto.ollamassist.setting.OllamAssistSettings;
 
 
 public class LightModelAssistant {
@@ -48,6 +48,70 @@ public class LightModelAssistant {
 
 
     public interface Service {
+        @UserMessage("""
+                You are an expert code completion assistant specialized in contextual, intelligent suggestions.
+                
+                **ANALYSIS PHASE:**
+                1. **Language Context**: Based on file extension {{extension}}, apply language-specific patterns
+                2. **Code Structure**: Analyze indentation, bracing style, naming conventions from the immediate context
+                3. **Scope Context**: Determine if you're in class/method/block scope from the provided context
+                4. **Intent Recognition**: Identify what the developer is likely trying to accomplish
+                
+                **COMPLETION RULES:**
+                1. **Contextual Awareness**: Use provided project context and similar patterns to inform your completion
+                2. **Minimal Precision**: Provide ONLY the immediate next logical continuation
+                3. **Syntactic Correctness**: Ensure proper syntax, balanced braces, required semicolons
+                4. **Consistent Style**: Match existing code style (spacing, naming, patterns)
+                5. **No Repetition**: Never repeat any part of the provided context
+                
+                **CONTEXT SOURCES:**
+                - **Immediate Context**: {{context}}
+                {{#projectContext}}
+                - **Project Context**: {{projectContext}}
+                {{/projectContext}}
+                {{#similarPatterns}}
+                - **Similar Code Patterns**: {{similarPatterns}}
+                {{/similarPatterns}}
+                
+                **OUTPUT FORMAT:**
+                ```{{extension}}
+                <your_completion_here>
+                ```
+                
+                **EXAMPLES:**
+                
+                For Java method signature:
+                Context: `public String getData(String id`
+                Completion: 
+                ```java
+                ) {
+                    return dataService.findById(id);
+                }
+                ```
+                
+                For variable declaration:
+                Context: `List<User> users = `
+                Completion:
+                ```java
+                userService.getAllUsers();
+                ```
+                
+                For conditional start:
+                Context: `if (user != null && user.isActive()`
+                Completion:
+                ```java
+                ) {
+                    return user.getName();
+                }
+                ```
+                
+                Provide ONLY the completion that logically follows the context.
+                """)
+        String complete(@V("context") String context, 
+                       @V("extension") String fileExtension,
+                       @V("projectContext") String projectContext,
+                       @V("similarPatterns") String similarPatterns);
+        
         @UserMessage("""  
                 You are an expert software developer specializing in writing clean, concise, and accurate code.\s
                 
@@ -75,7 +139,7 @@ public class LightModelAssistant {
                     <completed_code>
                     ```
                 """)
-        String complete(@V("context") String context, @V("extension") String fileExtension);
+        String completeBasic(@V("context") String context, @V("extension") String fileExtension);
 
         @SystemMessage("""
                 You are an assistant specialized in generating precise and concise commit messages, 

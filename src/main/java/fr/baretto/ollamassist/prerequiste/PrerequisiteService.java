@@ -2,7 +2,6 @@ package fr.baretto.ollamassist.prerequiste;
 
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.io.HttpRequests;
-import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.NoArgsConstructor;
 
 import java.io.IOException;

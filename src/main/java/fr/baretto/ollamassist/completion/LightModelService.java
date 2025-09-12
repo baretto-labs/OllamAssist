@@ -11,44 +11,153 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
+
+@Slf4j
 public class LightModelService {
     private final SuggestionManager suggestionManager;
+    private final EnhancedContextProvider contextProvider;
 
     public LightModelService(SuggestionManager suggestionManager) {
         this.suggestionManager = suggestionManager;
+        this.contextProvider = null; // Will be initialized with project
+    }
+    
+    public LightModelService(SuggestionManager suggestionManager, EnhancedContextProvider contextProvider) {
+        this.suggestionManager = suggestionManager;
+        this.contextProvider = contextProvider;
     }
 
     public void handleSuggestion(Editor editor) {
         ApplicationManager.getApplication().invokeLater(() -> {
-            Document document = editor.getDocument();
-            SelectionModel selectionModel = editor.getSelectionModel();
-
-            String context;
+            // Show immediate loading feedback in the editor
             int caretOffset = editor.getCaretModel().getOffset();
-
-            if (selectionModel.hasSelection()) {
-                context = selectionModel.getSelectedText();
-            } else {
-                int startOffset = Math.max(0, caretOffset - 200);
-                int endOffset = Math.min(document.getTextLength(), caretOffset);
-
-                context = document.getText().substring(startOffset, endOffset);
-            }
-            new Task.Backgroundable(editor.getProject(), "Ollamassist prepare suggestion  ...", true) {
+            suggestionManager.showLoading(editor, caretOffset, "Generating suggestion");
+            
+            new Task.Backgroundable(editor.getProject(), "OllamAssist: Generating intelligent suggestion...", true) {
 
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
-                    String lineStartContent = getLineStartContent(editor).trim();
-                    final String suggestion = extractCode(LightModelAssistant.get().complete(context, getFileExtension(editor)), lineStartContent);
+                    try {
+                        // Use enhanced context if available, otherwise fallback to basic context
+                        if (contextProvider != null) {
+                            handleEnhancedSuggestion(editor, indicator);
+                        } else {
+                            handleBasicSuggestion(editor, indicator);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error generating suggestion, falling back to basic mode", e);
+                        handleBasicSuggestion(editor, indicator);
+                    }
+                }
+                
+                @Override
+                public void onCancel() {
+                    // Clean up loading indicator if user cancels
                     ApplicationManager.getApplication().invokeLater(() -> {
-                        suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
-                        attachKeyListener(editor, editor.getCaretModel().getOffset());
+                        suggestionManager.disposeLoadingInlay();
                     });
+                }
+                
+                @Override
+                public void onThrowable(@NotNull Throwable error) {
+                    // Clean up loading indicator on error
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        suggestionManager.disposeLoadingInlay();
+                    });
+                    log.error("Suggestion generation failed", error);
                 }
             }.queue();
         });
+    }
+    
+    /**
+     * Handles suggestion generation with enhanced context (RAG + project analysis).
+     */
+    private void handleEnhancedSuggestion(Editor editor, ProgressIndicator indicator) {
+        indicator.setText("Building enhanced context...");
+        
+        // Build completion context asynchronously
+        CompletableFuture<CompletionContext> contextFuture = contextProvider.buildCompletionContextAsync(editor);
+        
+        contextFuture.thenAccept(completionContext -> {
+            if (indicator.isCanceled()) {
+                return;
+            }
+            
+            indicator.setText("Generating AI suggestion...");
+            
+            try {
+                String lineStartContent = getLineStartContent(editor).trim();
+                
+                // Use enhanced completion with rich context
+                String rawSuggestion = LightModelAssistant.get().complete(
+                    completionContext.getImmediateContext(),
+                    completionContext.getFileExtension(),
+                    completionContext.getProjectContext(),
+                    completionContext.getSimilarPatterns()
+                );
+                
+                String suggestion = extractCode(rawSuggestion, lineStartContent);
+                
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (!indicator.isCanceled()) {
+                        suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
+                        attachKeyListener(editor, editor.getCaretModel().getOffset());
+                    }
+                });
+                
+            } catch (Exception e) {
+                log.warn("Enhanced suggestion failed, trying basic fallback", e);
+                handleBasicSuggestion(editor, indicator);
+            }
+            
+        }).exceptionally(throwable -> {
+            log.warn("Context building failed, using basic suggestion", throwable);
+            handleBasicSuggestion(editor, indicator);
+            return null;
+        });
+    }
+    
+    /**
+     * Handles basic suggestion generation (original implementation).
+     */
+    private void handleBasicSuggestion(Editor editor, ProgressIndicator indicator) {
+        Document document = editor.getDocument();
+        SelectionModel selectionModel = editor.getSelectionModel();
+
+        String context;
+        int caretOffset = editor.getCaretModel().getOffset();
+
+        if (selectionModel.hasSelection()) {
+            context = selectionModel.getSelectedText();
+        } else {
+            int startOffset = Math.max(0, caretOffset - 200);
+            int endOffset = Math.min(document.getTextLength(), caretOffset);
+            context = document.getText().substring(startOffset, endOffset);
+        }
+        
+        try {
+            indicator.setText("Generating basic suggestion...");
+            
+            String lineStartContent = getLineStartContent(editor).trim();
+            String rawSuggestion = LightModelAssistant.get().completeBasic(context, getFileExtension(editor));
+            String suggestion = extractCode(rawSuggestion, lineStartContent);
+            
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (!indicator.isCanceled()) {
+                    suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
+                    attachKeyListener(editor, editor.getCaretModel().getOffset());
+                }
+            });
+            
+        } catch (Exception e) {
+            log.error("Basic suggestion generation failed", e);
+            // Even basic suggestion failed - show error or do nothing
+        }
     }
 
 
