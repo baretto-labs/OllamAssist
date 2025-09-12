@@ -43,16 +43,16 @@ public class EnhancedCompletionService {
      * Handles a completion request with full optimization pipeline.
      */
     public void requestCompletion(@NotNull Editor editor) {
-        System.err.println("🚀 [ERROR-DEBUG] EnhancedCompletionService.requestCompletion() called!");
+        log.debug("EnhancedCompletionService.requestCompletion() called");
         String debounceKey = DEBOUNCE_KEY_PREFIX + editor.hashCode();
         
         // Cancel any existing request for this editor
         debouncer.cancel(debounceKey);
         
         // Debounce the request to avoid multiple simultaneous calls
-        System.err.println("⏱️ [ERROR-DEBUG] Debouncing completion request with key: " + debounceKey);
+        log.debug("Debouncing completion request with key: {}", debounceKey);
         debouncer.debounce(debounceKey, DEBOUNCE_DELAY_MS, () -> {
-            System.err.println("🎯 [ERROR-DEBUG] Debounce timeout reached, calling executeCompletion()");
+            log.debug("Debounce timeout reached, calling executeCompletion()");
             executeCompletion(editor);
         });
     }
@@ -61,29 +61,29 @@ public class EnhancedCompletionService {
      * Executes the actual completion request with caching and optimization.
      */
     private void executeCompletion(@NotNull Editor editor) {
-        System.err.println("🎬 [ERROR-DEBUG] executeCompletion() called!");
+        log.debug("executeCompletion() called");
         ApplicationManager.getApplication().invokeLater(() -> {
-            System.err.println("🎭 [ERROR-DEBUG] invokeLater() callback executing");
+            log.debug("invokeLater() callback executing");
             // Show immediate loading feedback (get offset safely)
             int caretOffset = ApplicationManager.getApplication().runReadAction(
                 (Computable<Integer>) () -> editor.getCaretModel().getOffset()
             );
-            System.err.println("📍 [ERROR-DEBUG] Got caret offset: " + caretOffset);
+            log.debug("Got caret offset: {}", caretOffset);
             suggestionManager.showLoading(editor, caretOffset, "Generating suggestion");
-            System.err.println("⏳ [ERROR-DEBUG] showLoading() called");
+            log.debug("showLoading() called");
             
-            System.err.println("🎪 [ERROR-DEBUG] About to create Task.Backgroundable");
+            log.debug("About to create Task.Backgroundable");
             new Task.Backgroundable(editor.getProject(), "OllamAssist: Smart Code Completion", true) {
                 
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
-                    System.err.println("🏃 [ERROR-DEBUG] Task.Backgroundable.run() started!");
+                    log.debug("Task.Backgroundable.run() started");
                     try {
-                        System.err.println("🔍 [ERROR-DEBUG] About to call handleCompletionWithCache()");
+                        log.debug("About to call handleCompletionWithCache()");
                         handleCompletionWithCache(editor, indicator);
-                        System.err.println("✅ [ERROR-DEBUG] handleCompletionWithCache() completed");
+                        log.debug("handleCompletionWithCache() completed");
                     } catch (Exception e) {
-                        System.err.println("❌ [ERROR-DEBUG] Exception in Task.run(): " + e.getMessage());
+                        log.debug("Exception in Task.run(): {}", e.getMessage());
                         log.error("Completion request failed", e);
                         ApplicationManager.getApplication().invokeLater(() -> {
                             suggestionManager.disposeLoadingInlay();
@@ -93,19 +93,19 @@ public class EnhancedCompletionService {
                 
                 @Override
                 public void onCancel() {
-                    System.err.println("🚫 [ERROR-DEBUG] Task cancelled!");
+                    log.debug("Task cancelled");
                     suggestionManager.disposeLoadingInlay();
                     log.debug("Completion request cancelled by user");
                 }
                 
                 @Override
                 public void onThrowable(@NotNull Throwable error) {
-                    System.err.println("💥 [ERROR-DEBUG] Task threw error: " + error.getMessage());
+                    log.debug("Task threw error: {}", error.getMessage());
                     suggestionManager.disposeLoadingInlay();
                     log.error("Completion request failed with error", error);
                 }
             }.queue();
-            System.err.println("📬 [ERROR-DEBUG] Task.queue() called");
+            log.debug("Task.queue() called");
         });
     }
     
@@ -113,31 +113,31 @@ public class EnhancedCompletionService {
      * Handles completion with caching layer.
      */
     private void handleCompletionWithCache(@NotNull Editor editor, @NotNull ProgressIndicator indicator) {
-        System.err.println("🧠 [ERROR-DEBUG] handleCompletionWithCache() starting");
+        log.debug("handleCompletionWithCache() starting");
         indicator.setText("Building context...");
         
         // Build context for cache key generation and completion
-        System.err.println("🏗️ [ERROR-DEBUG] About to call contextProvider.buildCompletionContextAsync()");
+        log.debug("About to call contextProvider.buildCompletionContextAsync()");
         CompletableFuture<CompletionContext> contextFuture = contextProvider.buildCompletionContextAsync(editor);
-        System.err.println("🔮 [ERROR-DEBUG] contextFuture created, setting up thenAccept callback");
+        log.debug("contextFuture created, setting up thenAccept callback");
         
         contextFuture.thenAccept(completionContext -> {
-            System.err.println("📥 [ERROR-DEBUG] contextFuture.thenAccept() callback executing");
+            log.debug("contextFuture.thenAccept() callback executing");
             if (indicator.isCanceled()) {
-                System.err.println("🚫 [ERROR-DEBUG] Indicator was cancelled, returning early");
+                log.debug("Indicator was cancelled, returning early");
                 return;
             }
             
-            System.err.println("🔑 [ERROR-DEBUG] About to generate cache key");
+            log.debug("About to generate cache key");
             // Generate cache key (generateCacheKey handles ReadAction internally)
             String cacheKey = cache.generateCacheKey(editor, completionContext.getImmediateContext());
-            System.err.println("🔑 [ERROR-DEBUG] Cache key generated: " + cacheKey.substring(0, Math.min(8, cacheKey.length())));
+            log.debug("Cache key generated: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
             
             // Check cache first
-            System.err.println("💾 [ERROR-DEBUG] Checking cache for key");
+            log.debug("Checking cache for key");
             String cachedSuggestion = cache.get(cacheKey);
             if (cachedSuggestion != null) {
-                System.err.println("✅ [ERROR-DEBUG] Cache HIT! Using cached suggestion");
+                log.debug("Cache HIT! Using cached suggestion");
                 log.info("✅ Using cached suggestion: '{}'", cachedSuggestion.substring(0, Math.min(50, cachedSuggestion.length())));
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!indicator.isCanceled()) {
@@ -150,14 +150,14 @@ public class EnhancedCompletionService {
                 });
                 return;
             } else {
-                System.err.println("❌ [ERROR-DEBUG] Cache MISS for key");
+                log.debug("Cache MISS for key");
                 log.info("❌ Cache miss for key: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
             }
             
             // Generate new suggestion
-            System.err.println("🤖 [ERROR-DEBUG] About to call generateNewSuggestion()");
+            log.debug("About to call generateNewSuggestion()");
             generateNewSuggestion(editor, completionContext, cacheKey, indicator);
-            System.err.println("🤖 [ERROR-DEBUG] generateNewSuggestion() called");
+            log.debug("generateNewSuggestion() called");
             
         }).exceptionally(throwable -> {
             log.warn("Context building failed", throwable);
@@ -176,12 +176,12 @@ public class EnhancedCompletionService {
             @NotNull String cacheKey,
             @NotNull ProgressIndicator indicator) {
         
-        System.err.println("🎨 [ERROR-DEBUG] generateNewSuggestion() starting");
+        log.debug("generateNewSuggestion() starting");
         indicator.setText("Generating AI suggestion...");
         
-        System.err.println("🤖 [ERROR-DEBUG] About to call OptimizedLightModelAssistant.completeAsync()");
-        System.err.println("🤖 [ERROR-DEBUG] Context: " + context.getImmediateContext().substring(0, Math.min(50, context.getImmediateContext().length())));
-        System.err.println("🤖 [ERROR-DEBUG] File extension: " + context.getFileExtension());
+        log.debug("About to call OptimizedLightModelAssistant.completeAsync()");
+        log.debug("Context: {}", context.getImmediateContext().substring(0, Math.min(50, context.getImmediateContext().length())));
+        log.debug("File extension: {}", context.getFileExtension());
         
         CompletableFuture<String> completionFuture = OptimizedLightModelAssistant.completeAsync(
             context.getImmediateContext(),
@@ -189,10 +189,10 @@ public class EnhancedCompletionService {
             context.getProjectContext(),
             context.getSimilarPatterns()
         );
-        System.err.println("🔮 [ERROR-DEBUG] CompletableFuture created for AI completion");
+        log.debug("CompletableFuture created for AI completion");
         
         completionFuture.thenAccept(rawSuggestion -> {
-            System.err.println("🎉 [ERROR-DEBUG] AI completion thenAccept() callback executing!");
+            log.debug("AI completion thenAccept() callback executing");
             if (indicator.isCanceled()) {
                 log.info("🚫 Enhanced suggestion cancelled by user");
                 return;
@@ -369,7 +369,7 @@ public class EnhancedCompletionService {
      * Attaches action handler for suggestion interaction using IntelliJ's action system.
      */
     private void attachActionHandler(@NotNull Editor editor) {
-        System.err.println("🎪 [ERROR-DEBUG] attachActionHandler() called");
+        log.debug("attachActionHandler() called");
         
         EditorActionManager actionManager = EditorActionManager.getInstance();
         
@@ -382,7 +382,7 @@ public class EnhancedCompletionService {
         // Replace the Enter action handler temporarily
         actionManager.setActionHandler(IdeActions.ACTION_EDITOR_ENTER, suggestionHandler);
         
-        System.err.println("🎪 [ERROR-DEBUG] Replaced Enter action handler with SuggestionActionHandler");
+        log.debug("Replaced Enter action handler with SuggestionActionHandler");
     }
     
     /**

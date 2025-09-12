@@ -26,16 +26,16 @@ public class SuggestionActionHandler extends EditorActionHandler {
     
     @Override
     protected void doExecute(@NotNull Editor editor, @Nullable Caret caret, DataContext dataContext) {
-        System.err.println("🎪 [ERROR-DEBUG] SuggestionActionHandler.doExecute() called!");
+        log.debug("SuggestionActionHandler.doExecute() called");
         
         // Check if we have active suggestions
         if (suggestionManager.hasSuggestions()) {
-            System.err.println("💡 [ERROR-DEBUG] Has suggestions - inserting current suggestion");
+            log.debug("Has suggestions - inserting current suggestion");
             suggestionManager.insertCurrentSuggestion(editor);
             return;
         }
         
-        System.err.println("🔄 [ERROR-DEBUG] No suggestions - delegating to original handler");
+        log.debug("No suggestions - delegating to original handler");
         // No suggestions active, delegate to original handler
         if (originalHandler != null) {
             originalHandler.execute(editor, caret, dataContext);

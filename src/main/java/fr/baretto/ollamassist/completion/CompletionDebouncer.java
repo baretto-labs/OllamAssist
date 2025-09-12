@@ -28,30 +28,28 @@ public class CompletionDebouncer {
      * @param task Task to execute after debounce delay
      */
     public void debounce(@NotNull String key, int delayMs, @NotNull Runnable task) {
-        System.err.println("🔄 [ERROR-DEBUG] CompletionDebouncer.debounce() called with key: " + key + ", delay: " + delayMs + "ms");
         int requestId = requestCounter.incrementAndGet();
+        log.debug("Debouncing completion request {} for key: {}, delay: {}ms", requestId, key, delayMs);
         
         // Cancel any existing request for this key
         DebounceEntry existingEntry = pendingRequests.remove(key);
         if (existingEntry != null) {
             existingEntry.cancel();
-            System.err.println("❌ [ERROR-DEBUG] Cancelled previous request " + existingEntry.requestId + " for key: " + key);
+            log.debug("Cancelled previous request {} for key: {}", existingEntry.requestId, key);
         }
         
         Application application = ApplicationManager.getApplication();
         if (application == null) {
             // Running in test environment, use ScheduledExecutorService
-            System.err.println("⏰ [ERROR-DEBUG] Test mode: Scheduling debounced request " + requestId + " with ScheduledExecutorService");
+            log.debug("Test mode: Scheduling debounced request {} with ScheduledExecutorService", requestId);
             
             var future = scheduler.schedule(() -> {
-                System.err.println("🚀 [ERROR-DEBUG] Test scheduler fired! Executing debounced request " + requestId + " for key: " + key);
                 pendingRequests.remove(key);
                 
                 try {
-                    System.err.println("🎯 [ERROR-DEBUG] Executing debounced task " + requestId + " for key: " + key);
+                    log.debug("Executing debounced task {} for key: {}", requestId, key);
                     task.run();
                 } catch (Exception e) {
-                    System.err.println("❌ [ERROR-DEBUG] Error executing debounced task for key: " + key + " - " + e.getMessage());
                     log.error("Error executing debounced task for key: " + key, e);
                 }
             }, delayMs, TimeUnit.MILLISECONDS);
@@ -61,21 +59,19 @@ public class CompletionDebouncer {
             
         } else {
             // Running in IntelliJ environment, use Alarm
-            System.err.println("⏰ [ERROR-DEBUG] IntelliJ mode: Scheduling debounced request " + requestId + " with Alarm");
+            log.debug("IntelliJ mode: Scheduling debounced request {} with Alarm", requestId);
             Alarm alarm = new Alarm();
             DebounceEntry newEntry = new DebounceEntry(requestId, alarm, null);
             pendingRequests.put(key, newEntry);
             
             alarm.addRequest(() -> {
-                System.err.println("🚀 [ERROR-DEBUG] Alarm fired! Executing debounced request " + requestId + " for key: " + key);
                 pendingRequests.remove(key);
                 
                 application.executeOnPooledThread(() -> {
                     try {
-                        System.err.println("🎯 [ERROR-DEBUG] Executing debounced task " + requestId + " for key: " + key);
+                        log.debug("Executing debounced task {} for key: {}", requestId, key);
                         task.run();
                     } catch (Exception e) {
-                        System.err.println("❌ [ERROR-DEBUG] Error executing debounced task for key: " + key + " - " + e.getMessage());
                         log.error("Error executing debounced task for key: " + key, e);
                     }
                 });
