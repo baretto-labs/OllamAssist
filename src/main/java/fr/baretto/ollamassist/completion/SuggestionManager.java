@@ -13,12 +13,33 @@ import java.util.Arrays;
 @Slf4j
 public class SuggestionManager {
     private Inlay<?> currentInlay;
+    private Inlay<?> loadingInlay;
     @Getter
     private String currentSuggestion;
+    private LoadingInlayRenderer loadingRenderer;
 
 
-    public void showSuggestion(Editor editor, int offset, String suggestion) {
+    /**
+     * Shows a loading indicator while the suggestion is being generated.
+     */
+    public void showLoading(Editor editor, int offset, String loadingMessage) {
         disposeCurrentInlay();
+        disposeLoadingInlay();
+        
+        ApplicationManager.getApplication().invokeLater(() -> {
+            InlayModel inlayModel = editor.getInlayModel();
+            loadingRenderer = new LoadingInlayRenderer(editor, loadingMessage);
+            loadingInlay = inlayModel.addInlineElement(offset, false, loadingRenderer);
+        });
+    }
+
+    /**
+     * Shows the actual suggestion, replacing any loading indicator.
+     */
+    public void showSuggestion(Editor editor, int offset, String suggestion) {
+        disposeLoadingInlay();
+        disposeCurrentInlay();
+        
         ApplicationManager.getApplication().invokeLater(() -> {
             InlayModel inlayModel = editor.getInlayModel();
             currentInlay = inlayModel.addBlockElement(offset, true, false, 0, new InlayRenderer(Arrays.stream(suggestion.split("\n")).toList(), editor));
@@ -64,6 +85,25 @@ public class SuggestionManager {
             });
         }
     }
+    
+    /**
+     * Disposes the loading indicator.
+     */
+    public void disposeLoadingInlay() {
+        if (loadingInlay != null) {
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (loadingInlay != null) {
+                    loadingInlay.dispose();
+                    loadingInlay = null;
+                }
+            });
+        }
+        
+        if (loadingRenderer != null) {
+            loadingRenderer.dispose();
+            loadingRenderer = null;
+        }
+    }
 
     public boolean hasSuggestion() {
         return currentSuggestion != null;
@@ -72,6 +112,7 @@ public class SuggestionManager {
     public void clearSuggestion() {
         currentSuggestion = null;
         disposeCurrentInlay();
+        disposeLoadingInlay();
     }
 
 }

@@ -26,6 +26,7 @@ public class ApplyRefactoringAction extends AnAction {
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;
+        
 
         WriteCommandAction.runWriteCommandAction(project, "Apply OllamAssist Refactoring", null, () -> {
             Document document = editor.getDocument();
