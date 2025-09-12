@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vcs.CommitMessageI;
@@ -26,8 +27,9 @@ public class CommitMessageGenerator extends AnAction {
 
 
     private static final Icon OLLAMASSIST_ICON = IconUtils.OLLAMASSIST_ICON;
-    private static final Icon LOADING_ICON = IconUtils.OLLAMASSIST_THINKING_ICON;
+    private static final Icon STOP_ICON = IconUtils.STOP;
 
+    private volatile ProgressIndicator currentIndicator = null;
 
     public CommitMessageGenerator() {
         super(OLLAMASSIST_ICON);
@@ -35,31 +37,78 @@ public class CommitMessageGenerator extends AnAction {
 
     @Override
     public void actionPerformed(AnActionEvent e) {
+        // If a task is currently running, request cancellation
+        if (currentIndicator != null) {
+            log.debug("Requesting cancellation of current commit message generation task");
+            currentIndicator.cancel();
+            currentIndicator = null;
+            e.getPresentation().setIcon(OLLAMASSIST_ICON);
+            return;
+        }
+
+        // Start a new commit message generation task
         new Task.Backgroundable(getEventProject(e), "Analyzing changes to prepare commit message…", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
+                currentIndicator = indicator;
+                
                 try {
-                    e.getPresentation().setIcon(LOADING_ICON);
+                    // Change icon to stop button to indicate task can be cancelled
+                    ApplicationManager.getApplication().invokeLater(() ->
+                            e.getPresentation().setIcon(STOP_ICON)
+                    );
+                    
                     Project project = e.getProject();
                     if (project == null) return;
+
+                    // Check if task was cancelled
+                    if (indicator.isCanceled()) {
+                        log.debug("Commit message generation was cancelled before starting");
+                        return;
+                    }
 
                     CommitMessageI commitPanel = getVcsPanel(e);
 
                     if (commitPanel != null) {
+                        // Check cancellation again before generating message
+                        if (indicator.isCanceled()) {
+                            log.debug("Commit message generation was cancelled before message generation");
+                            return;
+                        }
+                        
                         String commitMessage = generateCommitMessage(project, e);
 
-                        ApplicationManager.getApplication().invokeLater(() ->
-                                commitPanel.setCommitMessage(commitMessage)
-                        );
+                        // Only set the message if not cancelled
+                        if (!indicator.isCanceled() && commitMessage != null && !commitMessage.trim().isEmpty()) {
+                            ApplicationManager.getApplication().invokeLater(() ->
+                                    commitPanel.setCommitMessage(commitMessage)
+                            );
+                        }
                     }
                 } catch (Exception exception) {
-                    log.error("Exception during commit message generation", exception);
+                    if (!indicator.isCanceled()) {
+                        log.error("Exception during commit message generation", exception);
+                    } else {
+                        log.debug("Commit message generation was cancelled");
+                    }
                 } finally {
-                    e.getPresentation().setIcon(OLLAMASSIST_ICON);
+                    // Reset icon to normal state and clear current indicator
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        e.getPresentation().setIcon(OLLAMASSIST_ICON);
+                        currentIndicator = null;
+                    });
                 }
             }
+            
+            @Override
+            public void onCancel() {
+                log.debug("Commit message generation task was cancelled");
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    e.getPresentation().setIcon(OLLAMASSIST_ICON);
+                    currentIndicator = null;
+                });
+            }
         }.queue();
-
     }
 
     private CommitMessageI getVcsPanel(AnActionEvent e) {
