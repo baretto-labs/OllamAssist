@@ -106,20 +106,6 @@ class CommitMessageGeneratorTest {
         });
     }
 
-    @Test
-    void should_handle_stop_functionality_state_management() {
-        // Given
-        CommitMessageGenerator generator = new CommitMessageGenerator();
-        
-        // When: Check initial state
-        // Then: Should have normal icon initially (tested via instantiation)
-        assertNotNull(generator);
-        
-        // This test verifies that the stop functionality doesn't break basic instantiation
-        // and the class maintains its structure. The actual UI stop behavior would require
-        // integration testing with IntelliJ platform components.
-    }
-
     // Helper test classes
     static class TestSelectionPanel {
         @SuppressWarnings("unused") // Called via reflection

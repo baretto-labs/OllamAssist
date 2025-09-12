@@ -160,11 +160,9 @@ public class EnhancedContextProvider {
             
             // Extract first 2000 characters which should include package, imports, and class declaration
             int contextLength = Math.min(2000, fileContent.length());
-            String projectContext = fileContent.substring(0, contextLength);
+            return fileContent.substring(0, contextLength);
             
             // TODO: Re-enable PSI-based project context extraction once PSI dependencies are resolved
-            return projectContext;
-            
         } catch (Exception e) {
             log.debug("Failed to extract project context", e);
             return null;

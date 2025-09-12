@@ -36,31 +36,24 @@ public class InlineCompletionAction extends AnAction {
             return;
         }
         log.debug("Found editor: {}", editor.getClass().getSimpleName());
-        
+
         // Initialize enhanced completion service for this project if not already done
-        if (enhancedCompletionService == null || shouldReinitializeForProject(project)) {
+        if (enhancedCompletionService == null) {
             EnhancedContextProvider contextProvider = new EnhancedContextProvider(project);
             enhancedCompletionService = new EnhancedCompletionService(multiSuggestionManager, contextProvider);
         }
-        
+
         // Attach enhanced key listener for Tab navigation
         editor.getContentComponent().addKeyListener(
-            new EnhancedSuggestionKeyListener(multiSuggestionManager, editor)
+                new EnhancedSuggestionKeyListener(multiSuggestionManager, editor)
         );
-        
+
         // Request completion with all optimizations
         log.debug("About to call enhancedCompletionService.requestCompletion()");
         enhancedCompletionService.requestCompletion(editor);
         log.debug("enhancedCompletionService.requestCompletion() called successfully");
     }
-    
-    /**
-     * Check if we need to reinitialize the service for a different project.
-     */
-    private boolean shouldReinitializeForProject(Project project) {
-        // For simplicity, always reinitialize. In production, you might want to cache per project.
-        return true;
-    }
+
 
     private Editor getActiveEditor() {
         Editor[] editors = EditorFactory.getInstance().getAllEditors();

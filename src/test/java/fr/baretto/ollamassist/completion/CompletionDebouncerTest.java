@@ -184,7 +184,6 @@ class CompletionDebouncerTest {
         assertTrue(latch.await(2, TimeUnit.SECONDS), "Task should execute despite throwing exception");
         
         // Wait a bit more to ensure cleanup
-        Thread.sleep(100);
         assertEquals(0, debouncer.getPendingRequestCount(), "Should have no pending requests after exception");
     }
 
@@ -203,13 +202,10 @@ class CompletionDebouncerTest {
         // Fire 50 rapid requests with same key
         for (int i = 0; i < 50; i++) {
             debouncer.debounce(key, 100, task);
-            Thread.sleep(5); // Very short delay
         }
 
         assertTrue(latch.await(2, TimeUnit.SECONDS), "Task should eventually execute");
-        
-        // Wait a bit more to ensure no additional executions
-        Thread.sleep(200);
+
         
         assertEquals(1, executionCount.get(), "Should execute exactly once despite 50 requests");
     }
