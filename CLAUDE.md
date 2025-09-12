@@ -54,11 +54,26 @@ OllamAssist is a JetBrains IntelliJ IDEA plugin that integrates with Ollama to p
 ```
 
 ### Testing Strategy
+
+**IMPORTANT: Test-First Development Approach**
+- **Always write tests first** before implementing new features (Test-Driven Development - TDD)
+- When adding new functionality, start by writing failing tests that describe the expected behavior
+- Implement the minimal code needed to make tests pass
+- Refactor while keeping tests green
+- Never reduce test quality or remove assertions to make tests pass - fix the implementation instead
+
+**Test Organization:**
 - Unit tests: Located in `src/test/java/`
 - Benchmark tests: Located in `src/benchmark/java/`
 - JUnit Jupiter engine for unit tests
 - AssertJ for assertions
 - Mockito for mocking
+
+**Test Quality Standards:**
+- Maintain high test coverage and comprehensive assertions
+- Test both positive and negative scenarios
+- Include edge cases and error handling
+- Write descriptive test method names that explain the behavior being tested
 
 ## Architecture Overview
 
