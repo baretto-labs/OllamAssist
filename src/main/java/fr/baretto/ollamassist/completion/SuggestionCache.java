@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Intelligent LRU cache for code completion suggestions.

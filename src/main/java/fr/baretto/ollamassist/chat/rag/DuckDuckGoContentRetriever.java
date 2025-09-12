@@ -2,16 +2,9 @@ package fr.baretto.ollamassist.chat.rag;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.Task;
-import com.intellij.openapi.project.Project;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
-import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.completion.LightModelAssistant;
-import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;

@@ -1,8 +1,6 @@
 package fr.baretto.ollamassist.chat.rag;
 
-import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
 import com.intellij.openapi.project.Project;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.rag.content.Content;

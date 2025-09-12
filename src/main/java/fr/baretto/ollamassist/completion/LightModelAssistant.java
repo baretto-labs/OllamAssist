@@ -6,8 +6,8 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
-import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
+import fr.baretto.ollamassist.setting.OllamAssistSettings;
 
 
 public class LightModelAssistant {
