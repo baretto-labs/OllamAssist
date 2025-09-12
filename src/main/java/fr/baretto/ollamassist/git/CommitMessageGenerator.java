@@ -5,7 +5,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vcs.CommitMessageI;
@@ -51,13 +50,13 @@ public class CommitMessageGenerator extends AnAction {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 currentIndicator = indicator;
-                
+
                 try {
                     // Change icon to stop button to indicate task can be cancelled
                     ApplicationManager.getApplication().invokeLater(() ->
                             e.getPresentation().setIcon(STOP_ICON)
                     );
-                    
+
                     Project project = e.getProject();
                     if (project == null) return;
 
@@ -75,7 +74,7 @@ public class CommitMessageGenerator extends AnAction {
                             log.debug("Commit message generation was cancelled before message generation");
                             return;
                         }
-                        
+
                         String commitMessage = generateCommitMessage(project, e);
 
                         // Only set the message if not cancelled
@@ -99,7 +98,7 @@ public class CommitMessageGenerator extends AnAction {
                     });
                 }
             }
-            
+
             @Override
             public void onCancel() {
                 log.debug("Commit message generation task was cancelled");
@@ -126,28 +125,28 @@ public class CommitMessageGenerator extends AnAction {
     public String generateCommitMessage(Project project, AnActionEvent e) {
         // Try to get selected changes from commit panel
         SelectedChanges selectedChanges = getSelectedChanges(e);
-        
+
         Collection<Change> changes;
         Collection<FilePath> unversionedFiles;
-        
+
         if (selectedChanges.hasSelection()) {
             // Use only selected changes
             changes = selectedChanges.changes();
             unversionedFiles = selectedChanges.unversionedFiles();
-            log.debug("Using {} selected changes and {} unversioned files for commit message", 
-                changes.size(), unversionedFiles.size());
+            log.debug("Using {} selected changes and {} unversioned files for commit message",
+                    changes.size(), unversionedFiles.size());
         } else {
             // Fallback to all changes if no selection
             changes = ChangeListManager.getInstance(project).getAllChanges();
             unversionedFiles = ChangeListManager.getInstance(project).getUnversionedFilesPaths();
-            log.debug("No selection found, using all {} changes and {} unversioned files for commit message", 
-                changes.size(), unversionedFiles.size());
+            log.debug("No selection found, using all {} changes and {} unversioned files for commit message",
+                    changes.size(), unversionedFiles.size());
         }
-        
+
         String gitDiff = DiffGenerator.getDiff(changes, java.util.List.copyOf(unversionedFiles));
         return MessageCleaner.clean(LightModelAssistant.get().writecommitMessage(gitDiff));
     }
-    
+
     /**
      * Attempts to retrieve selected changes from the commit panel using reflection.
      * Returns selected changes if available, otherwise returns empty selection.
@@ -156,9 +155,9 @@ public class CommitMessageGenerator extends AnAction {
         if (e == null) {
             return SelectedChanges.empty();
         }
-        
+
         DataContext context = e.getDataContext();
-        
+
         // Try different strategies using reflection to access internal APIs
         try {
             // Strategy 1: Try COMMIT_WORKFLOW_HANDLER
@@ -169,7 +168,7 @@ public class CommitMessageGenerator extends AnAction {
                     return result;
                 }
             }
-            
+
             // Strategy 2: Try Refreshable.PANEL_KEY  
             Object panel = Refreshable.PANEL_KEY.getData(context);
             if (panel != null) {
@@ -178,15 +177,15 @@ public class CommitMessageGenerator extends AnAction {
                     return result;
                 }
             }
-            
+
         } catch (Exception ex) {
             log.debug("Failed to get selected changes via reflection", ex);
         }
-        
+
         log.debug("No selected changes found, will use all changes");
         return SelectedChanges.empty();
     }
-    
+
     /**
      * Attempts to extract changes from an object using reflection
      */
@@ -194,14 +193,14 @@ public class CommitMessageGenerator extends AnAction {
     SelectedChanges tryGetChangesViaReflection(Object source, String sourceName) {
         try {
             Class<?> clazz = source.getClass();
-            
+
             // Try common method names for getting included/selected changes
             String[] changeMethods = {"getIncludedChanges", "getSelectedChanges", "getAllChanges"};
             String[] unversionedMethods = {"getIncludedUnversionedFiles", "getUnversionedFiles"};
-            
+
             Collection<Change> changes = null;
             Collection<FilePath> unversionedFiles = null;
-            
+
             // Try to get changes
             for (String methodName : changeMethods) {
                 try {
@@ -216,7 +215,7 @@ public class CommitMessageGenerator extends AnAction {
                     // Try next method
                 }
             }
-            
+
             // Try to get unversioned files
             for (String methodName : unversionedMethods) {
                 try {
@@ -231,31 +230,31 @@ public class CommitMessageGenerator extends AnAction {
                     // Try next method
                 }
             }
-            
+
             // If we found anything, return it
             if ((changes != null && !changes.isEmpty()) || (unversionedFiles != null && !unversionedFiles.isEmpty())) {
                 Collection<Change> finalChanges = changes != null ? changes : java.util.Collections.emptyList();
                 Collection<FilePath> finalUnversioned = unversionedFiles != null ? unversionedFiles : java.util.Collections.emptyList();
-                
-                log.debug("Successfully extracted selection from {}: {} changes, {} unversioned files", 
-                    sourceName, finalChanges.size(), finalUnversioned.size());
+
+                log.debug("Successfully extracted selection from {}: {} changes, {} unversioned files",
+                        sourceName, finalChanges.size(), finalUnversioned.size());
                 return new SelectedChanges(finalChanges, finalUnversioned, true);
             }
-            
+
         } catch (Exception ex) {
             log.debug("Reflection failed for {}", sourceName, ex);
         }
-        
+
         return SelectedChanges.empty();
     }
-    
+
     /**
      * Container for selected changes and unversioned files
      */
     public record SelectedChanges(
-        Collection<Change> changes,
-        Collection<FilePath> unversionedFiles,
-        boolean hasSelection
+            Collection<Change> changes,
+            Collection<FilePath> unversionedFiles,
+            boolean hasSelection
     ) {
         static SelectedChanges empty() {
             return new SelectedChanges(java.util.Collections.emptyList(), java.util.Collections.emptyList(), false);

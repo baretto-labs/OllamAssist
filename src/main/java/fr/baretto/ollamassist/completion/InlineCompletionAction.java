@@ -6,9 +6,11 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.project.Project;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 
+@Slf4j
 public class InlineCompletionAction extends AnAction {
 
     private EnhancedCompletionService enhancedCompletionService;
@@ -21,19 +23,19 @@ public class InlineCompletionAction extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        System.err.println("🚀 [ERROR-DEBUG] InlineCompletionAction.actionPerformed() called!");
+        log.debug("InlineCompletionAction.actionPerformed() called");
         Project project = e.getProject();
         if (project == null) {
-            System.err.println("❌ [ERROR-DEBUG] No project found!");
+            log.debug("No project found");
             return;
         }
 
         Editor editor = getActiveEditor();
         if (editor == null) {
-            System.err.println("❌ [ERROR-DEBUG] No active editor found!");
+            log.debug("No active editor found");
             return;
         }
-        System.err.println("✅ [ERROR-DEBUG] Found editor: " + editor.getClass().getSimpleName());
+        log.debug("Found editor: {}", editor.getClass().getSimpleName());
         
         // Initialize enhanced completion service for this project if not already done
         if (enhancedCompletionService == null || shouldReinitializeForProject(project)) {
@@ -47,9 +49,9 @@ public class InlineCompletionAction extends AnAction {
         );
         
         // Request completion with all optimizations
-        System.err.println("🎯 [ERROR-DEBUG] About to call enhancedCompletionService.requestCompletion()");
+        log.debug("About to call enhancedCompletionService.requestCompletion()");
         enhancedCompletionService.requestCompletion(editor);
-        System.err.println("✅ [ERROR-DEBUG] enhancedCompletionService.requestCompletion() called successfully!");
+        log.debug("enhancedCompletionService.requestCompletion() called successfully");
     }
     
     /**

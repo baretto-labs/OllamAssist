@@ -169,15 +169,15 @@ public class MultiSuggestionManager {
      * Inserts the currently selected suggestion into the editor.
      */
     public void insertCurrentSuggestion(@NotNull Editor editor) {
-        System.err.println("💡 [ERROR-DEBUG] insertCurrentSuggestion() called!");
+        log.debug("insertCurrentSuggestion() called");
         if (suggestions.isEmpty()) {
-            System.err.println("❌ [ERROR-DEBUG] No suggestions available to insert");
+            log.debug("No suggestions available to insert");
             log.debug("No suggestion to insert");
             return;
         }
         
         String suggestionToInsert = suggestions.get(currentSuggestionIndex);
-        System.err.println("💡 [ERROR-DEBUG] About to insert suggestion: '" + suggestionToInsert.substring(0, Math.min(50, suggestionToInsert.length())) + "'");
+        log.debug("About to insert suggestion: '{}'", suggestionToInsert.substring(0, Math.min(50, suggestionToInsert.length())));
         
         ApplicationManager.getApplication().runWriteAction(() -> 
             CommandProcessor.getInstance().executeCommand(editor.getProject(), () -> {
