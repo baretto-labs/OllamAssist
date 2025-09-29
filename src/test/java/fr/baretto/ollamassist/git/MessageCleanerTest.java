@@ -8,7 +8,7 @@ class MessageCleanerTest {
 
 
     @Test
-    void should_remove_think_balise(){
+    void should_remove_think_balise() {
         String message = "<think> some induction </think> the response.";
 
         Assertions.assertEquals("the response.", MessageCleaner.clean(message));

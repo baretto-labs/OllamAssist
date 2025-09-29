@@ -17,11 +17,10 @@ public class RefactoringInlayRenderer implements EditorCustomElementRenderer {
 
     private final List<String> lines;
     private final Color backgroundColor;
-    @Setter
-    private Point mousePosition = null;
-
     public Rectangle acceptBounds;
     public Rectangle declineBounds;
+    @Setter
+    private Point mousePosition = null;
 
     public RefactoringInlayRenderer(@NotNull String text, @NotNull Color backgroundColor) {
         this.lines = Arrays.asList(text.split("\n"));

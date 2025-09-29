@@ -20,12 +20,12 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 public class OptimizedLightModelAssistant {
-    
+
     private static final ConcurrentHashMap<String, ModelConnection> connectionPool = new ConcurrentHashMap<>();
     private static final int MAX_POOL_SIZE = 3;
     private static final Duration CONNECTION_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration KEEP_ALIVE = Duration.ofMinutes(5);
-    
+
     /**
      * Gets or creates an optimized service connection for the current settings.
      */
@@ -33,28 +33,28 @@ public class OptimizedLightModelAssistant {
     public static Service getOptimizedService() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
         String connectionKey = generateConnectionKey(settings);
-        
+
         ModelConnection connection = connectionPool.compute(connectionKey, (key, existing) -> {
             if (existing != null && existing.isValid()) {
                 existing.updateLastUsed();
                 return existing;
             }
-            
+
             // Clean up old connection if exists
             if (existing != null) {
                 existing.dispose();
             }
-            
+
             // Create new optimized connection
             return createOptimizedConnection(settings);
         });
-        
+
         // Clean up old connections periodically
         cleanupOldConnections();
-        
+
         return connection.service;
     }
-    
+
     /**
      * Asynchronous completion with timeout and cancellation support.
      */
@@ -64,7 +64,7 @@ public class OptimizedLightModelAssistant {
             @NotNull String extension,
             @Nullable String projectContext,
             @Nullable String similarPatterns) {
-        
+
         return CompletableFuture.supplyAsync(() -> {
             try {
                 Service service = getOptimizedService();
@@ -75,52 +75,52 @@ public class OptimizedLightModelAssistant {
             }
         }).orTimeout(CONNECTION_TIMEOUT.getSeconds(), TimeUnit.SECONDS);
     }
-    
+
     /**
      * Asynchronous basic completion.
      */
     @NotNull
     public static CompletableFuture<String> completeBasicAsync(@NotNull String context, @NotNull String extension) {
-        return CompletableFuture.supplyAsync(() -> 
-            getOptimizedService().completeBasic(context, extension)
+        return CompletableFuture.supplyAsync(() ->
+                getOptimizedService().completeBasic(context, extension)
         ).orTimeout(CONNECTION_TIMEOUT.getSeconds(), TimeUnit.SECONDS);
     }
-    
+
     /**
      * Creates an optimized model connection with performance tuned parameters.
      */
     @NotNull
     private static ModelConnection createOptimizedConnection(@NotNull OllamAssistSettings settings) {
         log.debug("Creating optimized connection for model: {}", settings.getCompletionModelName());
-        
+
         OllamaChatModel model = OllamaChatModel.builder()
-            .baseUrl(settings.getCompletionOllamaUrl())
-            .modelName(settings.getCompletionModelName())
-            .temperature(0.1)                    // Lower temperature for more deterministic completions
-            .topK(20)                           // Reduced for more focused completions
-            .topP(0.8)                          // Balanced creativity vs consistency
-            .timeout(CONNECTION_TIMEOUT)        // Shorter timeout for responsiveness
-            .logRequests(false)                 // Disable request logging for performance
-            .logResponses(false)                // Disable response logging for performance
-            .build();
-        
+                .baseUrl(settings.getCompletionOllamaUrl())
+                .modelName(settings.getCompletionModelName())
+                .temperature(0.1)                    // Lower temperature for more deterministic completions
+                .topK(20)                           // Reduced for more focused completions
+                .topP(0.8)                          // Balanced creativity vs consistency
+                .timeout(CONNECTION_TIMEOUT)        // Shorter timeout for responsiveness
+                .logRequests(false)                 // Disable request logging for performance
+                .logResponses(false)                // Disable response logging for performance
+                .build();
+
         Service service = AiServices.builder(Service.class)
-            .chatModel(model)
-            .build();
-        
+                .chatModel(model)
+                .build();
+
         return new ModelConnection(service, System.currentTimeMillis());
     }
-    
+
     /**
      * Generates a unique key for connection pooling based on settings.
      */
     @NotNull
     private static String generateConnectionKey(@NotNull OllamAssistSettings settings) {
-        return String.format("%s|%s", 
-            settings.getCompletionOllamaUrl(), 
-            settings.getCompletionModelName());
+        return String.format("%s|%s",
+                settings.getCompletionOllamaUrl(),
+                settings.getCompletionModelName());
     }
-    
+
     /**
      * Cleans up old unused connections to prevent memory leaks.
      */
@@ -128,9 +128,9 @@ public class OptimizedLightModelAssistant {
         if (connectionPool.size() <= MAX_POOL_SIZE) {
             return;
         }
-        
+
         long cutoffTime = System.currentTimeMillis() - KEEP_ALIVE.toMillis();
-        
+
         connectionPool.entrySet().removeIf(entry -> {
             ModelConnection connection = entry.getValue();
             if (connection.lastUsed < cutoffTime) {
@@ -141,7 +141,7 @@ public class OptimizedLightModelAssistant {
             return false;
         });
     }
-    
+
     /**
      * Disposes all connections and clears the pool.
      */
@@ -150,69 +150,23 @@ public class OptimizedLightModelAssistant {
         connectionPool.clear();
         log.debug("Disposed all model connections");
     }
-    
+
     /**
      * Gets connection pool statistics for monitoring.
      */
     @NotNull
     public static ConnectionPoolStats getPoolStats() {
         long activeConnections = connectionPool.values().stream()
-            .mapToLong(conn -> conn.isValid() ? 1 : 0)
-            .sum();
-            
+                .mapToLong(conn -> conn.isValid() ? 1 : 0)
+                .sum();
+
         return new ConnectionPoolStats(
-            connectionPool.size(),
-            activeConnections,
-            MAX_POOL_SIZE
+                connectionPool.size(),
+                activeConnections,
+                MAX_POOL_SIZE
         );
     }
-    
-    /**
-     * Represents a cached model connection.
-     */
-    private static class ModelConnection {
-        final Service service;
-        volatile long lastUsed;
-        
-        ModelConnection(Service service, long lastUsed) {
-            this.service = service;
-            this.lastUsed = lastUsed;
-        }
-        
-        void updateLastUsed() {
-            this.lastUsed = System.currentTimeMillis();
-        }
-        
-        boolean isValid() {
-            return System.currentTimeMillis() - lastUsed < KEEP_ALIVE.toMillis();
-        }
-        
-        void dispose() {
-            // Model connections are managed by LangChain4J, no explicit disposal needed
-        }
-    }
-    
-    /**
-     * Connection pool statistics.
-     */
-    public static class ConnectionPoolStats {
-        public final int totalConnections;
-        public final long activeConnections;
-        public final int maxConnections;
-        
-        public ConnectionPoolStats(int totalConnections, long activeConnections, int maxConnections) {
-            this.totalConnections = totalConnections;
-            this.activeConnections = activeConnections;
-            this.maxConnections = maxConnections;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("ConnectionPool{total=%d, active=%d, max=%d}", 
-                totalConnections, activeConnections, maxConnections);
-        }
-    }
-    
+
     /**
      * Optimized AI service interface for code completion.
      */
@@ -249,11 +203,11 @@ public class OptimizedLightModelAssistant {
                 
                 Provide ONLY the completion that logically follows the context.
                 """)
-        String complete(@V("context") String context, 
-                       @V("extension") String fileExtension,
-                       @V("projectContext") String projectContext,
-                       @V("similarPatterns") String similarPatterns);
-        
+        String complete(@V("context") String context,
+                        @V("extension") String fileExtension,
+                        @V("projectContext") String projectContext,
+                        @V("similarPatterns") String similarPatterns);
+
         @UserMessage("""  
                 You are an expert software developer specializing in writing clean, concise, and accurate code.
                 
@@ -275,5 +229,51 @@ public class OptimizedLightModelAssistant {
                 ```
                 """)
         String completeBasic(@V("context") String context, @V("extension") String fileExtension);
+    }
+
+    /**
+     * Represents a cached model connection.
+     */
+    private static class ModelConnection {
+        final Service service;
+        volatile long lastUsed;
+
+        ModelConnection(Service service, long lastUsed) {
+            this.service = service;
+            this.lastUsed = lastUsed;
+        }
+
+        void updateLastUsed() {
+            this.lastUsed = System.currentTimeMillis();
+        }
+
+        boolean isValid() {
+            return System.currentTimeMillis() - lastUsed < KEEP_ALIVE.toMillis();
+        }
+
+        void dispose() {
+            // Model connections are managed by LangChain4J, no explicit disposal needed
+        }
+    }
+
+    /**
+     * Connection pool statistics.
+     */
+    public static class ConnectionPoolStats {
+        public final int totalConnections;
+        public final long activeConnections;
+        public final int maxConnections;
+
+        public ConnectionPoolStats(int totalConnections, long activeConnections, int maxConnections) {
+            this.totalConnections = totalConnections;
+            this.activeConnections = activeConnections;
+            this.maxConnections = maxConnections;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("ConnectionPool{total=%d, active=%d, max=%d}",
+                    totalConnections, activeConnections, maxConnections);
+        }
     }
 }

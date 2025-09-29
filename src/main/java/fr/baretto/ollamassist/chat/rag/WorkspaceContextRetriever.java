@@ -28,8 +28,8 @@ public class WorkspaceContextRetriever {
     private static final int WINDOW_SIZE = 5000;
     private static final long MAX_FILE_SIZE = 200L * 1024L;
     private final Project project;
-    private Map<String, File> filesByPath = new HashMap<>();
     private final Set<WorkspaceFileSelectorListener> listeners = new HashSet<>();
+    private final Map<String, File> filesByPath = new HashMap<>();
 
     public WorkspaceContextRetriever(Project project) {
         this.project = project;

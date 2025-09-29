@@ -25,7 +25,7 @@ public class SuggestionManager {
     public void showLoading(Editor editor, int offset, String loadingMessage) {
         disposeCurrentInlay();
         disposeLoadingInlay();
-        
+
         ApplicationManager.getApplication().invokeLater(() -> {
             InlayModel inlayModel = editor.getInlayModel();
             loadingRenderer = new LoadingInlayRenderer(editor, loadingMessage);
@@ -39,7 +39,7 @@ public class SuggestionManager {
     public void showSuggestion(Editor editor, int offset, String suggestion) {
         disposeLoadingInlay();
         disposeCurrentInlay();
-        
+
         ApplicationManager.getApplication().invokeLater(() -> {
             InlayModel inlayModel = editor.getInlayModel();
             currentInlay = inlayModel.addBlockElement(offset, true, false, 0, new InlayRenderer(Arrays.stream(suggestion.split("\n")).toList(), editor));
@@ -85,7 +85,7 @@ public class SuggestionManager {
             });
         }
     }
-    
+
     /**
      * Disposes the loading indicator.
      */
@@ -98,7 +98,7 @@ public class SuggestionManager {
                 }
             });
         }
-        
+
         if (loadingRenderer != null) {
             loadingRenderer.dispose();
             loadingRenderer = null;

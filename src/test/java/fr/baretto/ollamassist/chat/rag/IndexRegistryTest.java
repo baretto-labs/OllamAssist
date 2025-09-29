@@ -15,12 +15,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class IndexRegistryTest {
 
+    @TempDir
+    Path tempDir;
     private IndexRegistry indexRegistry;
     private Path tempProjectsFile;
     private String originalUserHome;
-
-    @TempDir
-    Path tempDir;
 
     @BeforeEach
     void setUp() {
@@ -86,7 +85,7 @@ class IndexRegistryTest {
         assertTrue(indexRegistry.indexationIsProcessing(projectId));
 
         assertThrows(IllegalStateException.class, () -> {
-            if(indexRegistry.indexationIsProcessing(projectId)) {
+            if (indexRegistry.indexationIsProcessing(projectId)) {
                 throw new IllegalStateException("Indexation déjà en cours");
             }
             indexRegistry.markAsCurrentIndexation(projectId);

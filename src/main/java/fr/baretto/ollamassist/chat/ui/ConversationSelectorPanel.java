@@ -48,7 +48,7 @@ public class ConversationSelectorPanel extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(0, 12, 0, 0);
+        gbc.insets = JBUI.insetsLeft(12);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         topPanel.add(titleLabel, gbc);

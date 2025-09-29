@@ -106,7 +106,7 @@ public interface Assistant {
             Use modern syntax, idiomatic constructs, and best practices.\s
             Follow naming conventions, clear structure, and include minimal documentation for complex logic.\s
             Return only the properly formatted refactored code block.
-                """)
+            """)
     TokenStream refactor(@V("code") String code, @V("language") String language);
 
 }

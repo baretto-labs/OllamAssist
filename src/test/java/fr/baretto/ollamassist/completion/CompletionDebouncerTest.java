@@ -100,13 +100,13 @@ class CompletionDebouncerTest {
 
         // Schedule a debounced task
         debouncer.debounce(key, 200, task);
-        
+
         // Cancel it before execution
         debouncer.cancel(key);
-        
+
         // Wait longer than the debounce delay
         Thread.sleep(300);
-        
+
         assertEquals(0, executionCount.get(), "Cancelled task should not execute");
         assertEquals(0, debouncer.getPendingRequestCount(), "Should have no pending requests after cancellation");
     }
@@ -115,8 +115,8 @@ class CompletionDebouncerTest {
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void testCancelNonExistentKey() {
         // Cancelling non-existent key should not throw exception
-        assertDoesNotThrow(() -> debouncer.cancel("non-existent-key"), 
-            "Cancelling non-existent key should not throw exception");
+        assertDoesNotThrow(() -> debouncer.cancel("non-existent-key"),
+                "Cancelling non-existent key should not throw exception");
     }
 
     @Test
@@ -124,21 +124,23 @@ class CompletionDebouncerTest {
     void testPendingRequestCount() throws InterruptedException {
         String key1 = "key1";
         String key2 = "key2";
-        
+
         assertEquals(0, debouncer.getPendingRequestCount(), "Should start with 0 pending requests");
-        
+
         // Add a pending request
-        debouncer.debounce(key1, 500, () -> {});
+        debouncer.debounce(key1, 500, () -> {
+        });
         assertEquals(1, debouncer.getPendingRequestCount(), "Should have 1 pending request");
-        
+
         // Add another pending request with different key
-        debouncer.debounce(key2, 500, () -> {});
+        debouncer.debounce(key2, 500, () -> {
+        });
         assertEquals(2, debouncer.getPendingRequestCount(), "Should have 2 pending requests");
-        
+
         // Cancel one request
         debouncer.cancel(key1);
         assertEquals(1, debouncer.getPendingRequestCount(), "Should have 1 pending request after cancellation");
-        
+
         // Cancel the other request
         debouncer.cancel(key2);
         assertEquals(0, debouncer.getPendingRequestCount(), "Should have 0 pending requests after all cancellations");
@@ -159,10 +161,10 @@ class CompletionDebouncerTest {
 
         // Dispose debouncer
         debouncer.dispose();
-        
+
         // Wait longer than debounce delay
         Thread.sleep(300);
-        
+
         assertEquals(0, executionCount.get(), "No tasks should execute after dispose");
         assertEquals(0, debouncer.getPendingRequestCount(), "Should have 0 pending requests after dispose");
     }
@@ -180,9 +182,9 @@ class CompletionDebouncerTest {
 
         // Task that throws exception should still complete the debounce cycle
         debouncer.debounce(key, 100, failingTask);
-        
+
         assertTrue(latch.await(2, TimeUnit.SECONDS), "Task should execute despite throwing exception");
-        
+
         // Wait a bit more to ensure cleanup
         assertEquals(0, debouncer.getPendingRequestCount(), "Should have no pending requests after exception");
     }
@@ -206,7 +208,7 @@ class CompletionDebouncerTest {
 
         assertTrue(latch.await(2, TimeUnit.SECONDS), "Task should eventually execute");
 
-        
+
         assertEquals(1, executionCount.get(), "Should execute exactly once despite 50 requests");
     }
 
@@ -225,7 +227,7 @@ class CompletionDebouncerTest {
             Thread thread = new Thread(() -> {
                 try {
                     startLatch.await(); // Wait for all threads to be ready
-                    
+
                     for (int i = 0; i < requestsPerThread; i++) {
                         String key = "thread-" + finalThreadId + "-key";
                         debouncer.debounce(key, 100, totalExecutions::incrementAndGet);
@@ -242,15 +244,15 @@ class CompletionDebouncerTest {
 
         // Start all threads
         startLatch.countDown();
-        
+
         // Wait for all threads to finish
         assertTrue(doneLatch.await(5, TimeUnit.SECONDS), "All threads should complete");
-        
+
         // Wait for all debounced tasks to execute
         Thread.sleep(500);
-        
+
         // Each thread should have exactly one execution (one per unique key)
-        assertEquals(numThreads, totalExecutions.get(), 
-            "Should have exactly " + numThreads + " executions (one per thread key)");
+        assertEquals(numThreads, totalExecutions.get(),
+                "Should have exactly " + numThreads + " executions (one per thread key)");
     }
 }

@@ -30,12 +30,12 @@ public final class OllamaService implements Disposable, ModelListener {
 
     private final Project project;
     private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(25);
+    private final DocumentIndexingPipeline documentIndexingPipeline;
     private LuceneEmbeddingStore<TextSegment> embeddingStore;
     private ProjectFileListener projectFileListener;
     @Getter
     private Assistant assistant;
     private MessageBusConnection messageBusConnection;
-    private final DocumentIndexingPipeline documentIndexingPipeline;
 
 
     public OllamaService(@NotNull Project project) {

@@ -26,9 +26,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LuceneEmbeddingStoreTest {
 
-    private LuceneEmbeddingStore<TextSegment> store;
     private static final BgeSmallEnV15QuantizedEmbeddingModelFactory EMBEDDING_FACTORY = new BgeSmallEnV15QuantizedEmbeddingModelFactory();
-    private OllamAssistSettings settings = Mockito.mock(OllamAssistSettings.class);
+    private LuceneEmbeddingStore<TextSegment> store;
+    private final OllamAssistSettings settings = Mockito.mock(OllamAssistSettings.class);
+
+    public static String getResourceFilePath(String filename) {
+        URL url = Thread.currentThread().getContextClassLoader()
+                .getResource("data/" + filename);
+
+        if (url != null && url.getProtocol().equals("jar")) {
+            return url.toString();
+        }
+
+        if (url != null) {
+            return url.getPath();
+        }
+
+        return Path.of("src/test/resources/data", filename)
+                .toAbsolutePath().toString();
+    }
 
     @BeforeEach
     void setUp() throws Exception {
@@ -119,21 +135,5 @@ class LuceneEmbeddingStoreTest {
 
     private @NotNull Embedding embed(String string) {
         return EMBEDDING_FACTORY.create().embed(string).content();
-    }
-
-    public static String getResourceFilePath(String filename) {
-        URL url = Thread.currentThread().getContextClassLoader()
-                .getResource("data/" + filename);
-
-        if (url != null && url.getProtocol().equals("jar")) {
-            return url.toString();
-        }
-
-        if (url != null) {
-            return url.getPath();
-        }
-
-        return Path.of("src/test/resources/data", filename)
-                .toAbsolutePath().toString();
     }
 }

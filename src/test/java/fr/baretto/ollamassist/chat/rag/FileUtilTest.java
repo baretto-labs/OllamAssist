@@ -16,7 +16,8 @@ import org.mockito.MockedStatic;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class FileUtilTest {
@@ -25,7 +26,7 @@ class FileUtilTest {
     private ProjectFileIndex mockFileIndex;
     private VirtualFile mockBaseDir;
     private FilesUtil filesUtil;
-    private ShouldBeIndexed mockShouldBeIndexed = mock(ShouldBeIndexed.class);
+    private final ShouldBeIndexed mockShouldBeIndexed = mock(ShouldBeIndexed.class);
 
     @BeforeEach
     void setup() {

@@ -19,7 +19,7 @@ class ShouldBeIndexedTest {
     @TempDir
     Path tempDir;
 
-    private OllamAssistSettings settings = Mockito.mock(OllamAssistSettings.class);
+    private final OllamAssistSettings settings = Mockito.mock(OllamAssistSettings.class);
 
     @Test
     void should_returns_true_if_path_is_in_included_files() throws IOException {
@@ -33,7 +33,7 @@ class ShouldBeIndexedTest {
 
 
             Path hello = tempDir.resolve("srcHello.java");
-            createAndAppend(hello,"hello");
+            createAndAppend(hello, "hello");
             Assertions.assertTrue(new ShouldBeIndexedForTest().matches(hello));
             Path pom = tempDir.resolve("pom.xml");
             createAndAppend(pom, "<xml></xml>");
@@ -56,17 +56,17 @@ class ShouldBeIndexedTest {
 
     }
 
-    private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
-        ShouldBeIndexedForTest() {
-            includedPaths = Set.of("src/", ".java", "pom.xml");
-        }
-    }
-
     public void createAndAppend(Path path, String content) throws IOException {
         Files.writeString(
                 path,
                 content,
                 StandardOpenOption.CREATE
         );
+    }
+
+    private static class ShouldBeIndexedForTest extends ShouldBeIndexed {
+        ShouldBeIndexedForTest() {
+            includedPaths = Set.of("src/", ".java", "pom.xml");
+        }
     }
 }

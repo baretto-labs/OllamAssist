@@ -15,37 +15,37 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 public class CompletionDebouncer {
-    
+
     private final ConcurrentHashMap<String, DebounceEntry> pendingRequests = new ConcurrentHashMap<>();
     private final AtomicInteger requestCounter = new AtomicInteger(0);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
-    
+
     /**
      * Debounces a completion request. Only executes the latest request after the delay.
-     * 
-     * @param key Unique key for the request (e.g., editor hashcode)
+     *
+     * @param key     Unique key for the request (e.g., editor hashcode)
      * @param delayMs Delay in milliseconds before execution
-     * @param task Task to execute after debounce delay
+     * @param task    Task to execute after debounce delay
      */
     public void debounce(@NotNull String key, int delayMs, @NotNull Runnable task) {
         int requestId = requestCounter.incrementAndGet();
         log.debug("Debouncing completion request {} for key: {}, delay: {}ms", requestId, key, delayMs);
-        
+
         // Cancel any existing request for this key
         DebounceEntry existingEntry = pendingRequests.remove(key);
         if (existingEntry != null) {
             existingEntry.cancel();
             log.debug("Cancelled previous request {} for key: {}", existingEntry.requestId, key);
         }
-        
+
         Application application = ApplicationManager.getApplication();
         if (application == null) {
             // Running in test environment, use ScheduledExecutorService
             log.debug("Test mode: Scheduling debounced request {} with ScheduledExecutorService", requestId);
-            
+
             var future = scheduler.schedule(() -> {
                 pendingRequests.remove(key);
-                
+
                 try {
                     log.debug("Executing debounced task {} for key: {}", requestId, key);
                     task.run();
@@ -53,20 +53,20 @@ public class CompletionDebouncer {
                     log.error("Error executing debounced task for key: " + key, e);
                 }
             }, delayMs, TimeUnit.MILLISECONDS);
-            
+
             DebounceEntry newEntry = new DebounceEntry(requestId, null, future);
             pendingRequests.put(key, newEntry);
-            
+
         } else {
             // Running in IntelliJ environment, use Alarm
             log.debug("IntelliJ mode: Scheduling debounced request {} with Alarm", requestId);
             Alarm alarm = new Alarm();
             DebounceEntry newEntry = new DebounceEntry(requestId, alarm, null);
             pendingRequests.put(key, newEntry);
-            
+
             alarm.addRequest(() -> {
                 pendingRequests.remove(key);
-                
+
                 application.executeOnPooledThread(() -> {
                     try {
                         log.debug("Executing debounced task {} for key: {}", requestId, key);
@@ -78,7 +78,7 @@ public class CompletionDebouncer {
             }, delayMs);
         }
     }
-    
+
     /**
      * Cancels all pending requests for a specific key.
      */
@@ -89,7 +89,7 @@ public class CompletionDebouncer {
             log.debug("Cancelled debounced request {} for key: {}", entry.requestId, key);
         }
     }
-    
+
     /**
      * Cancels all pending requests.
      */
@@ -98,21 +98,21 @@ public class CompletionDebouncer {
         pendingRequests.clear();
         log.debug("Cancelled all pending debounced requests");
     }
-    
+
     /**
      * Returns the number of currently pending requests.
      */
     public int getPendingRequestCount() {
         return pendingRequests.size();
     }
-    
+
     /**
      * Checks if there's a pending request for the given key.
      */
     public boolean hasPendingRequest(@NotNull String key) {
         return pendingRequests.containsKey(key);
     }
-    
+
     /**
      * Gets debugging information about pending requests.
      */
@@ -122,17 +122,17 @@ public class CompletionDebouncer {
         info.append("CompletionDebouncer Stats:\n");
         info.append("- Pending requests: ").append(pendingRequests.size()).append("\n");
         info.append("- Total requests created: ").append(requestCounter.get()).append("\n");
-        
+
         if (!pendingRequests.isEmpty()) {
             info.append("- Pending keys: ");
-            pendingRequests.keySet().forEach(key -> 
-                info.append(key).append("(").append(pendingRequests.get(key).requestId).append(") ")
+            pendingRequests.keySet().forEach(key ->
+                    info.append(key).append("(").append(pendingRequests.get(key).requestId).append(") ")
             );
         }
-        
+
         return info.toString();
     }
-    
+
     /**
      * Disposes the debouncer and cancels all pending requests.
      */
@@ -141,7 +141,7 @@ public class CompletionDebouncer {
         scheduler.shutdown();
         log.debug("CompletionDebouncer disposed");
     }
-    
+
     /**
      * Internal class to track debounce entries.
      */
@@ -149,13 +149,13 @@ public class CompletionDebouncer {
         final int requestId;
         final Alarm alarm;
         final ScheduledFuture<?> future;
-        
+
         DebounceEntry(int requestId, Alarm alarm, ScheduledFuture<?> future) {
             this.requestId = requestId;
             this.alarm = alarm;
             this.future = future;
         }
-        
+
         void cancel() {
             if (alarm != null) {
                 alarm.cancelAllRequests();

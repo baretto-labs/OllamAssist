@@ -13,7 +13,7 @@ import java.awt.event.ActionListener;
 
 public class AskFromCodeAction implements ActionListener {
     private Editor editor;
-    private PromptPanel promptPanel;
+    private final PromptPanel promptPanel;
 
 
     public AskFromCodeAction(PromptPanel panel) {

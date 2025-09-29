@@ -14,34 +14,34 @@ import org.jetbrains.annotations.Nullable;
  */
 @Slf4j
 public class SuggestionActionHandler extends EditorActionHandler {
-    
+
     private final MultiSuggestionManager suggestionManager;
     private final EditorActionHandler originalHandler;
-    
-    public SuggestionActionHandler(@NotNull MultiSuggestionManager suggestionManager, 
-                                 @Nullable EditorActionHandler originalHandler) {
+
+    public SuggestionActionHandler(@NotNull MultiSuggestionManager suggestionManager,
+                                   @Nullable EditorActionHandler originalHandler) {
         this.suggestionManager = suggestionManager;
         this.originalHandler = originalHandler;
     }
-    
+
     @Override
     protected void doExecute(@NotNull Editor editor, @Nullable Caret caret, DataContext dataContext) {
         log.debug("SuggestionActionHandler.doExecute() called");
-        
+
         // Check if we have active suggestions
         if (suggestionManager.hasSuggestions()) {
             log.debug("Has suggestions - inserting current suggestion");
             suggestionManager.insertCurrentSuggestion(editor);
             return;
         }
-        
+
         log.debug("No suggestions - delegating to original handler");
         // No suggestions active, delegate to original handler
         if (originalHandler != null) {
             originalHandler.execute(editor, caret, dataContext);
         }
     }
-    
+
     @Override
     protected boolean isEnabledForCaret(@NotNull Editor editor, @NotNull Caret caret, DataContext dataContext) {
         // Always enabled - let doExecute decide what to do

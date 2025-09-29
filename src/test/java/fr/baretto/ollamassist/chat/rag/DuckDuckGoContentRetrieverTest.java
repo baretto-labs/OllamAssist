@@ -119,7 +119,6 @@ class DuckDuckGoContentRetrieverTest {
     }
 
 
-
     void shouldRetrieveResultsFromDuckDuckGo() {
         DuckDuckGoContentRetriever duckDuckGoContentRetriever = new DuckDuckGoContentRetriever(3);
 
@@ -131,6 +130,6 @@ class DuckDuckGoContentRetrieverTest {
             Assertions.assertThat(content.textSegment()).isNotNull();
         });
 
-        results.forEach(content -> System.out.println( content.textSegment()));
+        results.forEach(content -> System.out.println(content.textSegment()));
     }
 }

@@ -5,14 +5,14 @@ import dev.langchain4j.spi.json.JsonCodecFactory;
 
 /**
  * Default implementation of {@link JsonCodecFactory} for OllamAssist.
- *
+ * <p>
  * LangChain4j requires a JSON codec to serialize and deserialize objects.
  * Since OllamAssist does not rely on external JSON libraries (e.g., Jackson or Gson)
  * in its classpath by default, we provide our own implementation of a codec.
- *
+ * <p>
  * This factory ensures that whenever LangChain4j needs a {@link Json.JsonCodec},
  * it can create and use {@link DefaultJsonCodec}.
- *
+ * <p>
  * Without this, the framework would not be able to handle JSON
  * serialization and deserialization correctly, leading to runtime errors.
  */

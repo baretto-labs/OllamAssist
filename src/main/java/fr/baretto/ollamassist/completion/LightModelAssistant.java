@@ -107,11 +107,11 @@ public class LightModelAssistant {
                 
                 Provide ONLY the completion that logically follows the context.
                 """)
-        String complete(@V("context") String context, 
-                       @V("extension") String fileExtension,
-                       @V("projectContext") String projectContext,
-                       @V("similarPatterns") String similarPatterns);
-        
+        String complete(@V("context") String context,
+                        @V("extension") String fileExtension,
+                        @V("projectContext") String projectContext,
+                        @V("similarPatterns") String similarPatterns);
+
         @UserMessage("""  
                 You are an expert software developer specializing in writing clean, concise, and accurate code.\s
                 

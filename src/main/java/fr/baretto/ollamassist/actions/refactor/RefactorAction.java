@@ -37,6 +37,32 @@ public class RefactorAction extends AnAction {
     private static final Key<MouseAdapter> MOUSE_LISTENER_KEY = Key.create("OllamAssist.RefactorMouseListener");
     private static final Key<MouseMotionAdapter> MOUSE_MOTION_LISTENER_KEY = Key.create("OllamAssist.RefactorMouseMotionListener");
 
+    private static @NotNull MouseMotionAdapter createMouseMotionAdapter(@NotNull Editor editor, RefactoringInlayRenderer newCodeRenderer) {
+        return new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent event) {
+                Inlay<?> inlay = editor.getUserData(INLAY_KEY);
+                if (inlay == null || inlay.getBounds() == null) return;
+
+                Point relativePoint = new Point(event.getX() - inlay.getBounds().x, event.getY() - inlay.getBounds().y);
+                newCodeRenderer.setMousePosition(relativePoint);
+
+                if ((newCodeRenderer.acceptBounds != null && newCodeRenderer.acceptBounds.contains(relativePoint)) ||
+                        (newCodeRenderer.declineBounds != null && newCodeRenderer.declineBounds.contains(relativePoint))) {
+                    editor.getContentComponent().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                } else {
+                    editor.getContentComponent().setCursor(Cursor.getDefaultCursor());
+                }
+                inlay.repaint();
+            }
+        };
+    }
+
+    private static String cleanLlmResponse(String response) {
+        if (response == null) return "";
+        return response.replaceAll("(?s)```.*?\n(.*?)\n```", "$1").trim();
+    }
+
     @Override
     public void update(@NotNull AnActionEvent e) {
         Project project = e.getProject();
@@ -95,7 +121,6 @@ public class RefactorAction extends AnAction {
         });
     }
 
-
     private void displayInlayUI(@NotNull Project project, @NotNull Editor editor, @NotNull String refactoredCode, @NotNull TextRange originalSelection) {
         int offset = originalSelection.getStartOffset();
 
@@ -117,27 +142,6 @@ public class RefactorAction extends AnAction {
         editor.putUserData(MOUSE_MOTION_LISTENER_KEY, motionListener);
     }
 
-    private static @NotNull MouseMotionAdapter createMouseMotionAdapter(@NotNull Editor editor, RefactoringInlayRenderer newCodeRenderer) {
-        return new MouseMotionAdapter() {
-            @Override
-            public void mouseMoved(MouseEvent event) {
-                Inlay<?> inlay = editor.getUserData(INLAY_KEY);
-                if (inlay == null || inlay.getBounds() == null) return;
-
-                Point relativePoint = new Point(event.getX() - inlay.getBounds().x, event.getY() - inlay.getBounds().y);
-                newCodeRenderer.setMousePosition(relativePoint);
-
-                if ((newCodeRenderer.acceptBounds != null && newCodeRenderer.acceptBounds.contains(relativePoint)) ||
-                        (newCodeRenderer.declineBounds != null && newCodeRenderer.declineBounds.contains(relativePoint))) {
-                    editor.getContentComponent().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                } else {
-                    editor.getContentComponent().setCursor(Cursor.getDefaultCursor());
-                }
-                inlay.repaint();
-            }
-        };
-    }
-
     private @NotNull MouseAdapter createMouseAdapter(@NotNull Project project, @NotNull Editor editor, @NotNull String refactoredCode, @NotNull TextRange originalSelection, RefactoringInlayRenderer newCodeRenderer) {
         return new MouseAdapter() {
             @Override
@@ -155,7 +159,6 @@ public class RefactorAction extends AnAction {
             }
         };
     }
-
 
     private void applyChanges(@NotNull Project project, @NotNull Editor editor, @NotNull String refactoredText, @NotNull TextRange range) {
         WriteCommandAction.runWriteCommandAction(project, "Apply OllamAssist Refactoring", null, () ->
@@ -192,11 +195,6 @@ public class RefactorAction extends AnAction {
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
         return super.getActionUpdateThread();
-    }
-
-    private static String cleanLlmResponse(String response) {
-        if (response == null) return "";
-        return response.replaceAll("(?s)```.*?\n(.*?)\n```", "$1").trim();
     }
 
 }

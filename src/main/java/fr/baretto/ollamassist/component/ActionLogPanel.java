@@ -13,8 +13,8 @@ public class ActionLogPanel extends JPanel {
     private final JList<String> logList = new JList<>(model);
     private final JScrollPane scrollPane;
     private final JPanel container = new JPanel(new BorderLayout());
-    private boolean collapsed = false;
     private final int maxEntries = 100;
+    private final boolean collapsed = false;
 
     public ActionLogPanel() {
         setLayout(new BorderLayout());

@@ -16,8 +16,8 @@ class LLMBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(LLMBenchmark.class);
     private static final String OLLAMA_URL = "http://localhost:11434";
 
-    private LLMEvaluator evaluator;
-    private Assistant assistant;
+    private final LLMEvaluator evaluator;
+    private final Assistant assistant;
 
     public LLMBenchmark() {
         OllamaChatModel model = OllamaChatModel.builder()
@@ -53,6 +53,11 @@ class LLMBenchmark {
                 .build();
     }
 
+    public static void main(String[] args) {
+        LLMBenchmark benchmark = new LLMBenchmark();
+        benchmark.benchmark_chat_response();
+    }
+
     private void evaluate(String question, String response, String expected, String sources) {
         String prompt = buildPrompt(question, response, expected, sources);
         String judgment = evaluator.benchmark(prompt);
@@ -83,18 +88,12 @@ class LLMBenchmark {
                 """.formatted(question, response, expected, sources);
     }
 
-    private interface LLMEvaluator {
-        String benchmark(String prompt);
-    }
-
-
     void benchmark_chat_response() {
 
     }
 
 
-    public static void main(String[] args) {
-        LLMBenchmark benchmark = new LLMBenchmark();
-        benchmark.benchmark_chat_response();
+    private interface LLMEvaluator {
+        String benchmark(String prompt);
     }
 }

@@ -32,7 +32,7 @@ public class FilesUtil {
 
             paths.filter(file -> fileFilter.matches(file.toAbsolutePath()))
                     .map(path -> {
-                        System.err.println("PATH : "+ path);
+                        System.err.println("PATH : " + path);
                         return path;
                     }).map(Path::toFile)
                     .forEach(file -> {

@@ -31,7 +31,7 @@ public class DefaultJsonCodec implements Json.JsonCodec {
         try {
             return mapper.readValue(json, clazz);
         } catch (Exception e) {
-            throw new Langchain4jSerializationException("Failed to convert from Json",e);
+            throw new Langchain4jSerializationException("Failed to convert from Json", e);
         }
     }
 
@@ -47,7 +47,7 @@ public class DefaultJsonCodec implements Json.JsonCodec {
 
     private static class Langchain4jSerializationException extends RuntimeException {
 
-        Langchain4jSerializationException(String message, Exception exception){
+        Langchain4jSerializationException(String message, Exception exception) {
             super(message, exception);
         }
     }

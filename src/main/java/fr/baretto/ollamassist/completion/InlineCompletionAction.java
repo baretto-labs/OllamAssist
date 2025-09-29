@@ -13,8 +13,8 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class InlineCompletionAction extends AnAction {
 
-    private EnhancedCompletionService enhancedCompletionService;
     private final MultiSuggestionManager multiSuggestionManager;
+    private EnhancedCompletionService enhancedCompletionService;
 
     public InlineCompletionAction() {
         this.multiSuggestionManager = new MultiSuggestionManager();

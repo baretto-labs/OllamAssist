@@ -1,17 +1,17 @@
 package fr.baretto.ollamassist.completion;
 
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.CaretModel;
+import com.intellij.openapi.editor.Editor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for MultiSuggestionManager.
@@ -21,7 +21,7 @@ class MultiSuggestionManagerTest {
 
     @Mock
     private Editor mockEditor;
-    
+
     @Mock
     private CaretModel mockCaretModel;
 
@@ -31,7 +31,7 @@ class MultiSuggestionManagerTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         manager = new MultiSuggestionManager();
-        
+
         // Setup mock behavior
         when(mockEditor.getCaretModel()).thenReturn(mockCaretModel);
         when(mockCaretModel.getOffset()).thenReturn(100);
@@ -61,11 +61,11 @@ class MultiSuggestionManagerTest {
     @Test
     void testMultipleSuggestions() {
         List<String> suggestions = List.of(
-            "System.out.println(\"Hello\");",
-            "System.out.println(\"World\");",
-            "System.out.println(\"!\");"
+                "System.out.println(\"Hello\");",
+                "System.out.println(\"World\");",
+                "System.out.println(\"!\");"
         );
-        
+
         manager.showSuggestions(mockEditor, 100, suggestions);
 
         assertTrue(manager.hasSuggestions(), "Should have suggestions");
@@ -170,8 +170,8 @@ class MultiSuggestionManagerTest {
     @Test
     void testInsertCurrentSuggestion_NoSuggestions() {
         // Should handle gracefully when no suggestions exist
-        assertDoesNotThrow(() -> manager.insertCurrentSuggestion(mockEditor), 
-            "Should handle insertion with no suggestions gracefully");
+        assertDoesNotThrow(() -> manager.insertCurrentSuggestion(mockEditor),
+                "Should handle insertion with no suggestions gracefully");
     }
 
     @Test
@@ -221,7 +221,7 @@ class MultiSuggestionManagerTest {
         }
 
         manager.showSuggestions(mockEditor, 100, largeSuggestionList);
-        
+
         assertTrue(manager.hasSuggestions(), "Should have suggestions");
         assertTrue(manager.hasMultipleSuggestions(), "Should have multiple suggestions");
         assertEquals(100, manager.getTotalSuggestions(), "Should have 100 suggestions");
