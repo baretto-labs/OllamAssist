@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
 import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
-import fr.baretto.ollamassist.completion.LightModelAssistant;
+import fr.baretto.ollamassist.core.service.ModelAssistantService;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -80,7 +80,8 @@ public class OllamAssistStartup implements ProjectActivity {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
                         project.getService(OllamaService.class).init();
-                        LightModelAssistant.get();
+                        // Initialize ModelAssistantService for fast operations
+                        ApplicationManager.getApplication().getService(ModelAssistantService.class);
 
                         ApplicationManager.getApplication()
                                 .getMessageBus()

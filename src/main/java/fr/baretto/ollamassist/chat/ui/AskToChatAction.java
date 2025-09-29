@@ -23,6 +23,14 @@ public class AskToChatAction implements ActionListener {
         if (userMessage.isEmpty()) {
             return;
         }
+
+        // Vider le prompt immédiatement après soumission
+        promptPanel.clearUserPrompt();
+
+        // Activer l'état "génération en cours" (désactive le prompt et montre le bouton stop)
+        promptPanel.toggleGenerationState(true);
+
+        // Publier le message pour traitement par l'agent
         context.project().getMessageBus()
                 .syncPublisher(NewUserMessageNotifier.TOPIC)
                 .newUserMessage(userMessage);

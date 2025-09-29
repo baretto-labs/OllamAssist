@@ -14,8 +14,8 @@ import java.util.function.Consumer;
 
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
-    private ConfigurationPanel configurationPanel;
     private final Project project;
+    private ConfigurationPanel configurationPanel;
     private Consumer<Boolean> changeListener;
 
     public OllamassistSettingsConfigurable(Project project) {
@@ -56,6 +56,13 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setTimeout(settings.getTimeout());
         configurationPanel.setSources(settings.getSources());
         configurationPanel.setMaxDocuments(settings.getIndexationSize());
+
+        // === Paramètres agent ===
+        configurationPanel.setAgentModeEnabled(settings.isAgentModeEnabled());
+        configurationPanel.setAgentSecurityLevel(settings.getAgentSecurityLevel());
+        configurationPanel.setAgentMaxTasksPerSession(settings.getAgentMaxTasksPerSession());
+        configurationPanel.setAgentAutoApprovalEnabled(settings.isAgentAutoApprovalEnabled());
+
         return configurationPanel;
     }
 
@@ -76,7 +83,12 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 !configurationPanel.getEmbeddingModel().equalsIgnoreCase(settings.getEmbeddingModelName()) ||
                 !configurationPanel.getTimeout().equalsIgnoreCase(settings.getTimeout()) ||
                 !configurationPanel.getSources().equalsIgnoreCase(settings.getSources()) ||
-                configurationPanel.getMaxDocuments() != settings.getIndexationSize();
+                configurationPanel.getMaxDocuments() != settings.getIndexationSize() ||
+                // === Paramètres agent ===
+                configurationPanel.isAgentModeEnabled() != settings.isAgentModeEnabled() ||
+                configurationPanel.getAgentSecurityLevel() != settings.getAgentSecurityLevel() ||
+                configurationPanel.getAgentMaxTasksPerSession() != settings.getAgentMaxTasksPerSession() ||
+                configurationPanel.isAgentAutoApprovalEnabled() != settings.isAgentAutoApprovalEnabled();
     }
 
 
@@ -96,6 +108,12 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             settings.setTimeout(configurationPanel.getTimeout());
             settings.setSources(configurationPanel.getSources());
             settings.setIndexationSize(configurationPanel.getMaxDocuments());
+
+            // === Paramètres agent ===
+            settings.setAgentModeEnabled(configurationPanel.isAgentModeEnabled());
+            settings.setAgentSecurityLevel(configurationPanel.getAgentSecurityLevel());
+            settings.setAgentMaxTasksPerSession(configurationPanel.getAgentMaxTasksPerSession());
+            settings.setAgentAutoApprovalEnabled(configurationPanel.isAgentAutoApprovalEnabled());
 
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(ModelListener.TOPIC)
@@ -137,6 +155,12 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setTimeout(settings.getTimeout().trim());
         configurationPanel.setSources(settings.getSources().trim());
         configurationPanel.setMaxDocuments(settings.getIndexationSize());
+
+        // === Paramètres agent ===
+        configurationPanel.setAgentModeEnabled(settings.isAgentModeEnabled());
+        configurationPanel.setAgentSecurityLevel(settings.getAgentSecurityLevel());
+        configurationPanel.setAgentMaxTasksPerSession(settings.getAgentMaxTasksPerSession());
+        configurationPanel.setAgentAutoApprovalEnabled(settings.isAgentAutoApprovalEnabled());
     }
 
     @Override

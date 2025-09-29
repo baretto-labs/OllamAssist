@@ -2,9 +2,10 @@ package fr.baretto.ollamassist.chat.rag;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.openapi.application.ApplicationManager;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
-import fr.baretto.ollamassist.completion.LightModelAssistant;
+import fr.baretto.ollamassist.core.service.ModelAssistantService;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
@@ -45,9 +46,35 @@ public class DuckDuckGoContentRetriever {
         this.maxResults = maxResults;
     }
 
+    static String cleanText(String html) {
+        if (html == null || html.isBlank()) return "";
+        return Jsoup.parse(html).text().trim();
+    }
+
+    private static String getJsonText(JsonNode node, String fieldName) {
+        JsonNode field = node.get(fieldName);
+        return field != null && !field.isNull() ? field.asText("").trim() : "";
+    }
+
+    static boolean isValidUrl(String url) {
+        if (url == null || url.isEmpty()) return false;
+        if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
+        return url.startsWith(PROTOCOL_HTTPS) || url.startsWith(PROTOCOL_HTTP) || url.startsWith("//");
+    }
+
+    static String cleanUrl(String url) {
+        if (url.startsWith("//")) {
+            url = "https:" + url;
+        }
+        if (url.startsWith(PROTOCOL_HTTP)) {
+            url = url.replace(PROTOCOL_HTTP, PROTOCOL_HTTPS);
+        }
+        return url;
+    }
+
     @SneakyThrows
     public List<Content> retrieve(Query query) {
-        String webQuery = LightModelAssistant.get().createWebSearchQuery(query.text());
+        String webQuery = ApplicationManager.getApplication().getService(ModelAssistantService.class).createWebSearchQuery(query.text());
         return execute(webQuery);
     }
 
@@ -194,33 +221,6 @@ public class DuckDuckGoContentRetriever {
                 addResultsNode(node.get("Topics"), results);
             }
         });
-    }
-
-
-    static String cleanText(String html) {
-        if (html == null || html.isBlank()) return "";
-        return Jsoup.parse(html).text().trim();
-    }
-
-    private static String getJsonText(JsonNode node, String fieldName) {
-        JsonNode field = node.get(fieldName);
-        return field != null && !field.isNull() ? field.asText("").trim() : "";
-    }
-
-    static boolean isValidUrl(String url) {
-        if (url == null || url.isEmpty()) return false;
-        if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
-        return url.startsWith(PROTOCOL_HTTPS) || url.startsWith(PROTOCOL_HTTP) || url.startsWith("//");
-    }
-
-    static String cleanUrl(String url) {
-        if (url.startsWith("//")) {
-            url = "https:" + url;
-        }
-        if (url.startsWith(PROTOCOL_HTTP)) {
-            url = url.replace(PROTOCOL_HTTP, PROTOCOL_HTTPS);
-        }
-        return url;
     }
 
     private record SearchResult(String title, String url, String snippet) {

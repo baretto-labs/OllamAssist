@@ -1,13 +1,15 @@
 package fr.baretto.ollamassist.chat.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.OnePixelSplitter;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
+import com.intellij.util.ui.components.BorderLayoutPanel;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
@@ -16,8 +18,10 @@ import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
+import fr.baretto.ollamassist.core.agent.AgentChatIntegration;
+import fr.baretto.ollamassist.core.agent.AgentCoordinator;
+import fr.baretto.ollamassist.core.agent.ui.AgentStatusPanel;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
-import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Builder;
@@ -27,8 +31,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,22 +41,34 @@ public class OllamaContent {
 
     private final Context context;
     @Getter
-    private final JPanel contentPanel = new JPanel();
+    private final BorderLayoutPanel contentPanel = new BorderLayoutPanel();
     private final PromptPanel promptInput;
     private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
+    private final AgentChatIntegration agentChatIntegration;
+    private final AgentStatusPanel agentStatusPanel;
     private boolean isAvailable = false;
     private ChatThread currentChatThread;
+    private JPanel contextContentPanel;
 
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
         this.context = new Context(toolWindow.getProject());
         promptInput = new PromptPanel(toolWindow.getProject());
         filesSelector = new WorkspaceFileSelector(toolWindow.getProject());
+
+        // Initialiser l'intégration agent avec MessagesPanel
+        AgentCoordinator agentCoordinator = toolWindow.getProject().getService(AgentCoordinator.class);
+        agentCoordinator.setMessagesPanel(outputPanel);
+        this.agentChatIntegration = new AgentChatIntegration(toolWindow.getProject(), agentCoordinator);
+
+        // Initialiser le panel de status agent
+        this.agentStatusPanel = new AgentStatusPanel(toolWindow.getProject());
+
         PrerequisitesPanel prerequisitesPanel = new PrerequisitesPanel(toolWindow.getProject());
         AskToChatAction askToChatAction = new AskToChatAction(promptInput, context);
         promptInput.addActionMap(askToChatAction);
-        outputPanel.addContexte(context);
+        outputPanel.addContexteAndPrompt(context, promptInput);
         contentPanel.add(prerequisitesPanel);
 
         MessageBusConnection connection = context.project().getMessageBus()
@@ -63,6 +77,13 @@ public class OllamaContent {
         subscribe(connection);
         promptInput.addStopActionListener(e -> stopGeneration());
         Disposer.register(toolWindow.getDisposable(), connection);
+
+        // Enregistrer dispose de l'agent et du status panel
+        Disposer.register(toolWindow.getDisposable(), agentChatIntegration::dispose);
+        Disposer.register(toolWindow.getDisposable(), agentStatusPanel::dispose);
+
+        // TEMPORAIRE: Configurer le fallback pour debug
+        agentChatIntegration.setChatFallbackHandler(this::processUserMessage);
     }
 
     private void subscribe(MessageBusConnection connection) {
@@ -78,34 +99,8 @@ public class OllamaContent {
         });
 
 
-        connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
-            if (currentChatThread != null) {
-                currentChatThread.stop();
-            }
-            outputPanel.cancelMessage();
-            outputPanel.addUserMessage(message);
-            outputPanel.addNewAIMessage();
-            promptInput.clear();
-            promptInput.toggleGenerationState(true);
-
-            ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                TokenStream stream = context.project()
-                        .getService(OllamaService.class)
-                        .getAssistant()
-                        .chat(message);
-
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    currentChatThread = ChatThread.builder()
-                            .tokenStream(stream)
-                            .onNext(this::publish)
-                            .onError(this::logException)
-                            .onCompleteResponse(this::done)
-                            .build()
-                            .start();
-                });
-            });
-
-        });
+        // Note: NewUserMessageNotifier est géré par AgentChatIntegration
+        // qui s'abonne dans son constructeur et fait le fallback vers processUserMessage()
 
 
     }
@@ -113,147 +108,267 @@ public class OllamaContent {
     private void initUI() {
         this.isAvailable = true;
         contentPanel.setLayout(new BorderLayout());
-        contentPanel.add(createConversationPanel(), BorderLayout.NORTH);
-        contentPanel.add(createSplitter(), BorderLayout.CENTER);
+        contentPanel.add(createMainChatInterface(), BorderLayout.CENTER);
     }
 
-    private JPanel createSplitter() {
-        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.70f);
+    private JPanel createMainChatInterface() {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(UIUtil.getPanelBackground());
 
-        JPanel messagesPanel = new JPanel(new BorderLayout());
-        messagesPanel.add(outputPanel, BorderLayout.CENTER);
+        // Panel de status agent en haut (si activé)
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+        topPanel.add(agentStatusPanel, BorderLayout.NORTH);
 
-        JComponent inputPanel = createInputPanel();
+        // Header avec conversation selector
+        JPanel headerPanel = createHeaderPanel();
+        topPanel.add(headerPanel, BorderLayout.CENTER);
 
-        splitter.setFirstComponent(messagesPanel);
-        splitter.setSecondComponent(inputPanel);
-        splitter.setHonorComponentsMinimumSize(true);
-        splitter.setResizeEnabled(true);
+        mainPanel.add(topPanel, BorderLayout.NORTH);
 
-        return splitter;
+        // Chat area avec splitter vertical
+        OnePixelSplitter mainSplitter = new OnePixelSplitter(true, 0.75f);
+        mainSplitter.setFirstComponent(createMessagesArea());
+        mainSplitter.setSecondComponent(createInputArea());
+        mainSplitter.setHonorComponentsMinimumSize(true);
+        mainSplitter.setResizeEnabled(true);
+
+        mainPanel.add(mainSplitter, BorderLayout.CENTER);
+        return mainPanel;
     }
 
-    private JComponent createInputPanel() {
+    private JPanel createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(UIUtil.getPanelBackground());
+        headerPanel.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0),
+                JBUI.Borders.empty(8, 12)
+        ));
+
+        ConversationSelectorPanel conversationSelector = new ConversationSelectorPanel();
+        headerPanel.add(conversationSelector, BorderLayout.CENTER);
+
+
+        return headerPanel;
+    }
+
+
+    private JPanel createMessagesArea() {
+        JPanel messagesArea = new JPanel(new BorderLayout());
+        messagesArea.setBackground(UIUtil.getPanelBackground());
+        messagesArea.setBorder(JBUI.Borders.empty(8, 12));
+        messagesArea.add(outputPanel, BorderLayout.CENTER);
+        return messagesArea;
+    }
+
+    private JComponent createInputArea() {
+        JPanel inputArea = new JPanel(new BorderLayout());
+        inputArea.setBackground(UIUtil.getPanelBackground());
+        inputArea.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 1, 0, 0, 0),
+                JBUI.Borders.empty(8, 12)
+        ));
+
+        // Context panel (collapsible)
+        JPanel contextPanel = createModernContextPanel();
+        inputArea.add(contextPanel, BorderLayout.NORTH);
+
+        // Input panel
+        JPanel promptArea = createPromptArea();
+        inputArea.add(promptArea, BorderLayout.CENTER);
+
+        return inputArea;
+    }
+
+    private JPanel createPromptArea() {
+        JPanel promptArea = new JPanel(new BorderLayout());
+        promptArea.setBackground(UIUtil.getPanelBackground());
+        promptArea.setBorder(JBUI.Borders.emptyTop(8));
+
         JBScrollPane scrollPane = new JBScrollPane(promptInput);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border()),
+                JBUI.Borders.empty(4)
+        ));
 
-        JPanel filePanel = createCollapsiblePanel(filesSelector);
-
-        OnePixelSplitter splitter = new OnePixelSplitter(true, 0.0f);
-        splitter.setFirstComponent(filePanel);
-        splitter.setSecondComponent(scrollPane);
-        splitter.setHonorComponentsMinimumSize(true);
-
-        int[] initialSize = {150};
-
-        AbstractButton toggleButton = (AbstractButton) ((JPanel) filePanel.getComponent(0)).getComponent(0);
-        toggleButton.addActionListener(e -> {
-            boolean currentlyCollapsed = !filePanel.getComponent(1).isVisible();
-            filePanel.getComponent(1).setVisible(!currentlyCollapsed);
-
-            SwingUtilities.invokeLater(() -> {
-                if (currentlyCollapsed) {
-                    splitter.setProportion(initialSize[0] / (float) Math.max(splitter.getHeight(), initialSize[0] + 100));
-                } else {
-                    int headerHeight = filePanel.getComponent(0).getPreferredSize().height;
-                    splitter.setProportion(headerHeight / (float) Math.max(splitter.getHeight(), headerHeight + 100));
-                }
-
-                filePanel.revalidate();
-                splitter.revalidate();
-            });
-        });
-
-        splitter.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                initialSize[0] = splitter.getFirstComponent().getHeight();
-            }
-        });
-
-        return splitter;
+        promptArea.add(scrollPane, BorderLayout.CENTER);
+        return promptArea;
     }
 
-    private JPanel createCollapsiblePanel(WorkspaceFileSelector fileSelector) {
-        JPanel panel = new JPanel(new BorderLayout());
+    private JPanel createModernContextPanel() {
+        JPanel contextPanel = new JPanel(new BorderLayout());
+        contextPanel.setBackground(UIUtil.getPanelBackground());
 
-        JPanel headerPanel = new JPanel();
-        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        // Header avec design moderne
+        JPanel headerPanel = createContextHeader();
+        contextPanel.add(headerPanel, BorderLayout.NORTH);
 
+        // Content area avec meilleur style
+        JPanel contextContent = createContextContent();
+        contextPanel.add(contextContent, BorderLayout.CENTER);
+
+        return contextPanel;
+    }
+
+    private JPanel createContextHeader() {
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(UIUtil.getPanelBackground());
+        headerPanel.setBorder(JBUI.Borders.empty(4, 0, 8, 0));
+
+        // Toggle button avec style moderne
         JButton toggleButton = new JButton();
         toggleButton.setBorderPainted(false);
         toggleButton.setFocusPainted(false);
         toggleButton.setContentAreaFilled(false);
         toggleButton.setHorizontalAlignment(SwingConstants.LEFT);
+        toggleButton.setBorder(JBUI.Borders.empty(4, 0));
+        toggleButton.setFont(toggleButton.getFont().deriveFont(Font.BOLD, 12f));
 
-        JButton addButton = new JButton(IconUtils.ADD_TO_CONTEXT);
-        addButton.setToolTipText("Add to context");
-        addButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-        addButton.setContentAreaFilled(false);
-        addButton.setFocusPainted(false);
-        addButton.setPreferredSize(new Dimension(24, 24));
-        addButton.addActionListener(fileSelector::addFilesAction);
-        ComponentCustomizer.applyHoverEffect(addButton);
-
-        JButton removeButton = new JButton(IconUtils.REMOVE_TO_CONTEXT);
-        removeButton.setToolTipText("Remove from context");
-        removeButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
-        removeButton.setContentAreaFilled(false);
-        removeButton.setFocusPainted(false);
-        removeButton.setPreferredSize(new Dimension(24, 24));
-        removeButton.setEnabled(false);
-        removeButton.addActionListener(fileSelector::removeFilesAction);
-        ComponentCustomizer.applyHoverEffect(removeButton);
-
-        JLabel tokenCountLabel = new JLabel("Tokens: 0");
-        tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
+        // Token count avec meilleur style
+        JBLabel tokenCountLabel = new JBLabel("Tokens: 0");
         tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
         tokenCountLabel.setForeground(JBColor.GRAY);
-        fileSelector.getFileTable().getModel().addTableModelListener(e ->
-                updateTokenCount(fileSelector, tokenCountLabel)
-        );
 
-        fileSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                removeButton.setEnabled(fileSelector.getFileTable().getSelectedRowCount() > 0);
-            }
-        });
+        // Action buttons avec spacing amélioré
+        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        actionsPanel.setOpaque(false);
 
-        headerPanel.add(toggleButton);
-        headerPanel.add(tokenCountLabel);
-        headerPanel.add(Box.createHorizontalGlue());
-        headerPanel.add(addButton);
-        headerPanel.add(Box.createRigidArea(new Dimension(5, 0)));
-        headerPanel.add(removeButton);
-        updateTokenCount(fileSelector, tokenCountLabel);
+        JButton addButton = createModernActionButton(IconUtils.ADD_TO_CONTEXT, "Add to context");
+        addButton.addActionListener(filesSelector::addFilesAction);
 
-        JPanel contentContainer = new JPanel(new BorderLayout());
-        JBScrollPane fileScrollPane = new JBScrollPane(fileSelector.getFileTable());
-        fileScrollPane.setMinimumSize(new Dimension(0, 100));
-        fileScrollPane.setPreferredSize(new Dimension(0, 150));
-        fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        contentContainer.add(fileScrollPane, BorderLayout.CENTER);
+        JButton removeButton = createModernActionButton(IconUtils.REMOVE_TO_CONTEXT, "Remove from context");
+        removeButton.setEnabled(false);
+        removeButton.addActionListener(filesSelector::removeFilesAction);
 
-        panel.add(headerPanel, BorderLayout.NORTH);
-        panel.add(contentContainer, BorderLayout.CENTER);
+        actionsPanel.add(addButton);
+        actionsPanel.add(removeButton);
 
+        // Layout du header
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.add(toggleButton);
+        leftPanel.add(Box.createHorizontalStrut(8));
+        leftPanel.add(tokenCountLabel);
+
+        headerPanel.add(leftPanel, BorderLayout.WEST);
+        headerPanel.add(actionsPanel, BorderLayout.EAST);
+
+        // Setup du toggle
         boolean[] isCollapsed = {OllamAssistSettings.getInstance().getUIState()};
-
-        contentContainer.setVisible(!isCollapsed[0]);
-        toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
+        updateToggleButton(toggleButton, isCollapsed[0]);
 
         toggleButton.addActionListener(e -> {
             isCollapsed[0] = !isCollapsed[0];
-            contentContainer.setVisible(!isCollapsed[0]);
-            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
+            updateToggleButton(toggleButton, isCollapsed[0]);
+            updateContextVisibility(isCollapsed[0]);
             OllamAssistSettings.getInstance().setUIState(isCollapsed[0]);
         });
 
-        return panel;
+        // Listeners pour les actions
+        filesSelector.getFileTable().getModel().addTableModelListener(e ->
+                updateTokenCount(filesSelector, tokenCountLabel)
+        );
+
+        filesSelector.getFileTable().getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                removeButton.setEnabled(filesSelector.getFileTable().getSelectedRowCount() > 0);
+            }
+        });
+
+        updateTokenCount(filesSelector, tokenCountLabel);
+
+        return headerPanel;
     }
+
+    private JPanel createContextContent() {
+        contextContentPanel = new JPanel(new BorderLayout());
+        contextContentPanel.setBackground(UIUtil.getPanelBackground());
+
+        JBScrollPane fileScrollPane = new JBScrollPane(filesSelector.getFileTable());
+        fileScrollPane.setMinimumSize(new Dimension(0, 120));
+        fileScrollPane.setPreferredSize(new Dimension(0, 150));
+        fileScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        fileScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        fileScrollPane.setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border()),
+                JBUI.Borders.empty()
+        ));
+
+        contextContentPanel.add(fileScrollPane, BorderLayout.CENTER);
+
+        // Initialiser la visibilité
+        boolean isCollapsed = OllamAssistSettings.getInstance().getUIState();
+        contextContentPanel.setVisible(!isCollapsed);
+
+        return contextContentPanel;
+    }
+
+    private JButton createModernActionButton(Icon icon, String tooltip) {
+        JButton button = new JButton(icon);
+        button.setToolTipText(tooltip);
+        button.setBorder(JBUI.Borders.empty(4, 8));
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setPreferredSize(JBUI.size(28, 28));
+        ComponentCustomizer.applyHoverEffect(button);
+        return button;
+    }
+
+    private void updateToggleButton(JButton toggleButton, boolean isCollapsed) {
+        toggleButton.setText((isCollapsed ? "▶ " : "▼ ") + "Context Files");
+    }
+
+    private void updateContextVisibility(boolean isCollapsed) {
+        if (contextContentPanel != null) {
+            contextContentPanel.setVisible(!isCollapsed);
+            SwingUtilities.invokeLater(() -> {
+                contextContentPanel.getParent().revalidate();
+                contextContentPanel.getParent().repaint();
+            });
+        }
+    }
+
+    /**
+     * Traite un message utilisateur en mode chat classique (fallback de l'agent)
+     */
+    public void processUserMessage(String message) {
+        if (message == null || message.trim().isEmpty()) {
+            return;
+        }
+
+        // Récupérer le service OllamaService
+        OllamaService ollamaService = context.project().getService(OllamaService.class);
+        if (ollamaService == null || ollamaService.getAssistant() == null) {
+            log.warn("OllamaService ou Assistant non disponible");
+            return;
+        }
+
+        // Arrêter la génération précédente si elle existe
+        stopGeneration();
+
+        // Démarrer une nouvelle génération
+        promptInput.toggleGenerationState(true);
+
+        try {
+            // Créer une nouvelle session de chat via TokenStream
+            TokenStream tokenStream = ollamaService.getAssistant().chat(message);
+
+            currentChatThread = ChatThread.builder()
+                    .tokenStream(tokenStream)
+                    .onNext(this::publish)
+                    .onError(this::logException)
+                    .onCompleteResponse(this::done)
+                    .build()
+                    .start();
+
+        } catch (Exception e) {
+            log.error("Erreur lors du démarrage du chat", e);
+            logException(e);
+        }
+    }
+
     private void updateTokenCount(WorkspaceFileSelector fileSelector, JLabel tokenLabel) {
         new SwingWorker<Integer, Void>() {
             @Override
@@ -274,28 +389,23 @@ public class OllamaContent {
         }.execute();
     }
 
-    private JPanel createConversationPanel() {
-        JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-
-        JPanel conversationPanel = new JPanel(new BorderLayout());
-        conversationPanel.setLayout(new BoxLayout(conversationPanel, BoxLayout.Y_AXIS));
-
-        conversationPanel.setPreferredSize(new Dimension(0, 24));
-        JBScrollPane scrollPane = new JBScrollPane(container);
-
-        ConversationSelectorPanel conversationSelectorPanel = new ConversationSelectorPanel();
-        conversationPanel.add(conversationSelectorPanel, BorderLayout.NORTH);
-        conversationPanel.add(scrollPane, BorderLayout.CENTER);
-        return conversationPanel;
-    }
 
     private void stopGeneration() {
+        // Arrêter l'ancien système de chat
         if (currentChatThread != null) {
             currentChatThread.stop();
             outputPanel.cancelMessage();
         }
 
+        // Arrêter l'agent unifié
+        if (agentChatIntegration != null) {
+            AgentCoordinator agentCoordinator = context.project().getService(AgentCoordinator.class);
+            if (agentCoordinator != null) {
+                agentCoordinator.cancelAllTasks();
+            }
+        }
+
+        // Réactiver le prompt
         promptInput.toggleGenerationState(false);
     }
 
@@ -364,5 +474,6 @@ public class OllamaContent {
         }
 
     }
+
 
 }

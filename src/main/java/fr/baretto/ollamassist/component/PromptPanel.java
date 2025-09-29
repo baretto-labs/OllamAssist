@@ -35,10 +35,10 @@ import java.util.List;
 @Getter
 public class PromptPanel extends JPanel implements Disposable {
 
-    private static final Border DEFAULT_EDITOR_BORDER = BorderFactory.createEmptyBorder(6, 6, 6, 6);
-    private static final Border FOCUSED_EDITOR_BORDER = BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UIUtil.getFocusedBorderColor(), 1),
-            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+    private static final Border DEFAULT_EDITOR_BORDER = JBUI.Borders.empty(6);
+    private static final Border FOCUSED_EDITOR_BORDER = JBUI.Borders.compound(
+            JBUI.Borders.customLine(UIUtil.getFocusedBorderColor(), 1),
+            JBUI.Borders.empty(6)
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
     private static final String ENABLE_RAG = "Enable RAG search";
@@ -165,9 +165,9 @@ public class PromptPanel extends JPanel implements Disposable {
         });
 
         setBackground(UIUtil.getPanelBackground());
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(JBColor.border(), 1),
-                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+        setBorder(JBUI.Borders.compound(
+                JBUI.Borders.customLine(JBColor.border(), 1),
+                JBUI.Borders.empty(6)
         ));
 
         add(container, BorderLayout.CENTER);
@@ -260,36 +260,20 @@ public class PromptPanel extends JPanel implements Disposable {
 
     private JButton createSubmitButton() {
         JButton submit = new JButton(IconUtils.SUBMIT);
-        submit.setPreferredSize(new Dimension(100, 30));
-        submit.setMinimumSize(new Dimension(100, 30));
-        submit.setMaximumSize(new Dimension(100, 30));
-        submit.setBackground(UIUtil.getPanelBackground());
-        submit.setForeground(UIUtil.getLabelForeground());
-        submit.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(4, 8, 4, 8),
-                submit.getBorder()
-        ));
-        submit.setFocusPainted(false);
-        submit.setOpaque(true);
-        submit.setMargin(JBUI.emptyInsets());
+        submit.setPreferredSize(JBUI.size(100, 30));
+        submit.setMinimumSize(JBUI.size(100, 30));
+        submit.setMaximumSize(JBUI.size(100, 30));
+        submit.setBorder(JBUI.Borders.empty(4, 8));
         submit.setToolTipText("Submit user message");
         return submit;
     }
 
     private JButton createStopButton() {
         JButton stop = new JButton(IconUtils.STOP);
-        stop.setPreferredSize(new Dimension(100, 30));
-        stop.setMinimumSize(new Dimension(100, 30));
-        stop.setMaximumSize(new Dimension(100, 30));
-        stop.setBackground(UIUtil.getPanelBackground());
-        stop.setForeground(UIUtil.getLabelForeground());
-        stop.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(4, 8, 4, 8),
-                stop.getBorder()
-        ));
-        stop.setFocusPainted(false);
-        stop.setOpaque(true);
-        stop.setMargin(JBUI.emptyInsets());
+        stop.setPreferredSize(JBUI.size(100, 30));
+        stop.setMinimumSize(JBUI.size(100, 30));
+        stop.setMaximumSize(JBUI.size(100, 30));
+        stop.setBorder(JBUI.Borders.empty(4, 8));
         stop.setToolTipText("Stop current generation");
         return stop;
     }

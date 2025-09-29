@@ -14,7 +14,9 @@ import com.intellij.openapi.vcs.changes.Change;
 import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vcs.ui.Refreshable;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
-import fr.baretto.ollamassist.completion.LightModelAssistant;
+import fr.baretto.ollamassist.core.service.ModelAssistantService;
+import fr.baretto.ollamassist.core.state.ApplicationState;
+import fr.baretto.ollamassist.core.state.PluginState;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -123,28 +125,51 @@ public class CommitMessageGenerator extends AnAction {
 
 
     public String generateCommitMessage(Project project, AnActionEvent e) {
-        // Try to get selected changes from commit panel
-        SelectedChanges selectedChanges = getSelectedChanges(e);
+        // Get services
+        ModelAssistantService modelAssistant = ApplicationManager.getApplication()
+                .getService(ModelAssistantService.class);
+        ApplicationState appState = ApplicationManager.getApplication()
+                .getService(ApplicationState.class);
 
-        Collection<Change> changes;
-        Collection<FilePath> unversionedFiles;
+        try {
+            // Set processing state
+            appState.setState(PluginState.PROCESSING);
 
-        if (selectedChanges.hasSelection()) {
-            // Use only selected changes
-            changes = selectedChanges.changes();
-            unversionedFiles = selectedChanges.unversionedFiles();
-            log.debug("Using {} selected changes and {} unversioned files for commit message",
-                    changes.size(), unversionedFiles.size());
-        } else {
-            // Fallback to all changes if no selection
-            changes = ChangeListManager.getInstance(project).getAllChanges();
-            unversionedFiles = ChangeListManager.getInstance(project).getUnversionedFilesPaths();
-            log.debug("No selection found, using all {} changes and {} unversioned files for commit message",
-                    changes.size(), unversionedFiles.size());
+            // Try to get selected changes from commit panel
+            SelectedChanges selectedChanges = getSelectedChanges(e);
+
+            Collection<Change> changes;
+            Collection<FilePath> unversionedFiles;
+
+            if (selectedChanges.hasSelection()) {
+                // Use only selected changes
+                changes = selectedChanges.changes();
+                unversionedFiles = selectedChanges.unversionedFiles();
+                log.debug("Using {} selected changes and {} unversioned files for commit message",
+                        changes.size(), unversionedFiles.size());
+            } else {
+                // Fallback to all changes if no selection
+                changes = ChangeListManager.getInstance(project).getAllChanges();
+                unversionedFiles = ChangeListManager.getInstance(project).getUnversionedFilesPaths();
+                log.debug("No selection found, using all {} changes and {} unversioned files for commit message",
+                        changes.size(), unversionedFiles.size());
+            }
+
+            String gitDiff = DiffGenerator.getDiff(changes, java.util.List.copyOf(unversionedFiles));
+
+            // Use our new ModelAssistantService with async support
+            String commitMessage = modelAssistant.writeCommitMessage(gitDiff)
+                    .get(); // Block for commit message since we're already in background task
+
+            return MessageCleaner.clean(commitMessage);
+
+        } catch (Exception ex) {
+            log.error("Failed to generate commit message", ex);
+            return "Unable to generate commit message: " + ex.getMessage();
+        } finally {
+            // Reset state
+            appState.setState(PluginState.IDLE);
         }
-
-        String gitDiff = DiffGenerator.getDiff(changes, java.util.List.copyOf(unversionedFiles));
-        return MessageCleaner.clean(LightModelAssistant.get().writecommitMessage(gitDiff));
     }
 
     /**

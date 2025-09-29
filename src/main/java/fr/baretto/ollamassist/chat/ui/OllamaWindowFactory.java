@@ -14,8 +14,12 @@ public class OllamaWindowFactory implements ToolWindowFactory, DumbAware {
     public void createToolWindowContent(@NotNull Project project,
                                         @NotNull ToolWindow toolWindow) {
 
-        Content content = ContentFactory.getInstance()
-                .createContent(new OllamaContent(toolWindow).getContentPanel(), "", false);
-        toolWindow.getContentManager().addContent(content);
+        ContentFactory contentFactory = ContentFactory.getInstance();
+
+        // Chat classique avec agent intégré
+        OllamaContent ollamaContent = new OllamaContent(toolWindow);
+        Content chatContent = contentFactory
+                .createContent(ollamaContent.getContentPanel(), "Chat", false);
+        toolWindow.getContentManager().addContent(chatContent);
     }
 }

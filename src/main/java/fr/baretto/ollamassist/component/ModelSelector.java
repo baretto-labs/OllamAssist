@@ -3,7 +3,9 @@ package fr.baretto.ollamassist.component;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.PopupMenuListenerAdapter;
+import com.intellij.ui.components.JBPanel;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Setter;
@@ -15,7 +17,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class ModelSelector extends JPanel {
+public class ModelSelector extends JBPanel<ModelSelector> {
 
     private final ComboBox<String> comboBox;
     private final JProgressBar progressBar;
@@ -26,6 +28,7 @@ public class ModelSelector extends JPanel {
 
     public ModelSelector() {
         setLayout(new BorderLayout());
+        setBackground(UIUtil.getPanelBackground());
 
         String savedModel = OllamAssistSettings.getInstance().getChatModelName();
 
@@ -33,9 +36,9 @@ public class ModelSelector extends JPanel {
         initialModel.setSelectedItem(savedModel);
         comboBox = new ComboBox<>(initialModel);
         comboBox.setPrototypeDisplayValue("Prototype_Model_Name_Length");
-        comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
-        comboBox.setMinimumSize(new Dimension(80, comboBox.getPreferredSize().height));
-        comboBox.setMaximumSize(new Dimension(180, comboBox.getPreferredSize().height));
+        comboBox.setPreferredSize(JBUI.size(180, comboBox.getPreferredSize().height));
+        comboBox.setMinimumSize(JBUI.size(80, comboBox.getPreferredSize().height));
+        comboBox.setMaximumSize(JBUI.size(180, comboBox.getPreferredSize().height));
         comboBox.setRenderer(new LoadingListRenderer());
         configureComboBoxBehavior();
 
@@ -43,7 +46,7 @@ public class ModelSelector extends JPanel {
         progressBar.setIndeterminate(true);
         progressBar.setVisible(false);
         progressBar.setBorder(JBUI.Borders.empty(2));
-
+        progressBar.setBackground(UIUtil.getPanelBackground());
 
         add(comboBox, BorderLayout.CENTER);
         add(progressBar, BorderLayout.SOUTH);

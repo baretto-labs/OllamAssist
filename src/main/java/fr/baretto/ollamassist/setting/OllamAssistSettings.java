@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
+import fr.baretto.ollamassist.setting.agent.AgentModeSettings;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -88,12 +89,12 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.embeddingModelName = embeddingModelName;
     }
 
-    public void setIndexationSize(int numberOfDocuments) {
-        myState.indexationSize = numberOfDocuments;
-    }
-
     public int getIndexationSize() {
         return myState.indexationSize;
+    }
+
+    public void setIndexationSize(int numberOfDocuments) {
+        myState.indexationSize = numberOfDocuments;
     }
 
     public Duration getTimeoutDuration() {
@@ -128,10 +129,6 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState.ragEnabled = ragEnabled;
     }
 
-    public void setUIState(boolean isCollapsed) {
-        myState.uistate = isCollapsed;
-    }
-
     public boolean webSearchEnabled() {
         return myState.webSearchEnabled;
     }
@@ -142,6 +139,44 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
     public boolean getUIState() {
         return myState.uistate;
+    }
+
+    public void setUIState(boolean isCollapsed) {
+        myState.uistate = isCollapsed;
+    }
+
+    // === Méthodes pour le mode agent ===
+
+    public boolean isAgentModeEnabled() {
+        return myState.agentModeEnabled;
+    }
+
+    public void setAgentModeEnabled(boolean enabled) {
+        myState.agentModeEnabled = enabled;
+    }
+
+    public AgentModeSettings.AgentSecurityLevel getAgentSecurityLevel() {
+        return myState.agentSecurityLevel;
+    }
+
+    public void setAgentSecurityLevel(AgentModeSettings.AgentSecurityLevel level) {
+        myState.agentSecurityLevel = level;
+    }
+
+    public int getAgentMaxTasksPerSession() {
+        return myState.agentMaxTasksPerSession;
+    }
+
+    public void setAgentMaxTasksPerSession(int maxTasks) {
+        myState.agentMaxTasksPerSession = Math.max(1, Math.min(100, maxTasks));
+    }
+
+    public boolean isAgentAutoApprovalEnabled() {
+        return myState.agentAutoApprovalEnabled;
+    }
+
+    public void setAgentAutoApprovalEnabled(boolean enabled) {
+        myState.agentAutoApprovalEnabled = enabled;
     }
 
     @Getter
@@ -160,6 +195,12 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
         // Persiste configuration for UI component, currently used only for the chat context
         public boolean uistate = false;
+
+        // === Paramètres du mode agent ===
+        public boolean agentModeEnabled = true; // Activé par défaut
+        public AgentModeSettings.AgentSecurityLevel agentSecurityLevel = AgentModeSettings.AgentSecurityLevel.STANDARD;
+        public int agentMaxTasksPerSession = 10;
+        public boolean agentAutoApprovalEnabled = false;
     }
 
 }

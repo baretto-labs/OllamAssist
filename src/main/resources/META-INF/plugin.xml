@@ -179,6 +179,15 @@
         <applicationService serviceImplementation="fr.baretto.ollamassist.prerequiste.PrerequisiteService"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
 
+        <!-- Services MCP et Agent -->
+        <applicationService serviceImplementation="fr.baretto.ollamassist.core.mcp.server.MCPServerRegistry"/>
+        <applicationService
+                serviceImplementation="fr.baretto.ollamassist.core.mcp.server.builtin.BuiltinServerManager"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.agent.AgentModeSettings"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.core.mcp.connection.MCPConnectionManager"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.core.mcp.capability.MCPCapabilityProvider"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.core.agent.AgentCoordinator"/>
+
         <applicationService serviceImplementation="fr.baretto.ollamassist.chat.rag.IndexRegistry"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIngestFactory"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore"/>
@@ -194,12 +203,21 @@
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>
 
+        <applicationConfigurable instance="fr.baretto.ollamassist.setting.mcp.MCPConfigurationPanel"
+                                 displayName="MCP Servers"
+                                 parentId="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"/>
+
+        <applicationConfigurable instance="fr.baretto.ollamassist.setting.agent.AgentModeConfigurable"
+                                 displayName="Agent Mode"
+                                 parentId="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"/>
+
 
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup
         </postStartupActivity>
 
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
         <notificationGroup id="OllamAssist" displayType="BALLOON"/>
+        <notificationGroup id="OllamAssist.Agent" displayType="BALLOON"/>
     </extensions>
 
     <actions>
@@ -231,8 +249,21 @@
                 text="Refactor"
                 description="Suggests a refactoring for the selected code using OllamAssist."/>
 
+        <action id="fr.baretto.ollamassist.actions.AgentModeAction"
+                class="fr.baretto.ollamassist.actions.AgentModeAction"
+                text="Agent Mode"
+                description="Open OllamAssist Agent Mode for autonomous development tasks"/>
+
+        <action id="fr.baretto.ollamassist.actions.DiagnoseModelCapabilitiesAction"
+                class="fr.baretto.ollamassist.actions.DiagnoseModelCapabilitiesAction"
+                text="Diagnose Model Capabilities"
+                description="Test which models support function calling and structured output for Agent Mode"/>
+
         <group id="OllamAssist.MainMenu" text="_OllamAssist" popup="true">
             <add-to-group group-id="MainMenu" anchor="before" relative-to-action="HelpMenu"/>
+            <reference ref="fr.baretto.ollamassist.actions.AgentModeAction"/>
+            <reference ref="fr.baretto.ollamassist.actions.DiagnoseModelCapabilitiesAction"/>
+            <separator/>
             <reference ref="fr.baretto.ollamassist.actions.refactor.RefactorAction"/>
         </group>
 

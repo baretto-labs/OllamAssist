@@ -9,6 +9,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import fr.baretto.ollamassist.core.model.CompletionRequest;
+import fr.baretto.ollamassist.core.service.ModelAssistantService;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,16 +22,15 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j
 public class EnhancedCompletionService {
-    
+
+    // Configuration
+    private static final int DEBOUNCE_DELAY_MS = 300;
+    private static final String DEBOUNCE_KEY_PREFIX = "completion-";
     private final MultiSuggestionManager suggestionManager;
     private final EnhancedContextProvider contextProvider;
     private final SuggestionCache cache;
     private final CompletionDebouncer debouncer;
-    
-    // Configuration
-    private static final int DEBOUNCE_DELAY_MS = 300;
-    private static final String DEBOUNCE_KEY_PREFIX = "completion-";
-    
+
     public EnhancedCompletionService(
             @NotNull MultiSuggestionManager suggestionManager,
             @NotNull EnhancedContextProvider contextProvider) {
@@ -38,17 +39,17 @@ public class EnhancedCompletionService {
         this.cache = new SuggestionCache();
         this.debouncer = new CompletionDebouncer();
     }
-    
+
     /**
      * Handles a completion request with full optimization pipeline.
      */
     public void requestCompletion(@NotNull Editor editor) {
         log.debug("EnhancedCompletionService.requestCompletion() called");
         String debounceKey = DEBOUNCE_KEY_PREFIX + editor.hashCode();
-        
+
         // Cancel any existing request for this editor
         debouncer.cancel(debounceKey);
-        
+
         // Debounce the request to avoid multiple simultaneous calls
         log.debug("Debouncing completion request with key: {}", debounceKey);
         debouncer.debounce(debounceKey, DEBOUNCE_DELAY_MS, () -> {
@@ -56,7 +57,7 @@ public class EnhancedCompletionService {
             executeCompletion(editor);
         });
     }
-    
+
     /**
      * Executes the actual completion request with caching and optimization.
      */
@@ -66,15 +67,15 @@ public class EnhancedCompletionService {
             log.debug("invokeLater() callback executing");
             // Show immediate loading feedback (get offset safely)
             int caretOffset = ApplicationManager.getApplication().runReadAction(
-                (Computable<Integer>) () -> editor.getCaretModel().getOffset()
+                    (Computable<Integer>) () -> editor.getCaretModel().getOffset()
             );
             log.debug("Got caret offset: {}", caretOffset);
             suggestionManager.showLoading(editor, caretOffset, "Generating suggestion");
             log.debug("showLoading() called");
-            
+
             log.debug("About to create Task.Backgroundable");
             new Task.Backgroundable(editor.getProject(), "OllamAssist: Smart Code Completion", true) {
-                
+
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     log.debug("Task.Backgroundable.run() started");
@@ -90,14 +91,14 @@ public class EnhancedCompletionService {
                         });
                     }
                 }
-                
+
                 @Override
                 public void onCancel() {
                     log.debug("Task cancelled");
                     suggestionManager.disposeLoadingInlay();
                     log.debug("Completion request cancelled by user");
                 }
-                
+
                 @Override
                 public void onThrowable(@NotNull Throwable error) {
                     log.debug("Task threw error: {}", error.getMessage());
@@ -108,31 +109,31 @@ public class EnhancedCompletionService {
             log.debug("Task.queue() called");
         });
     }
-    
+
     /**
      * Handles completion with caching layer.
      */
     private void handleCompletionWithCache(@NotNull Editor editor, @NotNull ProgressIndicator indicator) {
         log.debug("handleCompletionWithCache() starting");
         indicator.setText("Building context...");
-        
+
         // Build context for cache key generation and completion
         log.debug("About to call contextProvider.buildCompletionContextAsync()");
         CompletableFuture<CompletionContext> contextFuture = contextProvider.buildCompletionContextAsync(editor);
         log.debug("contextFuture created, setting up thenAccept callback");
-        
+
         contextFuture.thenAccept(completionContext -> {
             log.debug("contextFuture.thenAccept() callback executing");
             if (indicator.isCanceled()) {
                 log.debug("Indicator was cancelled, returning early");
                 return;
             }
-            
+
             log.debug("About to generate cache key");
             // Generate cache key (generateCacheKey handles ReadAction internally)
             String cacheKey = cache.generateCacheKey(editor, completionContext.getImmediateContext());
             log.debug("Cache key generated: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
-            
+
             // Check cache first
             log.debug("Checking cache for key");
             String cachedSuggestion = cache.get(cacheKey);
@@ -142,7 +143,7 @@ public class EnhancedCompletionService {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!indicator.isCanceled()) {
                         int caretOffset = ApplicationManager.getApplication().runReadAction(
-                            (Computable<Integer>) () -> editor.getCaretModel().getOffset()
+                                (Computable<Integer>) () -> editor.getCaretModel().getOffset()
                         );
                         suggestionManager.showSuggestion(editor, caretOffset, cachedSuggestion);
                         attachActionHandler(editor);
@@ -153,12 +154,12 @@ public class EnhancedCompletionService {
                 log.debug("Cache MISS for key");
                 log.info("❌ Cache miss for key: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
             }
-            
+
             // Generate new suggestion
             log.debug("About to call generateNewSuggestion()");
             generateNewSuggestion(editor, completionContext, cacheKey, indicator);
             log.debug("generateNewSuggestion() called");
-            
+
         }).exceptionally(throwable -> {
             log.warn("Context building failed", throwable);
             indicator.setText("Context failed, using basic mode...");
@@ -166,7 +167,7 @@ public class EnhancedCompletionService {
             return null;
         });
     }
-    
+
     /**
      * Generates a new suggestion using the optimized model assistant.
      */
@@ -175,98 +176,109 @@ public class EnhancedCompletionService {
             @NotNull CompletionContext context,
             @NotNull String cacheKey,
             @NotNull ProgressIndicator indicator) {
-        
+
         log.debug("generateNewSuggestion() starting");
         indicator.setText("Generating AI suggestion...");
-        
-        log.debug("About to call OptimizedLightModelAssistant.completeAsync()");
+
+        log.debug("About to call ModelAssistantService.complete()");
         log.debug("Context: {}", context.getImmediateContext().substring(0, Math.min(50, context.getImmediateContext().length())));
         log.debug("File extension: {}", context.getFileExtension());
-        
-        CompletableFuture<String> completionFuture = OptimizedLightModelAssistant.completeAsync(
-            context.getImmediateContext(),
-            context.getFileExtension(),
-            context.getProjectContext(),
-            context.getSimilarPatterns()
-        );
+
+        // Get ModelAssistantService and create completion request
+        ModelAssistantService modelAssistant = ApplicationManager.getApplication()
+                .getService(ModelAssistantService.class);
+
+        CompletionRequest completionRequest = CompletionRequest.builder()
+                .context(context.getImmediateContext())
+                .fileExtension(context.getFileExtension())
+                .build();
+
+        CompletableFuture<String> completionFuture = modelAssistant.complete(completionRequest);
         log.debug("CompletableFuture created for AI completion");
-        
+
         completionFuture.thenAccept(rawSuggestion -> {
             log.debug("AI completion thenAccept() callback executing");
             if (indicator.isCanceled()) {
                 log.info("🚫 Enhanced suggestion cancelled by user");
                 return;
             }
-            
+
             log.info("🤖 Enhanced raw suggestion received: '{}'", rawSuggestion != null ? rawSuggestion.substring(0, Math.min(100, rawSuggestion.length())) : "null");
-            
+
             try {
                 String processedSuggestion = processSuggestion(rawSuggestion, editor);
                 log.info("✨ Processed suggestion: '{}'", processedSuggestion);
-                
+
                 if (processedSuggestion.trim().isEmpty()) {
                     log.warn("⚠️ Processed suggestion is empty, falling back to basic");
                     generateBasicSuggestion(editor, indicator);
                     return;
                 }
-                
+
                 // Cache the result
                 cache.put(cacheKey, processedSuggestion);
-                
+
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!indicator.isCanceled()) {
                         int caretOffset = ApplicationManager.getApplication().runReadAction(
-                            (Computable<Integer>) () -> editor.getCaretModel().getOffset()
+                                (Computable<Integer>) () -> editor.getCaretModel().getOffset()
                         );
                         log.info("🎯 Showing enhanced suggestion at offset {} with content: '{}'", caretOffset, processedSuggestion);
                         suggestionManager.showSuggestion(editor, caretOffset, processedSuggestion);
                         attachActionHandler(editor);
                     }
                 });
-                
+
             } catch (Exception e) {
                 log.error("❌ Suggestion processing failed", e);
                 generateBasicSuggestion(editor, indicator);
             }
-            
+
         }).exceptionally(throwable -> {
             log.error("❌ Enhanced suggestion generation failed", throwable);
             generateBasicSuggestion(editor, indicator);
             return null;
         });
     }
-    
+
     /**
      * Fallback to basic suggestion generation.
      */
     private void generateBasicSuggestion(@NotNull Editor editor, @NotNull ProgressIndicator indicator) {
         indicator.setText("Generating basic suggestion...");
-        
+
         String basicContext = getBasicContext(editor);
         String fileExtension = getFileExtension(editor);
-        
-        CompletableFuture<String> basicCompletionFuture = OptimizedLightModelAssistant.completeBasicAsync(
-            basicContext, fileExtension
-        );
-        
+
+        // Get ModelAssistantService and create basic completion request
+        ModelAssistantService modelAssistant = ApplicationManager.getApplication()
+                .getService(ModelAssistantService.class);
+
+        CompletionRequest basicCompletionRequest = CompletionRequest.builder()
+                .context(basicContext)
+                .fileExtension(fileExtension)
+                .build();
+
+        CompletableFuture<String> basicCompletionFuture = modelAssistant.complete(basicCompletionRequest);
+
         basicCompletionFuture.thenAccept(rawSuggestion -> {
             if (indicator.isCanceled()) {
                 return;
             }
-            
+
             try {
                 String processedSuggestion = processSuggestion(rawSuggestion, editor);
-                
+
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!indicator.isCanceled()) {
                         int caretOffset = ApplicationManager.getApplication().runReadAction(
-                            (Computable<Integer>) () -> editor.getCaretModel().getOffset()
+                                (Computable<Integer>) () -> editor.getCaretModel().getOffset()
                         );
                         suggestionManager.showSuggestion(editor, caretOffset, processedSuggestion);
                         attachActionHandler(editor);
                     }
                 });
-                
+
             } catch (Exception e) {
                 log.error("Basic suggestion processing failed", e);
                 ApplicationManager.getApplication().invokeLater(() -> {
@@ -281,19 +293,19 @@ public class EnhancedCompletionService {
             return null;
         });
     }
-    
+
     /**
      * Processes raw LLM suggestion to extract clean code.
      */
     @NotNull
     private String processSuggestion(@NotNull String rawSuggestion, @NotNull Editor editor) {
         String suggestion = rawSuggestion;
-        
+
         // Remove markdown code blocks
         if (suggestion.contains("```")) {
             suggestion = removeCodeBlockMarkers(suggestion);
         }
-        
+
         // Remove any repetition of current line
         String lineStartContent = getLineStartContent(editor);
         if (!lineStartContent.trim().isEmpty() && suggestion.contains(lineStartContent.trim())) {
@@ -302,29 +314,29 @@ public class EnhancedCompletionService {
                 suggestion = suggestion.substring(index + lineStartContent.trim().length());
             }
         }
-        
+
         return suggestion.trim();
     }
-    
+
     /**
      * Removes markdown code block markers from suggestion.
      */
     @NotNull
     private String removeCodeBlockMarkers(@NotNull String suggestion) {
         String result = suggestion;
-        
+
         // Remove opening code block
         result = result.replaceAll("```\\w*\\s*", "");
-        
+
         // Remove closing code block
         int lastBackticks = result.lastIndexOf("```");
         if (lastBackticks != -1) {
             result = result.substring(0, lastBackticks);
         }
-        
+
         return result.trim();
     }
-    
+
     /**
      * Gets basic context for fallback completion.
      */
@@ -337,7 +349,7 @@ public class EnhancedCompletionService {
             return editor.getDocument().getText().substring(start, end);
         });
     }
-    
+
     /**
      * Gets file extension for language detection.
      */
@@ -352,7 +364,7 @@ public class EnhancedCompletionService {
         }
         return "java"; // Default fallback
     }
-    
+
     /**
      * Gets the content from line start to cursor.
      */
@@ -364,69 +376,63 @@ public class EnhancedCompletionService {
             return editor.getDocument().getText().substring(lineStart, offset);
         });
     }
-    
+
     /**
      * Attaches action handler for suggestion interaction using IntelliJ's action system.
      */
     private void attachActionHandler(@NotNull Editor editor) {
         log.debug("attachActionHandler() called");
-        
+
         EditorActionManager actionManager = EditorActionManager.getInstance();
-        
+
         // Get the current Enter action handler
         EditorActionHandler originalHandler = actionManager.getActionHandler(IdeActions.ACTION_EDITOR_ENTER);
-        
+
         // Create our custom handler that wraps the original
         SuggestionActionHandler suggestionHandler = new SuggestionActionHandler(suggestionManager, originalHandler);
-        
+
         // Replace the Enter action handler temporarily
         actionManager.setActionHandler(IdeActions.ACTION_EDITOR_ENTER, suggestionHandler);
-        
+
         log.debug("Replaced Enter action handler with SuggestionActionHandler");
     }
-    
+
     /**
      * Gets service statistics for monitoring and debugging.
      */
     @NotNull
     public ServiceStats getStats() {
         return new ServiceStats(
-            cache.getStats(),
-            OptimizedLightModelAssistant.getPoolStats(),
-            debouncer.getPendingRequestCount()
+                cache.getStats(),
+                debouncer.getPendingRequestCount()
         );
     }
-    
+
     /**
      * Disposes the service and cleans up resources.
      */
     public void dispose() {
         debouncer.dispose();
         cache.clear();
-        OptimizedLightModelAssistant.disposeAll();
         log.debug("EnhancedCompletionService disposed");
     }
-    
+
     /**
      * Service statistics for monitoring.
      */
     public static class ServiceStats {
         public final SuggestionCache.CacheStats cacheStats;
-        public final OptimizedLightModelAssistant.ConnectionPoolStats poolStats;
         public final int pendingRequests;
-        
-        public ServiceStats(SuggestionCache.CacheStats cacheStats, 
-                           OptimizedLightModelAssistant.ConnectionPoolStats poolStats, 
-                           int pendingRequests) {
+
+        public ServiceStats(SuggestionCache.CacheStats cacheStats, int pendingRequests) {
             this.cacheStats = cacheStats;
-            this.poolStats = poolStats;
             this.pendingRequests = pendingRequests;
         }
-        
+
         @Override
         public String toString() {
-            return String.format("EnhancedCompletionService Stats:\n- Cache: %s\n- Pool: %s\n- Pending: %d", 
-                cacheStats, poolStats, pendingRequests);
+            return String.format("EnhancedCompletionService Stats:\n- Cache: %s\n- Pending: %d",
+                    cacheStats, pendingRequests);
         }
     }
 }

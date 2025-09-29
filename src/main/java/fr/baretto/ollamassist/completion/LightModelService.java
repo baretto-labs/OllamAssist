@@ -11,6 +11,10 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
+import fr.baretto.ollamassist.core.model.CompletionRequest;
+import fr.baretto.ollamassist.core.service.ModelAssistantService;
+import fr.baretto.ollamassist.core.state.ApplicationState;
+import fr.baretto.ollamassist.core.state.PluginState;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,7 +29,7 @@ public class LightModelService {
         this.suggestionManager = suggestionManager;
         this.contextProvider = null; // Will be initialized with project
     }
-    
+
     public LightModelService(SuggestionManager suggestionManager, EnhancedContextProvider contextProvider) {
         this.suggestionManager = suggestionManager;
         this.contextProvider = contextProvider;
@@ -36,7 +40,7 @@ public class LightModelService {
             // Show immediate loading feedback in the editor
             int caretOffset = editor.getCaretModel().getOffset();
             suggestionManager.showLoading(editor, caretOffset, "Generating suggestion");
-            
+
             new Task.Backgroundable(editor.getProject(), "OllamAssist: Generating intelligent suggestion...", true) {
 
                 @Override
@@ -53,7 +57,7 @@ public class LightModelService {
                         handleBasicSuggestion(editor, indicator);
                     }
                 }
-                
+
                 @Override
                 public void onCancel() {
                     // Clean up loading indicator if user cancels
@@ -61,7 +65,7 @@ public class LightModelService {
                         suggestionManager.disposeLoadingInlay();
                     });
                 }
-                
+
                 @Override
                 public void onThrowable(@NotNull Throwable error) {
                     // Clean up loading indicator on error
@@ -73,55 +77,69 @@ public class LightModelService {
             }.queue();
         });
     }
-    
+
     /**
      * Handles suggestion generation with enhanced context (RAG + project analysis).
      */
     private void handleEnhancedSuggestion(Editor editor, ProgressIndicator indicator) {
         indicator.setText("Building enhanced context...");
-        
+
         // Build completion context asynchronously
         CompletableFuture<CompletionContext> contextFuture = contextProvider.buildCompletionContextAsync(editor);
-        
+
         contextFuture.thenAccept(completionContext -> {
             if (indicator.isCanceled()) {
                 return;
             }
-            
+
             indicator.setText("Generating AI suggestion...");
-            
+
             try {
+                // Get services
+                ModelAssistantService modelAssistant = ApplicationManager.getApplication()
+                        .getService(ModelAssistantService.class);
+                ApplicationState appState = ApplicationManager.getApplication()
+                        .getService(ApplicationState.class);
+
                 String lineStartContent = getLineStartContent(editor).trim();
-                
-                // Use enhanced completion with rich context
-                String rawSuggestion = LightModelAssistant.get().complete(
-                    completionContext.getImmediateContext(),
-                    completionContext.getFileExtension(),
-                    completionContext.getProjectContext(),
-                    completionContext.getSimilarPatterns()
-                );
-                
-                String suggestion = extractCode(rawSuggestion, lineStartContent);
-                
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!indicator.isCanceled()) {
-                        suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
-                        attachKeyListener(editor, editor.getCaretModel().getOffset());
-                    }
-                });
-                
+
+                // Set processing state
+                appState.setState(PluginState.PROCESSING);
+
+                try {
+                    // Use enhanced completion with rich context - simplified for now
+                    CompletionRequest request = CompletionRequest.builder()
+                            .context(completionContext.getImmediateContext())
+                            .fileExtension(completionContext.getFileExtension())
+                            .build();
+
+                    String rawSuggestion = modelAssistant.complete(request).get();
+                    String suggestion = extractCode(rawSuggestion, lineStartContent);
+
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        if (!indicator.isCanceled()) {
+                            suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
+                            attachKeyListener(editor, editor.getCaretModel().getOffset());
+                        }
+                    });
+
+                } finally {
+                    // Always reset state
+                    appState.setState(PluginState.IDLE);
+                }
+
             } catch (Exception e) {
                 log.warn("Enhanced suggestion failed, trying basic fallback", e);
                 handleBasicSuggestion(editor, indicator);
             }
-            
+
         }).exceptionally(throwable -> {
             log.warn("Context building failed, using basic suggestion", throwable);
             handleBasicSuggestion(editor, indicator);
             return null;
         });
     }
-    
+
     /**
      * Handles basic suggestion generation (original implementation).
      */
@@ -139,21 +157,43 @@ public class LightModelService {
             int endOffset = Math.min(document.getTextLength(), caretOffset);
             context = document.getText().substring(startOffset, endOffset);
         }
-        
+
         try {
             indicator.setText("Generating basic suggestion...");
-            
+
+            // Get services
+            ModelAssistantService modelAssistant = ApplicationManager.getApplication()
+                    .getService(ModelAssistantService.class);
+            ApplicationState appState = ApplicationManager.getApplication()
+                    .getService(ApplicationState.class);
+
             String lineStartContent = getLineStartContent(editor).trim();
-            String rawSuggestion = LightModelAssistant.get().completeBasic(context, getFileExtension(editor));
-            String suggestion = extractCode(rawSuggestion, lineStartContent);
-            
-            ApplicationManager.getApplication().invokeLater(() -> {
-                if (!indicator.isCanceled()) {
-                    suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
-                    attachKeyListener(editor, editor.getCaretModel().getOffset());
-                }
-            });
-            
+
+            // Set processing state
+            appState.setState(PluginState.PROCESSING);
+
+            try {
+                // Use our new ModelAssistantService for basic completion
+                CompletionRequest request = CompletionRequest.builder()
+                        .context(context)
+                        .fileExtension(getFileExtension(editor))
+                        .build();
+
+                String rawSuggestion = modelAssistant.complete(request).get();
+                String suggestion = extractCode(rawSuggestion, lineStartContent);
+
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (!indicator.isCanceled()) {
+                        suggestionManager.showSuggestion(editor, editor.getCaretModel().getOffset(), suggestion);
+                        attachKeyListener(editor, editor.getCaretModel().getOffset());
+                    }
+                });
+
+            } finally {
+                // Always reset state
+                appState.setState(PluginState.IDLE);
+            }
+
         } catch (Exception e) {
             log.error("Basic suggestion generation failed", e);
             // Even basic suggestion failed - show error or do nothing

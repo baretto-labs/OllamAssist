@@ -68,6 +68,10 @@ dependencies {
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
     }
     implementation("dev.langchain4j:langchain4j-reactor:1.4.0-beta10")
+
+    // LangChain4J Agentic modules for AI agent functionality (pas encore disponibles publiquement)
+    // implementation("dev.langchain4j:langchain4j-agentic:$langchain4jVersion")
+    // implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jVersion")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
@@ -88,6 +92,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testImplementation("junit:junit:$junitLegacyVersion")
     testImplementation("org.mockito:mockito-core:$mockitoVersion")
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")

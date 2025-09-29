@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.setting;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBTextField;
@@ -12,6 +13,7 @@ import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.StoreNotifier;
+import fr.baretto.ollamassist.setting.agent.AgentModeSettings;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -39,6 +41,13 @@ public class ConfigurationPanel extends JPanel {
     private final JBTextField timeout = new IntegerField(null, 0, Integer.MAX_VALUE);
     private final JBTextField sources = new JBTextField();
     private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
+
+    // === Champs pour le mode agent ===
+    private final JBCheckBox agentModeEnabled = new JBCheckBox("Enable Agent Mode");
+    private final ComboBox<AgentModeSettings.AgentSecurityLevel> agentSecurityLevel = new ComboBox<>(AgentModeSettings.AgentSecurityLevel.values());
+    private final IntegerField agentMaxTasksPerSession = new IntegerField(null, 1, 100);
+    private final JBCheckBox agentAutoApprovalEnabled = new JBCheckBox("Enable Auto-approval for Safe Actions");
+
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
@@ -68,13 +77,24 @@ public class ConfigurationPanel extends JPanel {
                 "The maximum number of documents indexed during a batch indexation"));
         add(createClearEmbeddingButton());
 
+        // === Section Mode Agent ===
+        add(Box.createVerticalStrut(15));
+        add(createAgentSectionSeparator());
+        add(createAgentModeCheckbox());
+        add(createLabeledField("Security Level:", agentSecurityLevel,
+                "STRICT: All actions require approval | STANDARD: Only risky actions require approval | EXPERT: Only high-risk actions require approval"));
+        add(createLabeledField("Max Tasks per Session:", agentMaxTasksPerSession,
+                "Maximum number of tasks the agent can execute in one session (1-100)"));
+        add(createAgentAutoApprovalCheckbox());
+
         initializeListeners();
     }
 
     public void addChangeListener(Consumer<Boolean> listener) {
         changeListeners.add(listener);
     }
-    public void removeChangeListener(Consumer<Boolean> listener){
+
+    public void removeChangeListener(Consumer<Boolean> listener) {
         changeListeners.remove(listener);
     }
 
@@ -106,6 +126,12 @@ public class ConfigurationPanel extends JPanel {
         timeout.getDocument().addDocumentListener(documentListener);
         sources.getDocument().addDocumentListener(documentListener);
         maxDocuments.getDocument().addDocumentListener(documentListener);
+
+        // Listeners pour les composants agent
+        agentModeEnabled.addActionListener(e -> notifyChangeListeners());
+        agentSecurityLevel.addActionListener(e -> notifyChangeListeners());
+        agentMaxTasksPerSession.getDocument().addDocumentListener(documentListener);
+        agentAutoApprovalEnabled.addActionListener(e -> notifyChangeListeners());
 
 
         ItemListener itemListener = e -> {
@@ -331,5 +357,114 @@ public class ConfigurationPanel extends JPanel {
         project.getMessageBus()
                 .syncPublisher(StoreNotifier.TOPIC)
                 .clearDatabaseAndRunIndexation();
+    }
+
+    // === Méthodes pour les composants Agent ===
+
+    private JPanel createAgentSectionSeparator() {
+        JPanel panel = new JBPanel<>();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(JBUI.Borders.empty(5, 0));
+
+        JBLabel sectionLabel = new JBLabel("Agent Mode Configuration");
+        sectionLabel.setFont(sectionLabel.getFont().deriveFont(Font.BOLD, 14f));
+        sectionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(sectionLabel);
+
+        panel.add(Box.createVerticalStrut(5));
+
+        // Ligne de séparation
+        JSeparator separator = new JSeparator();
+        separator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(separator);
+
+        return panel;
+    }
+
+    private JPanel createAgentModeCheckbox() {
+        JPanel panel = new JBPanel<>();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(JBUI.Borders.empty(5, 0));
+
+        agentModeEnabled.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(agentModeEnabled);
+
+        JTextArea infoText = new JTextArea("Enable Agent Mode to allow autonomous task execution with user validation. " +
+                "When enabled, action requests will be processed by the agent instead of the regular chat.");
+        infoText.setEditable(false);
+        infoText.setLineWrap(true);
+        infoText.setWrapStyleWord(true);
+        infoText.setBackground(panel.getBackground());
+        infoText.setFont(infoText.getFont().deriveFont(Font.ITALIC));
+        infoText.setForeground(UIManager.getColor("Label.disabledForeground"));
+        infoText.setBorder(BorderFactory.createEmptyBorder());
+        infoText.setFocusable(false);
+        infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        panel.add(Box.createVerticalStrut(3));
+        panel.add(infoText);
+
+        return panel;
+    }
+
+    private JPanel createAgentAutoApprovalCheckbox() {
+        JPanel panel = new JBPanel<>();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(JBUI.Borders.empty(5, 0));
+
+        agentAutoApprovalEnabled.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(agentAutoApprovalEnabled);
+
+        JTextArea infoText = new JTextArea("When enabled, safe actions will be automatically approved based on the security level. " +
+                "Use with caution - this reduces user control over agent actions.");
+        infoText.setEditable(false);
+        infoText.setLineWrap(true);
+        infoText.setWrapStyleWord(true);
+        infoText.setBackground(panel.getBackground());
+        infoText.setFont(infoText.getFont().deriveFont(Font.ITALIC));
+        infoText.setForeground(UIManager.getColor("Label.disabledForeground"));
+        infoText.setBorder(BorderFactory.createEmptyBorder());
+        infoText.setFocusable(false);
+        infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        panel.add(Box.createVerticalStrut(3));
+        panel.add(infoText);
+
+        return panel;
+    }
+
+    // === Getters et setters pour les paramètres agent ===
+
+    public boolean isAgentModeEnabled() {
+        return agentModeEnabled.isSelected();
+    }
+
+    public void setAgentModeEnabled(boolean enabled) {
+        agentModeEnabled.setSelected(enabled);
+    }
+
+    public AgentModeSettings.AgentSecurityLevel getAgentSecurityLevel() {
+        return (AgentModeSettings.AgentSecurityLevel) agentSecurityLevel.getSelectedItem();
+    }
+
+    public void setAgentSecurityLevel(AgentModeSettings.AgentSecurityLevel level) {
+        agentSecurityLevel.setSelectedItem(level);
+    }
+
+    public int getAgentMaxTasksPerSession() {
+        return agentMaxTasksPerSession.getValue();
+    }
+
+    public void setAgentMaxTasksPerSession(int maxTasks) {
+        agentMaxTasksPerSession.setValue(maxTasks);
+    }
+
+    public boolean isAgentAutoApprovalEnabled() {
+        return agentAutoApprovalEnabled.isSelected();
+    }
+
+    public void setAgentAutoApprovalEnabled(boolean enabled) {
+        agentAutoApprovalEnabled.setSelected(enabled);
     }
 }
