@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.7.0"
+version = "1.7.1"
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
         defaultRepositories()
     }
 }
-
+val langchain4jEasyRag = "1.4.0-beta10"
 val langchain4jVersion = "1.4.0"
 val apacheLuceneVersion = "9.12.1"
 val mockitoVersion = "5.19.0"
@@ -29,7 +29,7 @@ val rsyntaxtextareaVersion = "3.6.0"
 val plexusVersion = "3.4.1"
 val jsoupVersion = "1.17.2"
 val jacksonVersion = "2.20.0"
-
+val djlVersion = "0.28.0"
 sourceSets {
     create("benchmark") {
         java.srcDir("src/benchmark/java")
@@ -55,19 +55,19 @@ dependencies {
     }
 
 
-    implementation("ai.djl:api:0.28.0")
-    implementation("ai.djl.huggingface:tokenizers:0.28.0")
+    implementation("ai.djl:api:$djlVersion")
+    implementation("ai.djl.huggingface:tokenizers:$djlVersion")
 
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j-core:$langchain4jVersion")
     implementation("dev.langchain4j:langchain4j:$langchain4jVersion")
-    implementation("dev.langchain4j:langchain4j-easy-rag:1.4.0-beta10") {
+    implementation("dev.langchain4j:langchain4j-easy-rag:$langchain4jEasyRag") {
         exclude(group = "xml-apis")
         exclude(group = "ai.djl", module = "api")
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
     }
-    implementation("dev.langchain4j:langchain4j-reactor:1.4.0-beta10")
+    implementation("dev.langchain4j:langchain4j-reactor:$langchain4jEasyRag")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")

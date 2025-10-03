@@ -61,6 +61,7 @@
             <LI>feat: Enhanced autocompletion system with improved caching, debouncing, and multi-suggestion support.</LI>
             <LI>feat: Add comprehensive test coverage for autocompletion features (100% test success rate).</LI>
             <LI>feat: Commit message generation now respects file selection in commit dialog.</LI>
+            <LI>fix: Improve settings persistence and modification detection.</LI>
             <LI>fix: Improved thread safety and IntelliJ Platform compatibility for autocompletion components.</LI>
             <LI>fix: Enhanced SuggestionCache with proper eviction policies and null context handling.</LI>
             <LI>fix: CompletionDebouncer now supports both IntelliJ and test environments with fallback mechanisms.</LI>
