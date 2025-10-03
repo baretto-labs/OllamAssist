@@ -259,6 +259,45 @@ public final class AgentModeSettings implements PersistentStateComponent<AgentMo
     /**
      * État persistant des paramètres agent
      */
+    // Getters/Setters pour le modèle agent
+
+    public String getAgentModelName() {
+        return state.agentModelName;
+    }
+
+    public void setAgentModelName(String modelName) {
+        state.agentModelName = modelName;
+    }
+
+    public String getAgentOllamaUrl() {
+        return state.agentOllamaUrl;
+    }
+
+    public void setAgentOllamaUrl(String url) {
+        state.agentOllamaUrl = url;
+    }
+
+    /**
+     * Vérifie si le modèle agent est configuré
+     */
+    public boolean isAgentModelConfigured() {
+        return state.agentModelName != null && !state.agentModelName.trim().isEmpty();
+    }
+
+    /**
+     * Obtient le nom du modèle recommandé pour le mode agent
+     */
+    public static String getRecommendedAgentModel() {
+        return "gpt-oss";
+    }
+
+    /**
+     * Vérifie si c'est le modèle recommandé
+     */
+    public boolean isUsingRecommendedModel() {
+        return getRecommendedAgentModel().equals(state.agentModelName);
+    }
+
     @Data
     public static class State {
         // Activation générale du mode agent
@@ -281,5 +320,11 @@ public final class AgentModeSettings implements PersistentStateComponent<AgentMo
 
         // Interface utilisateur pour progression des tâches
         public boolean taskProgressUIEnabled = true;
+
+        // Modèle Ollama spécifique pour le mode agent (recommandé: gpt-oss)
+        public String agentModelName = "gpt-oss";
+
+        // URL Ollama pour le mode agent (null = utiliser l'URL par défaut)
+        public String agentOllamaUrl = null;
     }
 }

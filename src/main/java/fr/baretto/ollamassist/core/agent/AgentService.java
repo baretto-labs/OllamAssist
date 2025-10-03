@@ -8,6 +8,8 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.core.agent.react.ReActLoopController;
+import fr.baretto.ollamassist.core.agent.react.ReActResult;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.agent.AgentModeSettings;
 import lombok.extern.slf4j.Slf4j;
@@ -41,18 +43,38 @@ public final class AgentService {
         // Utiliser le service Ollama existant qui a RAG/web/context
         this.ollamaService = project.getService(OllamaService.class);
 
-        // Créer le modèle Ollama avec les mêmes paramètres que LightModelAssistant (pour fallback)
+        // ✨ Check agent model availability
+        ModelAvailabilityChecker checker = new ModelAvailabilityChecker();
+        ModelAvailabilityChecker.ModelAvailabilityResult availabilityCheck = checker.checkAgentModelAvailability();
+
+        if (!availabilityCheck.isAvailable()) {
+            log.error("❌ AGENT MODEL NOT AVAILABLE: {}", availabilityCheck.getUserMessage());
+            // Will be handled in executeUserRequest
+        } else {
+            log.info("✅ Agent model '{}' is available", agentSettings.getAgentModelName());
+        }
+
+        // ✨ Use agent-specific model configuration (gpt-oss) instead of completion model
+        String agentUrl = agentSettings.getAgentOllamaUrl() != null
+                ? agentSettings.getAgentOllamaUrl()
+                : OllamAssistSettings.getInstance().getCompletionOllamaUrl();
+
+        String agentModelName = agentSettings.getAgentModelName();
+
+        log.info("🤖 Initializing agent with model: '{}' at {}", agentModelName, agentUrl);
+
+        // Créer le modèle Ollama pour l'agent avec paramètres optimisés pour ReAct
         this.chatModel = OllamaChatModel.builder()
-                .temperature(0.2)
+                .temperature(0.2)  // Bas pour raisonnement cohérent
                 .topK(30)
                 .topP(0.7)
-                .baseUrl(OllamAssistSettings.getInstance().getCompletionOllamaUrl())
-                .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
+                .baseUrl(agentUrl)
+                .modelName(agentModelName)
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
                 .build();
 
-        // TEST: Activer les tools natifs LangChain4J avec Ollama (fonction calling supporté depuis récemment)
-        log.error("🔧 TESTING NATIVE TOOLS: Attempting to initialize agent with tools");
+        // Activer les tools natifs LangChain4J avec Ollama
+        log.info("🔧 Initializing agent with native tools");
         boolean nativeToolsSuccess = false;
         AgentInterface tempInterface = null;
 
@@ -62,7 +84,7 @@ public final class AgentService {
                     .tools(developmentAgent) // ACTIVATION DES TOOLS NATIFS
                     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                     .build();
-            log.error("✅ NATIVE TOOLS: Successfully initialized with tools");
+            log.info("✅ NATIVE TOOLS: Successfully initialized with tools");
             nativeToolsSuccess = true;
         } catch (Exception e) {
             log.error("❌ NATIVE TOOLS: Failed to initialize with tools, falling back to no-tools mode", e);
@@ -76,7 +98,8 @@ public final class AgentService {
         this.agentInterface = tempInterface;
         this.useNativeTools = nativeToolsSuccess;
 
-        log.error("🔧 AGENT ARCHITECTURE: {} mode activated", useNativeTools ? "NATIVE TOOLS" : "JSON FALLBACK");
+        log.info("🔧 AGENT ARCHITECTURE: {} mode activated with model '{}'",
+                useNativeTools ? "NATIVE TOOLS" : "JSON FALLBACK", agentModelName);
         log.info("AgentService initialized with LangChain4J tools for project: {}", project.getName());
     }
 
@@ -85,6 +108,29 @@ public final class AgentService {
      */
     public void executeUserRequestWithStreaming(String userRequest) {
         log.error("🚀 DEBUG: UNIFIED STREAMING AGENT: Processing user request: {}", userRequest);
+
+        // ✨ Vérifier si le modèle agent est disponible
+        ModelAvailabilityChecker checker = new ModelAvailabilityChecker();
+        ModelAvailabilityChecker.ModelAvailabilityResult modelCheck = checker.checkAgentModelAvailability();
+
+        if (!modelCheck.isAvailable()) {
+            log.error("❌ Agent model not available: {}", modelCheck.getStatus());
+
+            // ✨ Afficher une notification visuelle riche selon le type d'erreur
+            if (modelCheck.isNotAvailable()) {
+                fr.baretto.ollamassist.core.agent.ui.ModelNotAvailableNotification.showModelNotAvailable(project, modelCheck);
+            } else if (modelCheck.isError()) {
+                fr.baretto.ollamassist.core.agent.ui.ModelNotAvailableNotification.showModelCheckError(project, modelCheck);
+            } else if (modelCheck.isNotConfigured()) {
+                fr.baretto.ollamassist.core.agent.ui.ModelNotAvailableNotification.showModelNotConfigured(project);
+            }
+
+            // Notifier également via MessageBus pour la compatibilité
+            project.getMessageBus()
+                    .syncPublisher(AgentTaskNotifier.TOPIC)
+                    .agentProcessingFailed(userRequest, modelCheck.getUserMessage());
+            return;
+        }
 
         // Vérifier si le mode agent est disponible
         if (!agentSettings.isAgentModeAvailable()) {
@@ -96,8 +142,8 @@ public final class AgentService {
         try {
             // Détecter si c'est une action de développement ou une question
             if (isActionRequest(userRequest)) {
-                log.info("🛠️ ACTION detected - using development agent (non-streaming)");
-                executeActionRequestAndNotify(userRequest);
+                log.info("🛠️ ACTION detected - using development agent (streaming)");
+                executeActionRequestWithStreaming(userRequest);
             } else {
                 log.info("💬 QUESTION detected - using RAG chat (streaming)");
                 executeChatRequestWithStreaming(userRequest);
@@ -170,11 +216,25 @@ public final class AgentService {
     private String executeActionRequest(String userRequest) {
         try {
             if (useNativeTools) {
-                // MODE NATIF: Les tools sont appelés directement par LangChain4J avec ReAct
-                log.info("🔧 NATIVE MODE: Using ReAct pattern with direct tool calling");
-                String reactPrompt = buildReActPrompt(userRequest);
-                String result = agentInterface.executeRequest(reactPrompt);
-                return result;
+                // ✨ NEW: Use explicit ReAct loop controller
+                log.info("🔧 NATIVE MODE: Using explicit ReAct loop controller");
+                ReActLoopController controller = new ReActLoopController(
+                        project,
+                        developmentAgent,
+                        ollamaService
+                );
+
+                try {
+                    ReActResult result = controller.executeWithLoop(userRequest).get();
+
+                    if (result.isSuccess()) {
+                        return result.getFinalMessage();
+                    } else {
+                        return result.getUserMessage();
+                    }
+                } finally {
+                    controller.cleanup();
+                }
             } else {
                 // MODE FALLBACK: Parser le JSON et exécuter manuellement
                 log.info("📄 FALLBACK MODE: Using JSON parsing");
@@ -234,6 +294,94 @@ public final class AgentService {
             }
         } catch (Exception e) {
             log.error("Error executing streaming chat request", e);
+            project.getMessageBus()
+                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                    .agentProcessingFailed(userRequest, e.getMessage());
+        }
+    }
+
+    /**
+     * Exécute une requête d'action avec streaming via l'agent de développement
+     */
+    private void executeActionRequestWithStreaming(String userRequest) {
+        try {
+            if (ollamaService != null && ollamaService.getAssistant() != null) {
+                log.info("🛠️ Using OllamaService with agent tools for streaming action");
+
+                // Notifier le démarrage
+                project.getMessageBus()
+                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                        .agentProcessingStarted(userRequest);
+
+                // Utiliser le streaming pour les actions agent aussi
+                StringBuilder fullResponse = new StringBuilder();
+
+                if (useNativeTools) {
+                    // MODE NATIF: Utiliser ReAct pattern avec streaming
+                    String reactPrompt = buildReActPrompt(userRequest);
+
+                    ollamaService.getAssistant().chat(reactPrompt)
+                            .onPartialResponse(token -> {
+                                fullResponse.append(token);
+                                // Publier chaque token en temps réel
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentStreamingToken(token);
+                            })
+                            .onCompleteResponse(chatResponse -> {
+                                String finalResponse = fullResponse.toString();
+                                log.info("🛠️ Agent streaming completed: {}", finalResponse);
+
+                                // Notifier la fin du processing
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentProcessingCompleted(userRequest, finalResponse);
+                            })
+                            .onError(throwable -> {
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentProcessingFailed(userRequest, throwable.getMessage());
+                            })
+                            .start();
+                } else {
+                    // MODE FALLBACK: JSON parsing avec streaming
+                    String systemPrompt = buildSystemPrompt();
+                    String fullRequest = systemPrompt + "\n\nUser request: " + userRequest;
+
+                    ollamaService.getAssistant().chat(fullRequest)
+                            .onPartialResponse(token -> {
+                                fullResponse.append(token);
+                                // Publier chaque token en temps réel
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentStreamingToken(token);
+                            })
+                            .onCompleteResponse(chatResponse -> {
+                                String jsonResult = fullResponse.toString();
+                                log.info("🛠️ Agent JSON response streaming completed");
+
+                                // Parser et exécuter les actions du JSON
+                                String executionResult = parseAndExecuteActions(jsonResult);
+
+                                // Notifier la fin avec le résultat d'exécution
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentProcessingCompleted(userRequest, executionResult);
+                            })
+                            .onError(throwable -> {
+                                project.getMessageBus()
+                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                        .agentProcessingFailed(userRequest, throwable.getMessage());
+                            })
+                            .start();
+                }
+
+            } else {
+                log.warn("OllamaService not available, falling back to simple agent");
+                executeActionRequestAndNotify(userRequest);
+            }
+        } catch (Exception e) {
+            log.error("Error executing streaming action request", e);
             project.getMessageBus()
                     .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
                     .agentProcessingFailed(userRequest, e.getMessage());

@@ -7,6 +7,8 @@ import fr.baretto.ollamassist.chat.rag.tools.WebSearchTool;
 import fr.baretto.ollamassist.core.agent.execution.ExecutionEngine;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
+import fr.baretto.ollamassist.core.agent.validation.ValidationInterceptor;
+import fr.baretto.ollamassist.core.agent.validation.ValidationResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -17,6 +19,11 @@ import java.util.UUID;
 /**
  * Agent de développement IntelliJ utilisant LangChain4J avec vrais tools
  * Remplace progressivement le TaskPlanner custom par une approche agentic moderne
+ *
+ * ✨ NEW: Automatic validation with ValidationInterceptor
+ * - Code changes are automatically validated with compilation checks
+ * - Validation runs asynchronously to reduce latency
+ * - Detailed error feedback provided for fixing
  */
 @Slf4j
 public class IntelliJDevelopmentAgent {
@@ -24,11 +31,13 @@ public class IntelliJDevelopmentAgent {
     private final Project project;
     private final ExecutionEngine executionEngine;
     private final WebSearchTool webSearchTool;
+    private final ValidationInterceptor validationInterceptor;
 
     public IntelliJDevelopmentAgent(Project project) {
         this.project = project;
         this.executionEngine = new ExecutionEngine(project);
         this.webSearchTool = new WebSearchTool();
+        this.validationInterceptor = new ValidationInterceptor(project);
     }
 
     @Tool("Create a new Java class file with the specified content")
@@ -58,6 +67,18 @@ public class IntelliJDevelopmentAgent {
             if (result.isSuccess()) {
                 String successMessage = String.format("✅ Successfully created Java class '%s' at '%s'", className, filePath);
                 log.info(successMessage);
+
+                // ✨ AUTOMATIC VALIDATION: Check compilation after creating Java class
+                if (validationInterceptor.requiresCompilationCheck("createJavaClass", result)) {
+                    log.info("🔍 Auto-validating compilation for {}", className);
+                    ValidationResult validation = validationInterceptor.autoValidate("createJavaClass", result);
+
+                    if (!validation.isSuccess()) {
+                        // Return formatted feedback with errors
+                        return validationInterceptor.formatValidationFeedback(validation, successMessage);
+                    }
+                }
+
                 return successMessage;
             } else {
                 String errorMessage = String.format("❌ Failed to create Java class '%s': %s", className, result.getErrorMessage());
@@ -97,6 +118,17 @@ public class IntelliJDevelopmentAgent {
             if (result.isSuccess()) {
                 String successMessage = String.format("✅ Successfully created file '%s'", filePath);
                 log.info(successMessage);
+
+                // ✨ AUTOMATIC VALIDATION: Check compilation if it's a Java file
+                if (validationInterceptor.requiresCompilationCheck("createFile", result)) {
+                    log.info("🔍 Auto-validating compilation for {}", filePath);
+                    ValidationResult validation = validationInterceptor.autoValidate("createFile", result);
+
+                    if (!validation.isSuccess()) {
+                        return validationInterceptor.formatValidationFeedback(validation, successMessage);
+                    }
+                }
+
                 return successMessage;
             } else {
                 String errorMessage = String.format("❌ Failed to create file '%s': %s", filePath, result.getErrorMessage());

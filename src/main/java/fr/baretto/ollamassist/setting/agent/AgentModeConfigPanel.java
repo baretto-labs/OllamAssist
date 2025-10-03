@@ -25,6 +25,12 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
     private final ComboBox<AgentModeSettings.AgentSecurityLevel> securityLevelComboBox;
     private final JBCheckBox taskProgressUIEnabledCheckBox;
 
+    // ✨ Agent model configuration
+    private final JBTextField agentModelNameField;
+    private final JBTextField agentOllamaUrlField;
+    private final JButton checkModelButton;
+    private final JBLabel modelStatusLabel;
+
     private final JBLabel configSummaryLabel;
     private final AgentModeSettings settings;
 
@@ -41,6 +47,13 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         securityLevelComboBox = new ComboBox<>(AgentModeSettings.AgentSecurityLevel.values());
         taskProgressUIEnabledCheckBox = new JBCheckBox("Afficher l'interface de progression des tâches");
 
+        // ✨ Agent model configuration
+        agentModelNameField = new JBTextField(20);
+        agentOllamaUrlField = new JBTextField(30);
+        checkModelButton = new JButton("Vérifier la disponibilité");
+        modelStatusLabel = new JBLabel();
+        modelStatusLabel.setFont(modelStatusLabel.getFont().deriveFont(Font.ITALIC));
+
         configSummaryLabel = new JBLabel();
         configSummaryLabel.setFont(configSummaryLabel.getFont().deriveFont(Font.ITALIC));
         configSummaryLabel.setForeground(JBColor.GRAY);
@@ -52,9 +65,49 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
     }
 
     private void setupUI() {
+        // ✨ Model configuration panel
+        JPanel modelPanel = new JBPanel<>(new GridBagLayout());
+        modelPanel.setBorder(JBUI.Borders.empty(5));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = JBUI.insets(2);
+
+        modelPanel.add(new JBLabel("Modèle (recommandé: gpt-oss):"), gbc);
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        modelPanel.add(agentModelNameField, gbc);
+
+        gbc.gridx = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.weightx = 0;
+        modelPanel.add(checkModelButton, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        modelPanel.add(modelStatusLabel, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.NONE;
+        modelPanel.add(new JBLabel("URL Ollama (optionnel):"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        modelPanel.add(agentOllamaUrlField, gbc);
+
         // Main form
         JPanel formPanel = FormBuilder.createFormBuilder()
                 .addLabeledComponent("Mode agent:", agentModeEnabledCheckBox)
+                .addSeparator()
+                .addComponent(modelPanel)
                 .addSeparator()
                 .addLabeledComponent("Niveau de sécurité:", securityLevelComboBox)
                 .addLabeledComponent("", autoTaskApprovalCheckBox)
@@ -135,8 +188,66 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
             }
         });
 
+        // ✨ Check model availability button
+        checkModelButton.addActionListener(e -> checkModelAvailability());
+
         // Initial update
         updateDependentComponents();
+    }
+
+    /**
+     * Checks if the configured agent model is available
+     */
+    private void checkModelAvailability() {
+        String modelName = agentModelNameField.getText().trim();
+        String ollamaUrl = agentOllamaUrlField.getText().trim();
+
+        if (modelName.isEmpty()) {
+            modelStatusLabel.setText("⚠️ Veuillez entrer un nom de modèle");
+            modelStatusLabel.setForeground(JBColor.ORANGE);
+            return;
+        }
+
+        modelStatusLabel.setText("🔍 Vérification en cours...");
+        modelStatusLabel.setForeground(JBColor.GRAY);
+        checkModelButton.setEnabled(false);
+
+        // Check in background to avoid freezing UI
+        new Thread(() -> {
+            fr.baretto.ollamassist.core.agent.ModelAvailabilityChecker checker;
+            if (ollamaUrl != null && !ollamaUrl.isEmpty()) {
+                checker = new fr.baretto.ollamassist.core.agent.ModelAvailabilityChecker(
+                        ollamaUrl,
+                        java.time.Duration.ofSeconds(10)
+                );
+            } else {
+                checker = new fr.baretto.ollamassist.core.agent.ModelAvailabilityChecker();
+            }
+
+            fr.baretto.ollamassist.core.agent.ModelAvailabilityChecker.ModelAvailabilityResult result =
+                    checker.checkModelAvailability(modelName);
+
+            // Update UI on EDT
+            SwingUtilities.invokeLater(() -> {
+                checkModelButton.setEnabled(true);
+
+                if (result.isAvailable()) {
+                    modelStatusLabel.setText("✅ Modèle disponible");
+                    modelStatusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(50, 200, 50)));
+                } else if (result.isNotAvailable()) {
+                    String message = String.format(
+                            "<html>❌ Modèle non disponible<br>" +
+                            "<small>Exécutez: <b>ollama pull %s</b></small></html>",
+                            modelName
+                    );
+                    modelStatusLabel.setText(message);
+                    modelStatusLabel.setForeground(JBColor.RED);
+                } else if (result.isError()) {
+                    modelStatusLabel.setText("❌ Erreur: " + result.getErrorMessage());
+                    modelStatusLabel.setForeground(JBColor.RED);
+                }
+            });
+        }).start();
     }
 
     private void updateDependentComponents() {
@@ -183,6 +294,10 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         securityLevelComboBox.setSelectedItem(settings.getSecurityLevel());
         taskProgressUIEnabledCheckBox.setSelected(settings.isTaskProgressUIEnabled());
 
+        // ✨ Load agent model settings
+        agentModelNameField.setText(settings.getAgentModelName() != null ? settings.getAgentModelName() : "gpt-oss");
+        agentOllamaUrlField.setText(settings.getAgentOllamaUrl() != null ? settings.getAgentOllamaUrl() : "");
+
         updateDependentComponents();
         updateConfigSummary();
     }
@@ -200,6 +315,15 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
 
         settings.setSnapshotEnabled(snapshotEnabledCheckBox.isSelected());
         settings.setMcpIntegrationEnabled(mcpIntegrationEnabledCheckBox.isSelected());
+
+        // ✨ Save agent model settings
+        String modelName = agentModelNameField.getText().trim();
+        if (!modelName.isEmpty()) {
+            settings.setAgentModelName(modelName);
+        }
+
+        String ollamaUrl = agentOllamaUrlField.getText().trim();
+        settings.setAgentOllamaUrl(ollamaUrl.isEmpty() ? null : ollamaUrl);
 
         AgentModeSettings.AgentSecurityLevel selectedLevel =
                 (AgentModeSettings.AgentSecurityLevel) securityLevelComboBox.getSelectedItem();
