@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,6 +13,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
 
+@Slf4j
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
     private final Project project;
@@ -39,56 +41,26 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                     method.setAccessible(true);
                     method.invoke(this);
                 } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-
+                    log.error("Error during OllamassistSettingsConfigurable creation : ", e);
                 }
             }
         };
 
         configurationPanel.addChangeListener(changeListener);
 
+        // Load settings using automatic binding
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        configurationPanel.setChatOllamaUrl(settings.getChatOllamaUrl());
-        configurationPanel.setCompletionOllamaUrl(settings.getCompletionOllamaUrl());
-        configurationPanel.setEmbeddingOllamaUrl(settings.getEmbeddingOllamaUrl());
-        configurationPanel.setChatModelName(settings.getChatModelName());
-        configurationPanel.setCompletionModelName(settings.getCompletionModelName());
-        configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
-        configurationPanel.setTimeout(settings.getTimeout());
-        configurationPanel.setSources(settings.getSources());
-        configurationPanel.setMaxDocuments(settings.getIndexationSize());
-
-        // === Paramètres agent ===
-        configurationPanel.setAgentModeEnabled(settings.isAgentModeEnabled());
-        configurationPanel.setAgentSecurityLevel(settings.getAgentSecurityLevel());
-        configurationPanel.setAgentMaxTasksPerSession(settings.getAgentMaxTasksPerSession());
-        configurationPanel.setAgentAutoApprovalEnabled(settings.isAgentAutoApprovalEnabled());
-
+        SettingsBindingHelper.loadSettings(settings.getState(), configurationPanel);
         return configurationPanel;
     }
 
     @Override
     public boolean isModified() {
-        if (configurationPanel == null ||
-                configurationPanel.getChatModel() == null ||
-                configurationPanel.getCompletionModel() == null ||
-                configurationPanel.getEmbeddingModel() == null) {
+        if (configurationPanel == null) {
             return false;
         }
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        return !configurationPanel.getChatOllamaUrl().equalsIgnoreCase(settings.getChatOllamaUrl()) ||
-                !configurationPanel.getCompletionOllamaUrl().equalsIgnoreCase(settings.getCompletionOllamaUrl()) ||
-                !configurationPanel.getEmbeddingOllamaUrl().equalsIgnoreCase(settings.getEmbeddingOllamaUrl()) ||
-                !configurationPanel.getChatModel().equalsIgnoreCase(settings.getChatModelName()) ||
-                !configurationPanel.getCompletionModel().equalsIgnoreCase(settings.getCompletionModelName()) ||
-                !configurationPanel.getEmbeddingModel().equalsIgnoreCase(settings.getEmbeddingModelName()) ||
-                !configurationPanel.getTimeout().equalsIgnoreCase(settings.getTimeout()) ||
-                !configurationPanel.getSources().equalsIgnoreCase(settings.getSources()) ||
-                configurationPanel.getMaxDocuments() != settings.getIndexationSize() ||
-                // === Paramètres agent ===
-                configurationPanel.isAgentModeEnabled() != settings.isAgentModeEnabled() ||
-                configurationPanel.getAgentSecurityLevel() != settings.getAgentSecurityLevel() ||
-                configurationPanel.getAgentMaxTasksPerSession() != settings.getAgentMaxTasksPerSession() ||
-                configurationPanel.isAgentAutoApprovalEnabled() != settings.isAgentAutoApprovalEnabled();
+        return SettingsBindingHelper.isModified(settings.getState(), configurationPanel);
     }
 
 
@@ -99,15 +71,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         if (isModified()) {
             boolean needIndexation = needIndexation();
             boolean shouldCleanAllDatabase = shouldCleanAllDatabase();
-            settings.setChatOllamaUrl(configurationPanel.getChatOllamaUrl());
-            settings.setCompletionOllamaUrl(configurationPanel.getCompletionOllamaUrl());
-            settings.setEmbeddingOllamaUrl(configurationPanel.getEmbeddingOllamaUrl());
-            settings.setChatModelName(configurationPanel.getChatModel());
-            settings.setCompletionModelName(configurationPanel.getCompletionModel());
-            settings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
-            settings.setTimeout(configurationPanel.getTimeout());
-            settings.setSources(configurationPanel.getSources());
-            settings.setIndexationSize(configurationPanel.getMaxDocuments());
+
+            // Save settings using automatic binding
+            SettingsBindingHelper.saveSettings(configurationPanel, settings.getState());
 
             // === Paramètres agent ===
             settings.setAgentModeEnabled(configurationPanel.isAgentModeEnabled());
@@ -138,29 +104,24 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     private boolean shouldCleanAllDatabase() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        return !settings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel()) ||
-                !settings.getEmbeddingOllamaUrl().equals(configurationPanel.getEmbeddingOllamaUrl());
 
+        String panelEmbeddingModel = configurationPanel.getEmbeddingModel();
+        String panelEmbeddingUrl = configurationPanel.getEmbeddingOllamaUrl();
+
+        // Null-safe comparison: if panel values are null (async loading), no cleaning needed
+        if (panelEmbeddingModel == null || panelEmbeddingUrl == null) {
+            return false;
+        }
+
+        return !settings.getEmbeddingModelName().equals(panelEmbeddingModel) ||
+                !settings.getEmbeddingOllamaUrl().equals(panelEmbeddingUrl);
     }
 
     @Override
     public void reset() {
+        // Load settings using automatic binding
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
-        configurationPanel.setChatOllamaUrl(settings.getChatOllamaUrl().trim());
-        configurationPanel.setCompletionOllamaUrl(settings.getCompletionOllamaUrl().trim());
-        configurationPanel.setEmbeddingOllamaUrl(settings.getEmbeddingOllamaUrl().trim());
-        configurationPanel.setChatModelName(settings.getChatModelName().trim());
-        configurationPanel.setCompletionModelName(settings.getCompletionModelName().trim());
-        configurationPanel.setEmbeddingModelName(settings.getEmbeddingModelName());
-        configurationPanel.setTimeout(settings.getTimeout().trim());
-        configurationPanel.setSources(settings.getSources().trim());
-        configurationPanel.setMaxDocuments(settings.getIndexationSize());
-
-        // === Paramètres agent ===
-        configurationPanel.setAgentModeEnabled(settings.isAgentModeEnabled());
-        configurationPanel.setAgentSecurityLevel(settings.getAgentSecurityLevel());
-        configurationPanel.setAgentMaxTasksPerSession(settings.getAgentMaxTasksPerSession());
-        configurationPanel.setAgentAutoApprovalEnabled(settings.isAgentAutoApprovalEnabled());
+        SettingsBindingHelper.loadSettings(settings.getState(), configurationPanel);
     }
 
     @Override
