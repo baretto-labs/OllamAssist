@@ -18,6 +18,7 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -28,9 +29,8 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
 
 @Getter
 public class PromptPanel extends JPanel implements Disposable {
@@ -245,9 +245,17 @@ public class PromptPanel extends JPanel implements Disposable {
 
     private List<String> fetchAvailableModels() {
         try {
-            return new ArrayList<>(OllamaModels.builder()
-                    .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
-                    .build()
+            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
+                    .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl());
+            
+            // Add authentication if configured
+            if (AuthenticationHelper.isAuthenticationConfigured()) {
+                Map<String, String> customHeaders = new HashMap<>();
+                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                builder.customHeaders(customHeaders);
+            }
+            
+            return new ArrayList<>(builder.build()
                     .availableModels()
                     .content()
                     .stream()

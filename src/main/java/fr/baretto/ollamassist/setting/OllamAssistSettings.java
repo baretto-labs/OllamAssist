@@ -144,6 +144,22 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         return myState.uistate;
     }
 
+    public String getUsername() {
+        return myState.username;
+    }
+
+    public void setUsername(String username) {
+        myState.username = username;
+    }
+
+    public String getPassword() {
+        return myState.password;
+    }
+
+    public void setPassword(String password) {
+        myState.password = password;
+    }
+
     @Getter
     public static class State {
         public String chatOllamaUrl = DEFAULT_URL;
@@ -157,6 +173,8 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public int indexationSize = 5000;
         public boolean webSearchEnabled = false;
         public boolean ragEnabled = false;
+        public String username = "";
+        public String password = "";
 
         // Persiste configuration for UI component, currently used only for the chat context
         public boolean uistate = false;

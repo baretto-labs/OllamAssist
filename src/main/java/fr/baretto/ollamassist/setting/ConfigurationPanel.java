@@ -10,6 +10,7 @@ import com.intellij.ui.components.fields.IntegerField;
 import com.intellij.util.ui.JBUI;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.StoreNotifier;
 
@@ -20,9 +21,7 @@ import java.awt.*;
 import java.awt.event.FocusEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
@@ -33,6 +32,8 @@ public class ConfigurationPanel extends JPanel {
     private final JBTextField chatOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getChatOllamaUrl());
     private final JBTextField completionOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getCompletionOllamaUrl());
     private final JBTextField embeddingOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl());
+    private final JBTextField username = new JBTextField(OllamAssistSettings.getInstance().getUsername());
+    private final JBTextField password = new JBTextField(OllamAssistSettings.getInstance().getPassword());
     private final ComboBox<String> chatModel;
     private final ComboBox<String> completionModel;
     private final ComboBox<String> embeddingModel;
@@ -61,6 +62,9 @@ public class ConfigurationPanel extends JPanel {
                 "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use. " +
                         "For example: nomic-embed-text. " +
                         "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
+
+        add(createLabeledField("Username:", username, "Username for basic authentication (optional)."));
+        add(createLabeledField("Password:", password, "Password for basic authentication (optional)."));
 
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
         add(createLabeledField("Indexed Folders:", sources, "Separated by ';'"));
@@ -103,6 +107,8 @@ public class ConfigurationPanel extends JPanel {
         chatOllamaUrl.getDocument().addDocumentListener(documentListener);
         completionOllamaUrl.getDocument().addDocumentListener(documentListener);
         embeddingOllamaUrl.getDocument().addDocumentListener(documentListener);
+        username.getDocument().addDocumentListener(documentListener);
+        password.getDocument().addDocumentListener(documentListener);
         timeout.getDocument().addDocumentListener(documentListener);
         sources.getDocument().addDocumentListener(documentListener);
         maxDocuments.getDocument().addDocumentListener(documentListener);
@@ -245,6 +251,22 @@ public class ConfigurationPanel extends JPanel {
         updateAvailableModels(embeddingOllamaUrl, embeddingModel, true);
     }
 
+    public String getUsername() {
+        return username.getText().trim();
+    }
+
+    public void setUsername(String usernameValue) {
+        username.setText(usernameValue.trim());
+    }
+
+    public String getPassword() {
+        return password.getText().trim();
+    }
+
+    public void setPassword(String passwordValue) {
+        password.setText(passwordValue.trim());
+    }
+
     public int getMaxDocuments() {
         return maxDocuments.getValue();
     }
@@ -295,9 +317,17 @@ public class ConfigurationPanel extends JPanel {
 
     private List<OllamaModel> fetchAvailableModels(JBTextField ollamaUrl) {
         try {
-            return OllamaModels.builder()
-                    .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText())
-                    .build()
+            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
+                    .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText());
+            
+            // Add authentication if configured
+            if (AuthenticationHelper.isAuthenticationConfigured()) {
+                Map<String, String> customHeaders = new HashMap<>();
+                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                builder.customHeaders(customHeaders);
+            }
+            
+            return builder.build()
                     .availableModels()
                     .content();
         } catch (Exception e) {

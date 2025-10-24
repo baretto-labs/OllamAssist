@@ -6,8 +6,12 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class LightModelAssistant {
@@ -31,15 +35,23 @@ public class LightModelAssistant {
     }
 
     private static Service init() {
-        OllamaChatModel model = OllamaChatModel
+        OllamaChatModel.OllamaChatModelBuilder builder = OllamaChatModel
                 .builder()
                 .temperature(0.2)
                 .topK(30)
                 .topP(0.7)
                 .baseUrl(OllamAssistSettings.getInstance().getCompletionOllamaUrl())
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
-                .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
-                .build();
+                .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
+        
+        // Add authentication if configured
+        if (AuthenticationHelper.isAuthenticationConfigured()) {
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+            builder.customHeaders(customHeaders);
+        }
+        
+        OllamaChatModel model = builder.build();
 
         return AiServices.builder(Service.class)
                 .chatModel(model)
