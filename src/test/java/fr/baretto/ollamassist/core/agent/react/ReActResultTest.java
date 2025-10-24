@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.core.agent.react;
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,8 +23,18 @@ public class ReActResultTest extends BasePlatformTestCase {
         context = new ReActContext("Test request", getProject());
     }
 
+    @Override
+    @AfterEach
+    protected void tearDown() throws Exception {
+        try {
+            context = null;
+        } finally {
+            super.tearDown();
+        }
+    }
+
     @Test
-    public void testSuccessCreation() {
+    void testSuccessCreation() {
         // Given
         String message = "Task completed successfully";
 
@@ -39,7 +50,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testErrorCreation() {
+    void testErrorCreation() {
         // Given
         String errorMessage = "Something went wrong";
 
@@ -54,7 +65,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMaxIterationsReached() {
+    void testMaxIterationsReached() {
         // Given
         context.incrementIteration();
         context.incrementIteration();
@@ -71,7 +82,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCancelled() {
+    void testCancelled() {
         // Given
         String reason = "User cancelled the operation";
 
@@ -85,7 +96,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetUserMessageForSuccess() {
+    void testGetUserMessageForSuccess() {
         // Given
         String message = "Calculator class created successfully";
         ReActResult result = ReActResult.success(context, message);
@@ -98,7 +109,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetUserMessageForError() {
+    void testGetUserMessageForError() {
         // Given
         String errorMessage = "Failed to compile";
         ReActResult result = ReActResult.error(context, errorMessage);
@@ -113,7 +124,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetUserMessageForMaxIterations() {
+    void testGetUserMessageForMaxIterations() {
         // Given
         ReActResult result = ReActResult.maxIterationsReached(context);
 
@@ -127,7 +138,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetUserMessageForCancelled() {
+    void testGetUserMessageForCancelled() {
         // Given
         ReActResult result = ReActResult.cancelled(context, "User stopped");
 
@@ -141,7 +152,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetSummaryForSuccess() {
+    void testGetSummaryForSuccess() {
         // Given
         context.incrementIteration();
         context.addAction(new ReActContext.ActionStep("createJavaClass", "Create class", null));
@@ -160,7 +171,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetSummaryForError() {
+    void testGetSummaryForError() {
         // Given
         context.incrementIteration();
         ReActResult result = ReActResult.error(context, "Compilation failed");
@@ -175,7 +186,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetSummaryWithRemainingErrors() {
+    void testGetSummaryWithRemainingErrors() {
         // Given
         context.incrementIteration();
         context.addObservation(new ReActContext.ObservationStep(
@@ -196,7 +207,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testResultWithComplexContext() {
+    void testResultWithComplexContext() {
         // Given - Build a complex context
         context.incrementIteration();
         context.addThinking(new ReActContext.ThinkingStep("Plan action", "createJavaClass"));
@@ -221,7 +232,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testResultStatus() {
+    void testResultStatus() {
         // When
         ReActResult.ReActStatus completed = ReActResult.ReActStatus.COMPLETED;
         ReActResult.ReActStatus error = ReActResult.ReActStatus.ERROR;
@@ -237,7 +248,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMultipleErrorsInSummary() {
+    void testMultipleErrorsInSummary() {
         // Given
         context.incrementIteration();
         context.addObservation(new ReActContext.ObservationStep(
@@ -263,7 +274,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testSuccessAfterMultipleIterations() {
+    void testSuccessAfterMultipleIterations() {
         // Given - Simulate 5 iterations with final success
         for (int i = 0; i < 5; i++) {
             context.incrementIteration();
@@ -284,7 +295,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetSummaryWithNoErrors() {
+    void testGetSummaryWithNoErrors() {
         // Given
         context.incrementIteration();
         context.addObservation(new ReActContext.ObservationStep(
@@ -304,7 +315,7 @@ public class ReActResultTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testUserMessageLocalization() {
+    void testUserMessageLocalization() {
         // All user messages should be in French
         ReActResult success = ReActResult.success(context, "Done");
         ReActResult error = ReActResult.error(context, "Failed");

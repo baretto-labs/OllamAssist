@@ -31,7 +31,7 @@ public class ValidationInterceptor {
      * Determines if an action requires compilation validation
      */
     public boolean requiresCompilationCheck(String toolName, TaskResult result) {
-        if (!result.isSuccess()) {
+        if (result != null && !result.isSuccess()) {
             return false; // Don't validate if action failed
         }
 

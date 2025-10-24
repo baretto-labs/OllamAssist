@@ -52,6 +52,9 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3", useInstaller = true)
         bundledPlugins("Git4Idea")
+
+        // Test dependencies for IntelliJ Platform
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
 
 
@@ -91,12 +94,18 @@ dependencies {
     compileOnly("org.projectlombok:lombok:$lombokVersion")
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")
 
+    // Lombok for tests
+    testCompileOnly("org.projectlombok:lombok:$lombokVersion")
+    testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
+
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testImplementation("junit:junit:$junitLegacyVersion")
     testImplementation("org.mockito:mockito-core:$mockitoVersion")
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
     testImplementation("org.assertj:assertj-core:$assertjVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
 
     add("benchmarkImplementation", "org.junit.jupiter:junit-jupiter:$junitJupiterVersion")

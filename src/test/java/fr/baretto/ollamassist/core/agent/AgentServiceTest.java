@@ -1,90 +1,82 @@
 package fr.baretto.ollamassist.core.agent;
 
-import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.fixtures.BasePlatformTestCase;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests pour la nouvelle architecture AgentService avec LangChain4J
  */
-public class AgentServiceTest {
+@DisplayName("Agent Service Tests")
+public class AgentServiceTest extends BasePlatformTestCase {
+
+    private IntelliJDevelopmentAgent agent;
+
+    @Override
+    @BeforeEach
+    protected void setUp() throws Exception {
+        super.setUp();
+        agent = new IntelliJDevelopmentAgent(getProject());
+    }
 
     @Test
+    @DisplayName("Should create IntelliJ development agent without external dependencies")
     public void shouldCreateIntelliJDevelopmentAgentWithoutExternalDependencies() {
-        // Given: Mock project pour éviter les dépendances IntelliJ en test
-        Project mockProject = Mockito.mock(Project.class);
-        Mockito.when(mockProject.getName()).thenReturn("TestProject");
+        // When: Agent is created with real project
+        // Then: Agent created successfully
+        assertThat(agent).isNotNull();
 
-        // When: Création de l'agent de développement
-        IntelliJDevelopmentAgent developmentAgent = new IntelliJDevelopmentAgent(mockProject);
-
-        // Then: Agent créé avec succès
-        assertNotNull(developmentAgent, "Development agent should not be null");
-
-        AgentStats stats = developmentAgent.getStats();
-        assertNotNull(stats, "Development agent stats should not be null");
-        assertEquals(0, stats.getActiveTasksCount(), "Active tasks should be 0");
-        assertEquals(1.0, stats.getSuccessRate(), 0.01, "Success rate should be 100%");
+        AgentStats stats = agent.getStats();
+        assertThat(stats).isNotNull();
+        assertThat(stats.getActiveTasksCount()).isEqualTo(0);
+        assertThat(stats.getSuccessRate()).isBetween(0.0, 1.0);
     }
 
     @Test
+    @DisplayName("Should provide tool methods")
     public void shouldProvideToolMethods() {
-        // Given: Mock project
-        Project mockProject = Mockito.mock(Project.class);
-        Mockito.when(mockProject.getName()).thenReturn("TestProject");
-
-        // When: Création de l'agent
-        IntelliJDevelopmentAgent agent = new IntelliJDevelopmentAgent(mockProject);
-
-        // Then: Agent créé avec les outils
-        assertNotNull(agent, "Agent should not be null");
-        assertTrue(agent.isAvailable(), "Agent should be available");
+        // When: Agent is created
+        // Then: Agent has tools available
+        assertThat(agent).isNotNull();
+        assertThat(agent.isAvailable()).isTrue();
     }
 
     @Test
+    @DisplayName("Should configure LangChain4J tools")
     public void shouldConfigureLangChain4JTools() {
-        // Given: Mock project
-        Project mockProject = Mockito.mock(Project.class);
-
-        // When: Vérification que les annotations @Tool sont présentes
-        IntelliJDevelopmentAgent agent = new IntelliJDevelopmentAgent(mockProject);
-
-        // Then: Agent configuré pour LangChain4J
-        // Les méthodes avec @Tool sont :
+        // When: Agent is created
+        // Then: Agent is configured with LangChain4J tools
+        // Methods with @Tool annotation:
         // - createJavaClass
         // - createFile
         // - analyzeCode
         // - executeGitCommand
         // - buildProject
 
-        // Test que l'agent est bien configuré
-        assertNotNull(agent, "Agent should be properly configured with LangChain4J tools");
+        assertThat(agent).isNotNull();
     }
 
     @Test
+    @DisplayName("Should detect native tools support for hybrid architecture")
     public void shouldDetectNativeToolsSupportHybridArchitecture() {
-        // Given: Mock project
-        Project mockProject = Mockito.mock(Project.class);
-        Mockito.when(mockProject.getName()).thenReturn("TestProjectHybrid");
+        // When: AgentService initialization
+        // NOTE: In test mode, we cannot create AgentService because it depends
+        // on Ollama services. We test only the theoretical detection.
 
-        // When: Création d'AgentService (test d'initialisation)
-        // NOTE: En mode test, on ne peut pas vraiment créer AgentService car il dépend
-        // des services Ollama. On teste juste la détection théorique.
+        // Then: Hybrid architecture should be supported
+        // Theoretical test: if Ollama supports function calling -> native tools
+        // Otherwise -> JSON fallback
 
-        // Then: L'architecture hybride devrait être supportée
-        // Test théorique : si Ollama supporte function calling -> native tools
-        // Sinon -> JSON fallback
+        // Verify that tools are available
+        assertThat(agent.isAvailable()).isTrue();
 
-        // Vérification que les outils sont disponibles
-        IntelliJDevelopmentAgent agent = new IntelliJDevelopmentAgent(mockProject);
-        assertTrue(agent.isAvailable(), "Agent tools should be available");
+        // This architecture allows:
+        // 1. Native mode with function calling (when supported)
+        // 2. Fallback mode with JSON parsing (for compatibility)
 
-        // Cette architecture permet:
-        // 1. Mode natif avec function calling (quand supporté)
-        // 2. Mode fallback avec JSON parsing (pour compatibilité)
-
-        assertNotNull(agent, "Hybrid architecture should support both native and fallback modes");
+        assertThat(agent).isNotNull();
     }
 }

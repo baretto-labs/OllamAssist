@@ -48,6 +48,13 @@ public class StructuredAgentResponse {
     }
 
     /**
+     * Vérifie si on a une réponse finale (même partielle)
+     */
+    public boolean hasFinalAnswer() {
+        return finalAnswer != null && !finalAnswer.trim().isEmpty();
+    }
+
+    /**
      * Vérifie si on a une réponse finale complète
      */
     public boolean hasCompleteFinalAnswer() {

@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.core.agent.react;
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +24,18 @@ public class ReActContextTest extends BasePlatformTestCase {
         context = new ReActContext("Create a Calculator class", getProject());
     }
 
+    @Override
+    @AfterEach
+    protected void tearDown() throws Exception {
+        try {
+            context = null;
+        } finally {
+            super.tearDown();
+        }
+    }
+
     @Test
-    public void testInitialization() {
+    void testInitialization() {
         // Then
         assertThat(context.getOriginalRequest()).isEqualTo("Create a Calculator class");
         assertThat(context.getProject()).isEqualTo(getProject());
@@ -35,7 +46,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testIncrementIteration() {
+    void testIncrementIteration() {
         // When
         context.incrementIteration();
         context.incrementIteration();
@@ -46,7 +57,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testAddThinkingStep() {
+    void testAddThinkingStep() {
         // Given
         ReActContext.ThinkingStep thinking = new ReActContext.ThinkingStep(
                 "I will create a Calculator class",
@@ -63,7 +74,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testAddActionStep() {
+    void testAddActionStep() {
         // Given
         ReActContext.ActionStep action = new ReActContext.ActionStep(
                 "createJavaClass",
@@ -81,7 +92,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testAddObservationStep() {
+    void testAddObservationStep() {
         // Given
         ReActContext.ObservationStep observation = new ReActContext.ObservationStep(
                 true,
@@ -100,7 +111,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMarkValidationCompleted() {
+    void testMarkValidationCompleted() {
         // When
         context.markValidationCompleted();
 
@@ -109,7 +120,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMarkAsRequiringFix() {
+    void testMarkAsRequiringFix() {
         // When
         context.markAsRequiringFix("Compilation errors detected");
 
@@ -119,7 +130,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testClearFixRequirement() {
+    void testClearFixRequirement() {
         // Given
         context.markAsRequiringFix("Some error");
 
@@ -132,13 +143,13 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testHasErrorsWhenNoObservations() {
+    void testHasErrorsWhenNoObservations() {
         // Then
         assertThat(context.hasErrors()).isFalse();
     }
 
     @Test
-    public void testHasErrorsWhenSuccessfulObservation() {
+    void testHasErrorsWhenSuccessfulObservation() {
         // Given
         context.addObservation(new ReActContext.ObservationStep(
                 true, "Success", List.of(), List.of()
@@ -149,7 +160,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testHasErrorsWhenFailedObservation() {
+    void testHasErrorsWhenFailedObservation() {
         // Given
         context.addObservation(new ReActContext.ObservationStep(
                 false,
@@ -163,7 +174,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetAllErrors() {
+    void testGetAllErrors() {
         // Given
         context.addObservation(new ReActContext.ObservationStep(
                 false, "Failed 1", List.of("Error 1", "Error 2"), List.of()
@@ -181,7 +192,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testLastObservationSuccessful() {
+    void testLastObservationSuccessful() {
         // Given
         context.addObservation(new ReActContext.ObservationStep(
                 true, "Success", List.of(), List.of()
@@ -192,13 +203,13 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testLastObservationSuccessfulWhenNoObservations() {
+    void testLastObservationSuccessfulWhenNoObservations() {
         // Then
         assertThat(context.lastObservationSuccessful()).isFalse();
     }
 
     @Test
-    public void testPrepareFixIteration() {
+    void testPrepareFixIteration() {
         // Given
         List<String> errors = List.of("Missing import", "Syntax error");
 
@@ -213,7 +224,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetSummary() {
+    void testGetSummary() {
         // Given
         context.incrementIteration();
         context.addThinking(new ReActContext.ThinkingStep("Think", "act"));
@@ -232,7 +243,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetFullHistory() {
+    void testGetFullHistory() {
         // Given
         context.incrementIteration();
         context.addThinking(new ReActContext.ThinkingStep("I will create a class", "createJavaClass"));
@@ -252,7 +263,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testComplexCycle() {
+    void testComplexCycle() {
         // Given - Iteration 1: Create class with error
         context.incrementIteration();
         context.addThinking(new ReActContext.ThinkingStep("Create Calculator", "createJavaClass"));
@@ -280,7 +291,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testThinkingStepWithFinalAnswer() {
+    void testThinkingStepWithFinalAnswer() {
         // Given
         ReActContext.ThinkingStep thinking = new ReActContext.ThinkingStep(
                 "Task is complete",
@@ -298,7 +309,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testObservationStepWithWarnings() {
+    void testObservationStepWithWarnings() {
         // Given
         ReActContext.ObservationStep observation = new ReActContext.ObservationStep(
                 true,
@@ -317,7 +328,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMultipleIterationsWithDifferentOutcomes() {
+    void testMultipleIterationsWithDifferentOutcomes() {
         // Iteration 1: Fail
         context.incrementIteration();
         context.addObservation(new ReActContext.ObservationStep(false, "Failed", List.of("Error 1"), List.of()));
@@ -339,7 +350,7 @@ public class ReActContextTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testActionStepParameters() {
+    void testActionStepParameters() {
         // Given
         Map<String, Object> params = Map.of(
                 "className", "Calculator",

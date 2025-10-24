@@ -47,13 +47,13 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testControllerIsInitialized() {
+    void testControllerIsInitialized() {
         // Then
         assertThat(controller).isNotNull();
     }
 
     @Test
-    public void testExecuteWithLoopReturnsCompletableFuture() {
+    void testExecuteWithLoopReturnsCompletableFuture() {
         // Given
         String userRequest = "Create a Calculator class";
 
@@ -66,7 +66,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCleanupReleasesResources() {
+    void testCleanupReleasesResources() {
         // When
         controller.cleanup();
 
@@ -76,7 +76,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextTracksIterations() {
+    void testReActContextTracksIterations() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -91,7 +91,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextTracksThinkingSteps() {
+    void testReActContextTracksThinkingSteps() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -106,7 +106,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextTracksActions() {
+    void testReActContextTracksActions() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -124,7 +124,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextTracksObservations() {
+    void testReActContextTracksObservations() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -143,7 +143,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextMarksValidationCompleted() {
+    void testReActContextMarksValidationCompleted() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -156,7 +156,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextDetectsErrors() {
+    void testReActContextDetectsErrors() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -175,7 +175,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextPrepareFixIteration() {
+    void testReActContextPrepareFixIteration() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -191,7 +191,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActResultSuccessCreation() {
+    void testReActResultSuccessCreation() {
         // Given
         ReActContext context = new ReActContext("test", getProject());
         String message = "Task completed successfully";
@@ -206,7 +206,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActResultErrorCreation() {
+    void testReActResultErrorCreation() {
         // Given
         ReActContext context = new ReActContext("test", getProject());
         String errorMessage = "Something went wrong";
@@ -221,7 +221,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActResultMaxIterationsReached() {
+    void testReActResultMaxIterationsReached() {
         // Given
         ReActContext context = new ReActContext("test", getProject());
         context.incrementIteration();
@@ -238,7 +238,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActResultGetUserMessage() {
+    void testReActResultGetUserMessage() {
         // Given
         ReActContext context = new ReActContext("test", getProject());
 
@@ -257,7 +257,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextGetSummary() {
+    void testReActContextGetSummary() {
         // Given
         String userRequest = "Test request";
         ReActContext context = new ReActContext(userRequest, getProject());
@@ -275,7 +275,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testReActContextGetFullHistory() {
+    void testReActContextGetFullHistory() {
         // Given
         String userRequest = "Create a class";
         ReActContext context = new ReActContext(userRequest, getProject());

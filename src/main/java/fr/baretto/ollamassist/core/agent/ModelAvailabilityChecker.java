@@ -51,7 +51,7 @@ public class ModelAvailabilityChecker {
      * Checks if a specific model is available in Ollama
      */
     public ModelAvailabilityResult checkModelAvailability(String modelName) {
-        log.info("Checking availability of model '{}' at {}", modelName, ollamaUrl);
+        log.debug("Checking availability of model '{}' at {}", modelName, ollamaUrl);
 
         try {
             OllamaModels ollamaModels = OllamaModels.builder()
@@ -59,25 +59,28 @@ public class ModelAvailabilityChecker {
                     .timeout(timeout)
                     .build();
 
+            log.debug("Fetching available models from Ollama...");
             List<dev.langchain4j.model.ollama.OllamaModel> availableModels = ollamaModels.availableModels()
                     .content();
+
+            List<String> availableModelNames = availableModels.stream()
+                    .map(dev.langchain4j.model.ollama.OllamaModel::getName)
+                    .toList();
+            log.debug("Available models: {}", availableModelNames);
 
             boolean isAvailable = availableModels.stream()
                     .anyMatch(model -> model.getName().equals(modelName));
 
             if (isAvailable) {
-                log.info("✅ Model '{}' is available", modelName);
+                log.info("Model '{}' is available", modelName);
                 return ModelAvailabilityResult.available(modelName);
             } else {
-                log.warn("❌ Model '{}' is NOT available", modelName);
-                List<String> availableModelNames = availableModels.stream()
-                        .map(dev.langchain4j.model.ollama.OllamaModel::getName)
-                        .toList();
+                log.warn("Model '{}' is NOT available. Available models: {}", modelName, availableModelNames);
                 return ModelAvailabilityResult.notAvailable(modelName, availableModelNames);
             }
 
         } catch (Exception e) {
-            log.error("Error checking model availability for '{}': {}", modelName, e.getMessage(), e);
+            log.error("Error checking model availability for '{}'", modelName, e);
             return ModelAvailabilityResult.error(modelName, e.getMessage());
         }
     }

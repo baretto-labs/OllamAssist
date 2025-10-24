@@ -1,14 +1,13 @@
 package fr.baretto.ollamassist.core.agent;
 
-import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import fr.baretto.ollamassist.core.agent.execution.ExecutionEngine;
 import fr.baretto.ollamassist.core.agent.rollback.ActionSnapshot;
 import fr.baretto.ollamassist.core.agent.rollback.RollbackManager;
 import fr.baretto.ollamassist.core.agent.task.Task;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,20 +18,34 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Test E2E complet du mode agent
  * Teste le workflow complet : création de tâche → exécution → snapshot → rollback
  */
-class AgentModeE2ETest {
-
-    @Mock
-    private Project mockProject;
+class AgentModeE2ETest extends BasePlatformTestCase {
 
     private ExecutionEngine executionEngine;
     private RollbackManager rollbackManager;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    protected void setUp() throws Exception {
+        super.setUp();
+        executionEngine = new ExecutionEngine(getProject());
+        rollbackManager = new RollbackManager(getProject());
+    }
 
-        executionEngine = new ExecutionEngine(mockProject);
-        rollbackManager = new RollbackManager(mockProject);
+    @Override
+    @AfterEach
+    protected void tearDown() throws Exception {
+        try {
+            // Clean up all snapshots to avoid interference between tests
+            if (rollbackManager != null) {
+                rollbackManager.clearAllSnapshots();
+            }
+
+            // Clear references to allow garbage collection
+            executionEngine = null;
+            rollbackManager = null;
+        } finally {
+            super.tearDown();
+        }
     }
 
     @Test
@@ -75,7 +88,7 @@ class AgentModeE2ETest {
         // AND: Les paramètres sont accessibles
         assertThat(createTask.getParameter("operation", String.class)).isEqualTo("create");
         assertThat(createTask.getParameter("filePath", String.class)).isEqualTo("src/test/TestFile.java");
-        assertThat(createTask.getParameter("backup", Boolean.class)).isEqualTo(true);
+        assertThat(createTask.getParameter("backup", Boolean.class)).isTrue();
     }
 
     @Test
@@ -85,7 +98,7 @@ class AgentModeE2ETest {
         params.put("filePath", "src/Example.java");
         params.put("modificationType", "add_method");
         params.put("className", "Example");
-        params.put("methodCode", "public void testMethod() {}");
+        params.put("methodCode", "void testMethod() {}");
         params.put("backup", true);
 
         Task modifyTask = Task.builder()
@@ -112,7 +125,7 @@ class AgentModeE2ETest {
 
         // AND: Les statistiques de base sont disponibles
         int snapshotCount = rollbackManager.getSnapshotCount();
-        assertThat(snapshotCount).isEqualTo(0); // Aucun snapshot au début
+        assertThat(snapshotCount).isZero();
     }
 
     @Test

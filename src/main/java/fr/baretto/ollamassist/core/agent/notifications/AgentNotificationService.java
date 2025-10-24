@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.core.agent.notifications;
 
 import com.intellij.notification.*;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.messages.Topic;
@@ -30,16 +31,20 @@ public class AgentNotificationService {
     private final NotificationGroup notificationGroup;
     private final ConcurrentLinkedQueue<AgentNotification> notificationHistory;
     private final ConcurrentHashMap<String, Notification> activeNotifications;
+    private final ConcurrentHashMap<String, Timer> activeTimers;
 
     public AgentNotificationService(Project project) {
         this.project = project;
         this.messageBus = project.getMessageBus();
         this.notificationHistory = new ConcurrentLinkedQueue<>();
         this.activeNotifications = new ConcurrentHashMap<>();
+        this.activeTimers = new ConcurrentHashMap<>();
 
         // Créer un groupe de notifications spécifique pour l'agent
         this.notificationGroup = NotificationGroupManager.getInstance()
                 .getNotificationGroup("OllamAssist.Agent");
+
+        log.debug("AgentNotificationService created for project: {}", project.getName());
     }
 
     /**
@@ -132,10 +137,20 @@ public class AgentNotificationService {
         successNotification.setImportant(true);
         successNotification.notify(project);
 
-        // Auto-expirer après 5 secondes
-        Timer expireTimer = new Timer(5000, e -> successNotification.expire());
-        expireTimer.setRepeats(false);
-        expireTimer.start();
+        // Auto-expirer après 5 secondes avec gestion du Timer
+        // Skip timer creation in unit test mode to avoid Timer disposal issues
+        if (!ApplicationManager.getApplication().isUnitTestMode()) {
+            Timer expireTimer = new Timer(5000, e -> {
+                if (!successNotification.isExpired()) {
+                    successNotification.expire();
+                }
+                // Retirer le timer après exécution
+                activeTimers.remove("success_" + task.getId());
+            });
+            expireTimer.setRepeats(false);
+            activeTimers.put("success_" + task.getId(), expireTimer);
+            expireTimer.start();
+        }
 
         log.info("✅ Task success notification: {}", task.getId());
     }
@@ -272,12 +287,12 @@ public class AgentNotificationService {
                 .forEach(notification -> {
                     String timestamp = notification.getTimestamp()
                             .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-                    summary.append(String.format("[%s] %s: %s\n",
+                    summary.append(String.format("[%s] %s: %s%n",
                             timestamp, notification.getTitle(), notification.getMessage()));
                 });
 
         Notification historyNotification = notificationGroup.createNotification(
-                "Agent Notification History",
+                "Agent notification history",
                 summary.toString(),
                 NotificationType.INFORMATION
         );
@@ -315,7 +330,7 @@ public class AgentNotificationService {
      */
     private void showTaskErrorDetails(Task task, TaskResult result) {
         String details = String.format(
-                "Task: %s\nID: %s\nError: %s\nTime: %s",
+                "Task: %s%nID: %s%nError: %s%nTime: %s",
                 task.getDescription(),
                 task.getId(),
                 result.getErrorMessage(),
@@ -334,6 +349,14 @@ public class AgentNotificationService {
      * Nettoie les ressources
      */
     public void dispose() {
+        // Arrêter tous les timers actifs
+        activeTimers.values().forEach(timer -> {
+            if (timer.isRunning()) {
+                timer.stop();
+            }
+        });
+        activeTimers.clear();
+
         // Expirer toutes les notifications actives
         activeNotifications.values().forEach(notification -> {
             if (!notification.isExpired()) {
@@ -342,6 +365,8 @@ public class AgentNotificationService {
         });
         activeNotifications.clear();
         notificationHistory.clear();
+
+        log.info("🧹 AgentNotificationService disposed - all resources cleaned up");
     }
 
     /**

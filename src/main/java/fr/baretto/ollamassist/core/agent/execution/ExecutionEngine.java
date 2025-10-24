@@ -174,6 +174,16 @@ public class ExecutionEngine {
     }
 
     /**
+     * Nettoie les ressources de l'ExecutionEngine
+     */
+    public void dispose() {
+        if (notificationService != null) {
+            notificationService.dispose();
+        }
+        log.info("🧹 ExecutionEngine disposed");
+    }
+
+    /**
      * Interface pour les exécuteurs de tâches
      */
     public interface TaskExecutor {

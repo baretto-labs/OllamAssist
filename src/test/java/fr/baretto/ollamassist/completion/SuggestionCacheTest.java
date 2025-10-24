@@ -52,7 +52,7 @@ class SuggestionCacheTest {
 
     @Test
     void testBasicCacheOperations() {
-        String context = "public void testMethod() {";
+        String context = "void testMethod() {";
         String suggestion = "System.out.println(\"Hello World\");";
 
         // Generate cache key
@@ -78,7 +78,7 @@ class SuggestionCacheTest {
 
     @Test
     void testCacheKeyConsistency() {
-        String context = "public void testMethod() {";
+        String context = "void testMethod() {";
 
         // Same context should generate same key
         String key1 = cache.generateCacheKey(mockEditor, context);

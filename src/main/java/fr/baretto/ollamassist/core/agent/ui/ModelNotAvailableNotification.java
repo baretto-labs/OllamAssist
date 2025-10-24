@@ -11,6 +11,7 @@ import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import fr.baretto.ollamassist.core.agent.ModelAvailabilityChecker;
 import fr.baretto.ollamassist.setting.agent.AgentModeConfigurable;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.datatransfer.StringSelection;
@@ -19,6 +20,7 @@ import java.awt.datatransfer.StringSelection;
  * Notification when agent model is not available
  * Provides instructions to download the model or configure agent settings
  */
+@Slf4j
 public class ModelNotAvailableNotification {
 
     private static final String NOTIFICATION_GROUP_ID = "OllamAssist Agent Model";
@@ -32,6 +34,12 @@ public class ModelNotAvailableNotification {
 
         NotificationGroup group = NotificationGroupManager.getInstance()
                 .getNotificationGroup(NOTIFICATION_GROUP_ID);
+
+        if (group == null) {
+            // Fallback: log warning instead of creating notification (NotificationGroup not registered in plugin.xml)
+            log.warn("Cannot show model unavailable notification (NotificationGroup not registered): {}", result.getUserMessage());
+            return;
+        }
 
         String title = "❌ Modèle Agent Non Disponible";
         String content = buildNotificationContent(result);
@@ -97,6 +105,12 @@ public class ModelNotAvailableNotification {
         NotificationGroup group = NotificationGroupManager.getInstance()
                 .getNotificationGroup(NOTIFICATION_GROUP_ID);
 
+        if (group == null) {
+            // Fallback: log warning instead of creating notification (NotificationGroup not registered in plugin.xml)
+            log.warn("Cannot show model check error notification (NotificationGroup not registered): {}", result.getErrorMessage());
+            return;
+        }
+
         String title = "❌ Erreur de vérification du modèle";
         String content = buildErrorContent(result);
 
@@ -145,6 +159,12 @@ public class ModelNotAvailableNotification {
     public static void showModelNotConfigured(@NotNull Project project) {
         NotificationGroup group = NotificationGroupManager.getInstance()
                 .getNotificationGroup(NOTIFICATION_GROUP_ID);
+
+        if (group == null) {
+            // Fallback: log warning instead of creating notification (NotificationGroup not registered in plugin.xml)
+            log.warn("Cannot show model not configured notification (NotificationGroup not registered): Agent model not configured, use gpt-oss");
+            return;
+        }
 
         String title = "⚠️ Modèle Agent Non Configuré";
         String content = "Aucun modèle n'est configuré pour le mode agent.\n" +

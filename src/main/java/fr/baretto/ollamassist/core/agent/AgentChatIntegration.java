@@ -15,7 +15,6 @@ public class AgentChatIntegration {
     private final Project project;
     private final AgentCoordinator agentCoordinator;
     private final MessageBusConnection messageBusConnection;
-    private ChatFallbackHandler fallbackHandler;
 
     public AgentChatIntegration(Project project, AgentCoordinator agentCoordinator) {
         this.project = project;
@@ -23,7 +22,7 @@ public class AgentChatIntegration {
 
         // S'abonner aux nouveaux messages utilisateur
         this.messageBusConnection = project.getMessageBus().connect();
-        this.messageBusConnection.subscribe(NewUserMessageNotifier.TOPIC, this::onNewUserMessage);
+        this.messageBusConnection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) this::onNewUserMessage);
 
         log.info("AgentChatIntegration initialized - all messages will be routed through agent");
     }
@@ -32,22 +31,20 @@ public class AgentChatIntegration {
      * Traite un nouveau message utilisateur via l'agent unifié avec streaming
      */
     public void onNewUserMessage(String message) {
-        log.info("Routing message to unified agent with streaming: {}", message);
+        log.debug("AgentChatIntegration received new user message: {}", message);
 
         try {
-            log.error("🔍 DEBUG: AgentChatIntegration.onNewUserMessage called with: {}", message);
-
-
             // Utiliser directement AgentService pour le streaming
             AgentService agentService = project.getService(AgentService.class);
+
             if (agentService != null) {
-                log.error("🔍 DEBUG: AgentService found, calling executeUserRequestWithStreaming");
+                log.debug("AgentService found, executing user request with streaming");
                 agentService.executeUserRequestWithStreaming(message);
             } else {
-                log.error("🔍 DEBUG: AgentService not available - this should not happen");
+                log.error("AgentService is not available - service not initialized");
             }
         } catch (Exception e) {
-            log.error("🔍 DEBUG: Error processing message through agent", e);
+            log.error("Error processing message through agent", e);
         }
     }
 

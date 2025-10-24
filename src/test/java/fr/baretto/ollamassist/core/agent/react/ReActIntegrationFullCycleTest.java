@@ -52,7 +52,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCompleteSuccessfulCycle() {
+    void testCompleteSuccessfulCycle() {
         // Given - Mock successful class creation
         when(mockAgent.createJavaClass(anyString(), anyString(), anyString()))
                 .thenReturn("✅ Successfully created Java class 'Calculator' at 'Calculator.java'\n✅ Code validated - compilation successful");
@@ -77,7 +77,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCycleWithCompilationError() {
+    void testCycleWithCompilationError() {
         // Given - Mock class creation with compilation error
         when(mockAgent.createJavaClass(anyString(), anyString(), anyString()))
                 .thenReturn("✅ Successfully created Java class 'Calculator'\n⚠️ Compilation validation failed:\n🔧 Errors to fix:\n  - Error: Missing import java.util.List");
@@ -116,7 +116,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCycleReachesMaxIterations() {
+    void testCycleReachesMaxIterations() {
         // Given - Simulate a cycle that never completes
         ReActContext context = new ReActContext("Infinite task", getProject());
 
@@ -142,7 +142,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testValidationInterceptorIntegration() {
+    void testValidationInterceptorIntegration() {
         // Given
         ValidationInterceptor realInterceptor = new ValidationInterceptor(getProject());
 
@@ -160,7 +160,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testComplexMultiStepCycle() {
+    void testComplexMultiStepCycle() {
         // Given - Simulate a complex multi-step task
         ReActContext context = new ReActContext("Create Calculator with add and multiply methods", getProject());
 
@@ -210,7 +210,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testContextStateManagement() {
+    void testContextStateManagement() {
         // Given
         ReActContext context = new ReActContext("Test request", getProject());
 
@@ -233,7 +233,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testErrorAccumulation() {
+    void testErrorAccumulation() {
         // Given
         ReActContext context = new ReActContext("Test request", getProject());
 
@@ -256,7 +256,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testSuccessfulCycleWithWarnings() {
+    void testSuccessfulCycleWithWarnings() {
         // Given
         ReActContext context = new ReActContext("Create class", getProject());
 
@@ -281,7 +281,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testPrepareFixIteration() {
+    void testPrepareFixIteration() {
         // Given
         ReActContext context = new ReActContext("Test", getProject());
         List<String> errors = List.of("Missing import", "Syntax error");
@@ -298,7 +298,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testResultSummaryGeneration() {
+    void testResultSummaryGeneration() {
         // Given
         ReActContext context = new ReActContext("Complex task", getProject());
 

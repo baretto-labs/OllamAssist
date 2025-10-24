@@ -27,6 +27,57 @@ import java.util.concurrent.CompletableFuture;
 @Service(Service.Level.PROJECT)
 public final class AgentService {
 
+    private static final String PROMPT_SYSTEM = """
+            You are an IntelliJ IDEA development assistant agent. When the user asks you to perform development tasks,
+            respond with JSON commands that specify exactly what actions to take.
+            
+            Available tools:
+            - createJavaClass: Create Java classes with proper package structure
+            - createFile: Create any type of file with custom content
+            - analyzeCode: Analyze existing code in the project
+            - executeGitCommand: Execute Git operations (commit, push, pull, status, etc.)
+            - buildProject: Build, test, or package the project
+            
+            RESPONSE FORMAT: You must respond with JSON in this exact format:
+            ```json
+            {
+              "actions": [
+                {
+                  "tool": "createFile",
+                  "parameters": {
+                    "filePath": "relative/path/to/file.java",
+                    "content": "file content here"
+                  }
+                }
+              ],
+              "message": "Description en français de ce qui a été fait"
+            }
+            ```
+            
+            Example for creating a HelloWorld class:
+            ```json
+            {
+              "actions": [
+                {
+                  "tool": "createJavaClass",
+                  "parameters": {
+                    "className": "HelloWorld",
+                    "filePath": "src/main/java/HelloWorld.java",
+                    "classContent": "public class HelloWorld {\\n    public void sayHello() {\\n        System.out.println(\\"Hello World!\\");\\n    }\\n}"
+                  }
+                }
+              ],
+              "message": "Classe HelloWorld créée avec succès avec une méthode sayHello()"
+            }
+            ```
+            
+            IMPORTANT:
+            - Always use relative file paths from project root
+            - Always include proper Java package declarations when creating Java files
+            - Always respond in French for the message, but write code in English
+            - Always return valid JSON - no additional text before or after
+            """;
+
     private final Project project;
     private final IntelliJDevelopmentAgent developmentAgent;
     private final OllamaService ollamaService;
@@ -238,9 +289,8 @@ public final class AgentService {
             } else {
                 // MODE FALLBACK: Parser le JSON et exécuter manuellement
                 log.info("📄 FALLBACK MODE: Using JSON parsing");
-
-                String systemPrompt = buildSystemPrompt();
-                String fullRequest = systemPrompt + "\n\nUser request: " + userRequest;
+                ;
+                String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
                 String jsonResult = agentInterface.executeRequest(fullRequest);
                 return parseAndExecuteActions(jsonResult);
             }
@@ -305,76 +355,77 @@ public final class AgentService {
      */
     private void executeActionRequestWithStreaming(String userRequest) {
         try {
-            if (ollamaService != null && ollamaService.getAssistant() != null) {
-                log.info("🛠️ Using OllamaService with agent tools for streaming action");
+            // Notifier le démarrage
+            project.getMessageBus()
+                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                    .agentProcessingStarted(userRequest);
 
-                // Notifier le démarrage
-                project.getMessageBus()
-                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                        .agentProcessingStarted(userRequest);
+            if (useNativeTools) {
+                // ✨ MODE NATIF: Utiliser ReActLoopController pour exécution réelle des tools
+                log.info("🔧 NATIVE MODE: Using explicit ReAct loop controller with streaming");
 
-                // Utiliser le streaming pour les actions agent aussi
+                CompletableFuture.runAsync(() -> {
+                    ReActLoopController controller = new ReActLoopController(
+                            project,
+                            developmentAgent,
+                            ollamaService
+                    );
+
+                    try {
+                        ReActResult result = controller.executeWithLoop(userRequest).get();
+
+                        String finalMessage = result.isSuccess()
+                                ? result.getFinalMessage()
+                                : result.getUserMessage();
+
+                        // Notifier la fin du processing
+                        project.getMessageBus()
+                                .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                .agentProcessingCompleted(userRequest, finalMessage);
+
+                    } catch (Exception e) {
+                        log.error("Error in ReAct execution", e);
+                        project.getMessageBus()
+                                .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                .agentProcessingFailed(userRequest, e.getMessage());
+                    } finally {
+                        controller.cleanup();
+                    }
+                });
+
+            } else if (ollamaService != null && ollamaService.getAssistant() != null) {
+                // MODE FALLBACK: JSON parsing avec streaming
+                log.info("📄 FALLBACK MODE: Using JSON parsing with streaming");
+
                 StringBuilder fullResponse = new StringBuilder();
+                String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
 
-                if (useNativeTools) {
-                    // MODE NATIF: Utiliser ReAct pattern avec streaming
-                    String reactPrompt = buildReActPrompt(userRequest);
+                ollamaService.getAssistant().chat(fullRequest)
+                        .onPartialResponse(token -> {
+                            fullResponse.append(token);
+                            // Publier chaque token en temps réel
+                            project.getMessageBus()
+                                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                    .agentStreamingToken(token);
+                        })
+                        .onCompleteResponse(chatResponse -> {
+                            String jsonResult = fullResponse.toString();
+                            log.info("🛠️ Agent JSON response streaming completed");
 
-                    ollamaService.getAssistant().chat(reactPrompt)
-                            .onPartialResponse(token -> {
-                                fullResponse.append(token);
-                                // Publier chaque token en temps réel
+                            // Parser et exécuter les actions du JSON
+                            String executionResult = parseAndExecuteActions(jsonResult);
+
+                            // Notifier la fin avec le résultat d'exécution
+                            project.getMessageBus()
+                                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                    .agentProcessingCompleted(userRequest, executionResult);
+                        })
+                        .onError(throwable ->
                                 project.getMessageBus()
                                         .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentStreamingToken(token);
-                            })
-                            .onCompleteResponse(chatResponse -> {
-                                String finalResponse = fullResponse.toString();
-                                log.info("🛠️ Agent streaming completed: {}", finalResponse);
-
-                                // Notifier la fin du processing
-                                project.getMessageBus()
-                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentProcessingCompleted(userRequest, finalResponse);
-                            })
-                            .onError(throwable -> {
-                                project.getMessageBus()
-                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentProcessingFailed(userRequest, throwable.getMessage());
-                            })
-                            .start();
-                } else {
-                    // MODE FALLBACK: JSON parsing avec streaming
-                    String systemPrompt = buildSystemPrompt();
-                    String fullRequest = systemPrompt + "\n\nUser request: " + userRequest;
-
-                    ollamaService.getAssistant().chat(fullRequest)
-                            .onPartialResponse(token -> {
-                                fullResponse.append(token);
-                                // Publier chaque token en temps réel
-                                project.getMessageBus()
-                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentStreamingToken(token);
-                            })
-                            .onCompleteResponse(chatResponse -> {
-                                String jsonResult = fullResponse.toString();
-                                log.info("🛠️ Agent JSON response streaming completed");
-
-                                // Parser et exécuter les actions du JSON
-                                String executionResult = parseAndExecuteActions(jsonResult);
-
-                                // Notifier la fin avec le résultat d'exécution
-                                project.getMessageBus()
-                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentProcessingCompleted(userRequest, executionResult);
-                            })
-                            .onError(throwable -> {
-                                project.getMessageBus()
-                                        .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                        .agentProcessingFailed(userRequest, throwable.getMessage());
-                            })
-                            .start();
-                }
+                                        .agentProcessingFailed(userRequest, throwable.getMessage())
+                        )
+                        .start();
 
             } else {
                 log.warn("OllamaService not available, falling back to simple agent");
@@ -543,10 +594,10 @@ public final class AgentService {
                         try {
                             String taskResult = executeTask(task);
                             task.markCompleted();
-                            results.append(String.format("✓ %s\n%s\n\n", task.getDescription(), taskResult));
+                            results.append(String.format("%s%n%s%n%n", task.getDescription(), taskResult));
                         } catch (Exception e) {
                             task.markFailed(e.getMessage());
-                            results.append(String.format("❌ %s\nErreur: %s\n\n", task.getDescription(), e.getMessage()));
+                            results.append(String.format("❌ %s%nErreur: %s%n%n", task.getDescription(), e.getMessage()));
                         }
                     }
 
@@ -570,12 +621,9 @@ public final class AgentService {
         String taskType = task.getParameter("taskType", String.class);
         String userRequest = task.getParameter("userRequest", String.class);
 
-        if ("createJavaClass".equals(taskType)) {
-            return executeActionRequest(userRequest);
-        } else if ("createFile".equals(taskType)) {
+        if ("createJavaClass".equals(taskType) || "createFile".equals(taskType)) {
             return executeActionRequest(userRequest);
         }
-
         return "Type de tâche non supporté: " + taskType;
     }
 
@@ -613,101 +661,6 @@ public final class AgentService {
             log.error("Error executing chat request", e);
             return "❌ Erreur lors de la conversation: " + e.getMessage();
         }
-    }
-
-    /**
-     * Construit le prompt ReAct pour l'agent (mode natif avec tools)
-     */
-    private String buildReActPrompt(String userRequest) {
-        return String.format("""
-                You are an expert IntelliJ IDEA development assistant that follows the ReAct (Reasoning and Acting) pattern.
-                
-                For every user request, you must think step by step and validate your work:
-                
-                1. ANALYZE the request and plan your approach
-                2. EXECUTE actions using available tools
-                3. VERIFY the results (especially for compilation)
-                4. FIX any issues discovered
-                5. CONTINUE until the task is complete
-                
-                CRITICAL: After creating any Java class or modifying code:
-                - ALWAYS use compileAndCheckErrors() to verify compilation
-                - If compilation fails with missing imports or other errors, FIX them immediately
-                - Use getCompilationDiagnostics() to get detailed error information
-                - Continue this process until compilation succeeds
-                
-                Available tools for your use:
-                - createJavaClass: Create Java classes with proper structure
-                - createFile: Create any file with custom content
-                - executeGitCommand: Git operations (commit, push, pull, status)
-                - buildProject: Build, test, or package the project
-                - compileAndCheckErrors: Compile and check for errors
-                - getCompilationDiagnostics: Get detailed compilation diagnostics
-                - analyzeCode: Analyze existing project code
-                - searchWeb: Search for information when needed
-                
-                WORK ITERATIVELY: Think -> Act -> Observe -> Think -> Act until complete.
-                
-                USER REQUEST: %s
-                
-                Begin by thinking about your approach, then execute the necessary steps.
-                """, userRequest);
-    }
-
-    /**
-     * Construit le prompt système pour l'agent (mode fallback JSON)
-     */
-    private String buildSystemPrompt() {
-        return """
-                You are an IntelliJ IDEA development assistant agent. When the user asks you to perform development tasks,
-                respond with JSON commands that specify exactly what actions to take.
-                
-                Available tools:
-                - createJavaClass: Create Java classes with proper package structure
-                - createFile: Create any type of file with custom content
-                - analyzeCode: Analyze existing code in the project
-                - executeGitCommand: Execute Git operations (commit, push, pull, status, etc.)
-                - buildProject: Build, test, or package the project
-                
-                RESPONSE FORMAT: You must respond with JSON in this exact format:
-                ```json
-                {
-                  "actions": [
-                    {
-                      "tool": "createFile",
-                      "parameters": {
-                        "filePath": "relative/path/to/file.java",
-                        "content": "file content here"
-                      }
-                    }
-                  ],
-                  "message": "Description en français de ce qui a été fait"
-                }
-                ```
-                
-                Example for creating a HelloWorld class:
-                ```json
-                {
-                  "actions": [
-                    {
-                      "tool": "createJavaClass",
-                      "parameters": {
-                        "className": "HelloWorld",
-                        "filePath": "src/main/java/HelloWorld.java",
-                        "classContent": "public class HelloWorld {\\n    public void sayHello() {\\n        System.out.println(\\"Hello World!\\");\\n    }\\n}"
-                      }
-                    }
-                  ],
-                  "message": "Classe HelloWorld créée avec succès avec une méthode sayHello()"
-                }
-                ```
-                
-                IMPORTANT:
-                - Always use relative file paths from project root
-                - Always include proper Java package declarations when creating Java files
-                - Always respond in French for the message, but write code in English
-                - Always return valid JSON - no additional text before or after
-                """;
     }
 
     /**

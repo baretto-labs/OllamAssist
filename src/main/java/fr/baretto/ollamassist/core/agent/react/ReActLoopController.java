@@ -71,15 +71,15 @@ public class ReActLoopController {
             }
 
             context.addThinking(new ReActContext.ThinkingStep(
-                    thinking.getReasoning(),
+                    thinking.reasoning(),
                     thinking.hasFinalAnswer(),
-                    thinking.getFinalAnswer()
+                    thinking.finalAnswer()
             ));
 
             // 2. Check if model has final answer
             if (thinking.hasFinalAnswer()) {
                 log.info("✅ Model provided final answer");
-                return ReActResult.success(context, thinking.getFinalAnswer());
+                return ReActResult.success(context, thinking.finalAnswer());
             }
 
             // 3. ACT: Execute the proposed action
@@ -90,30 +90,30 @@ public class ReActLoopController {
 
             ActionResult actionResult = executeAction(thinking, context);
             context.addAction(new ReActContext.ActionStep(
-                    thinking.getToolName(),
-                    thinking.getActionDescription(),
-                    thinking.getParameters()
+                    thinking.toolName(),
+                    thinking.actionDescription(),
+                    thinking.parameters()
             ));
 
             // 4. OBSERVE: Verify the result (with automatic validation)
-            ObservationResult observation = observeResult(actionResult, thinking.getToolName(), context);
+            ObservationResult observation = observeResult(actionResult, thinking.toolName(), context);
             context.addObservation(new ReActContext.ObservationStep(
-                    observation.isSuccess(),
-                    observation.getMessage(),
-                    observation.getErrors(),
-                    observation.getWarnings()
+                    observation.success(),
+                    observation.message(),
+                    observation.errors(),
+                    observation.warnings()
             ));
 
             // 5. DECIDE: Should we terminate?
             if (shouldTerminate(context, observation)) {
                 log.info("✅ ReAct cycle completed successfully");
-                return ReActResult.success(context, observation.getMessage());
+                return ReActResult.success(context, observation.message());
             }
 
             // 6. FIX: Prepare for next iteration if errors detected
             if (observation.hasErrors()) {
-                context.prepareFixIteration(observation.getErrors());
-                log.info("🔧 Preparing fix iteration for {} errors", observation.getErrors().size());
+                context.prepareFixIteration(observation.errors());
+                log.info("🔧 Preparing fix iteration for {} errors", observation.errors().size());
             }
         }
 
@@ -131,15 +131,16 @@ public class ReActLoopController {
             log.debug("Asking model to think with prompt length: {}", thinkingPrompt.length());
 
             // Get response from model
-            CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+            StringBuilder fullResponse = new StringBuilder();
+            CompletableFuture<String> future = new CompletableFuture<>();
 
             ollamaService.getAssistant().chat(thinkingPrompt)
-                    .onCompleteResponse(future::complete)
+                    .onPartialResponse(token -> fullResponse.append(token))
+                    .onCompleteResponse(chatResponse -> future.complete(fullResponse.toString()))
                     .onError(future::completeExceptionally)
                     .start();
 
-            Response<AiMessage> response = future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            String responseText = response.content().text();
+            String responseText = future.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             log.debug("Model response received: {} chars", responseText.length());
 
@@ -156,8 +157,8 @@ public class ReActLoopController {
      * Executes an action proposed by the model
      */
     private ActionResult executeAction(ThinkingResult thinking, ReActContext context) {
-        String toolName = thinking.getToolName();
-        Map<String, Object> params = thinking.getParameters();
+        String toolName = thinking.toolName();
+        Map<String, Object> params = thinking.parameters();
 
         log.info("🔧 Executing action: {}", toolName);
 
@@ -207,26 +208,30 @@ public class ReActLoopController {
     private ObservationResult observeResult(ActionResult actionResult, String toolName, ReActContext context) {
         log.debug("👁️ Observing result of: {}", toolName);
 
-        if (!actionResult.isSuccess()) {
+        if (!actionResult.success()) {
             return ObservationResult.failure(
-                    actionResult.getErrorMessage(),
-                    java.util.List.of(actionResult.getErrorMessage())
+                    actionResult.errorMessage(),
+                    java.util.List.of(actionResult.errorMessage())
             );
         }
 
+        // Create a TaskResult from ActionResult for validation
+        fr.baretto.ollamassist.core.agent.task.TaskResult taskResult =
+                fr.baretto.ollamassist.core.agent.task.TaskResult.success(actionResult.message());
+
         // ✨ AUTOMATIC VALIDATION: Check if action requires compilation check
-        if (validationInterceptor.requiresCompilationCheck(toolName, null)) {
+        if (validationInterceptor.requiresCompilationCheck(toolName, taskResult)) {
             log.info("🔍 Auto-validating compilation after {}", toolName);
 
             ValidationResult validation = validationInterceptor.autoValidate(
                     toolName,
-                    null // TaskResult not needed here
+                    taskResult
             );
 
             if (validation.isSuccess()) {
                 context.markValidationCompleted();
                 return ObservationResult.success(
-                        actionResult.getMessage() + "\n✅ Code validated - compilation successful"
+                        actionResult.message() + "\n✅ Code validated - compilation successful"
                 );
             } else {
                 // Compilation failed - return errors for fixing
@@ -238,7 +243,7 @@ public class ReActLoopController {
         }
 
         // No validation needed
-        return ObservationResult.success(actionResult.getMessage());
+        return ObservationResult.success(actionResult.message());
     }
 
     /**
@@ -250,7 +255,7 @@ public class ReActLoopController {
         // 2. Validation has been completed (for code changes)
         // 3. No errors or warnings
 
-        boolean observationSuccess = observation.isSuccess();
+        boolean observationSuccess = observation.success();
         boolean validationComplete = context.isCompletedValidation() ||
                 !requiresValidation(context);
         boolean noErrors = !observation.hasErrors();

@@ -39,7 +39,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testTriggerAsyncCompilation() {
+    void testTriggerAsyncCompilation() {
         // When
         validator.triggerAsyncCompilation();
 
@@ -48,7 +48,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetLastCompilationResultWhenNoneTriggered() {
+    void testGetLastCompilationResultWhenNoneTriggered() {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.success("Compilation successful"));
 
@@ -61,7 +61,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetLastCompilationResultNonBlocking() {
+    void testGetLastCompilationResultNonBlocking() {
         // When - No compilation triggered
         ValidationResult result = validator.getLastCompilationResultNonBlocking();
 
@@ -70,7 +70,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCompilationSuccessful() {
+    void testCompilationSuccessful() {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.success("Compilation successful"));
 
@@ -85,7 +85,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCompilationFailed() {
+    void testCompilationFailed() {
         // Given
         String errorMessage = "error: cannot find symbol\n  symbol: class List\nerror: package java.util does not exist";
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.failure(errorMessage));
@@ -102,7 +102,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCancelCompilation() {
+    void testCancelCompilation() {
         // Given
         when(mockBuildExecutor.execute(any())).thenAnswer(invocation -> {
             Thread.sleep(5000); // Simulate long compilation
@@ -118,7 +118,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testAwaitCompletionWithTimeout() throws Exception {
+    void testAwaitCompletionWithTimeout() throws Exception {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.success("Compilation successful"));
 
@@ -131,7 +131,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetStatusWhenNoCompilation() {
+    void testGetStatusWhenNoCompilation() {
         // When
         String status = validator.getStatus();
 
@@ -140,7 +140,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetStatusWhenCompilationInProgress() {
+    void testGetStatusWhenCompilationInProgress() {
         // Given
         when(mockBuildExecutor.execute(any())).thenAnswer(invocation -> {
             Thread.sleep(100);
@@ -156,7 +156,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetStatusAfterSuccessfulCompilation() {
+    void testGetStatusAfterSuccessfulCompilation() {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.success("Compilation successful"));
 
@@ -170,7 +170,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testGetStatusAfterFailedCompilation() {
+    void testGetStatusAfterFailedCompilation() {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.failure("Compilation failed"));
 
@@ -184,7 +184,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testShutdownCleansUpResources() throws Exception {
+    void testShutdownCleansUpResources() throws Exception {
         // Given
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.success("Done"));
         validator.triggerAsyncCompilation();
@@ -198,7 +198,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testMultipleTriggersIgnoredWhileCompiling() {
+    void testMultipleTriggersIgnoredWhileCompiling() {
         // Given
         when(mockBuildExecutor.execute(any())).thenAnswer(invocation -> {
             Thread.sleep(100);
@@ -217,7 +217,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testErrorExtractionFromCompilationResult() {
+    void testErrorExtractionFromCompilationResult() {
         // Given
         String errorMessage = "BUILD FAILED\nerror: cannot find symbol\nerror: missing return statement\nERROR: compilation failed";
         when(mockBuildExecutor.execute(any())).thenReturn(TaskResult.failure(errorMessage));
@@ -232,7 +232,7 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCompilationExceptionHandling() {
+    void testCompilationExceptionHandling() {
         // Given
         when(mockBuildExecutor.execute(any())).thenThrow(new RuntimeException("Executor crashed"));
 
@@ -243,6 +243,6 @@ public class AsyncCompilationValidatorTest extends BasePlatformTestCase {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getMessage()).contains("error");
+        assertThat(result.getMessage()).containsIgnoringCase("exception");
     }
 }

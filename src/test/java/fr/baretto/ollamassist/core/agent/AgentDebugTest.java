@@ -1,24 +1,29 @@
 package fr.baretto.ollamassist.core.agent;
 
-import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.fixtures.BasePlatformTestCase;
+import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /**
  * Test de debug pour comprendre pourquoi l'agent ne crée pas de fichiers
  */
-class AgentDebugTest {
+class AgentDebugTest extends BasePlatformTestCase {
+
+    @Override
+    @BeforeEach
+    protected void setUp() throws Exception {
+        super.setUp();
+    }
 
     @Test
     void debugAgentToolExecution() {
         System.out.println("🔍 DEBUG: Test direct de l'agent");
-
-        // Given: Mock project
-        Project mockProject = Mockito.mock(Project.class);
-        Mockito.when(mockProject.getName()).thenReturn("DebugProject");
+        System.out.println("🔍 Project name: " + getProject().getName());
 
         // When: Création et test direct de l'agent
-        IntelliJDevelopmentAgent agent = new IntelliJDevelopmentAgent(mockProject);
+        IntelliJDevelopmentAgent agent = new IntelliJDevelopmentAgent(getProject());
 
         System.out.println("🔍 Agent créé, test des méthodes tools directement");
 
@@ -30,22 +35,10 @@ class AgentDebugTest {
         // Test direct du tool createJavaClass
         String javaResult = agent.createJavaClass("HelloWorld",
                 "src/test/HelloWorld.java",
-                " class HelloWorld {  void sayHello() { System.out.println(\"Hello!\"); } }");
+                "public class HelloWorld { public void sayHello() { System.out.println(\"Hello!\"); } }");
 
         System.out.println("🔍 Résultat Java class: " + javaResult);
-    }
-
-    @Test
-    void debugExecutionEngine() {
-        System.out.println("🔍 DEBUG: Test direct de l'ExecutionEngine");
-
-        // Given: Mock project
-        Project mockProject = Mockito.mock(Project.class);
-        Mockito.when(mockProject.getName()).thenReturn("DebugProject");
-
-        // When: Test direct de l'ExecutionEngine (sans agent)
-        System.out.println("🔍 Ce test va échouer car ExecutionEngine a besoin d'un vrai projet IntelliJ");
-        System.out.println("🔍 Mais il nous dira si le problème vient de là");
+        Assertions.assertNotNull(javaResult);
     }
 
     @Test
@@ -59,7 +52,7 @@ class AgentDebugTest {
             System.out.println("🔍 URL Ollama: " + settings.getCompletionOllamaUrl());
             System.out.println("🔍 Modèle: " + settings.getCompletionModelName());
             System.out.println("🔍 Timeout: " + settings.getTimeoutDuration());
-
+            Assertions.assertNotNull(settings);
         } catch (Exception e) {
             System.out.println("🔍 ERREUR configuration Ollama: " + e.getMessage());
         }

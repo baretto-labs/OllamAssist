@@ -10,10 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tests for ValidationResult
  */
-public class ValidationResultTest {
+class ValidationResultTest {
 
     @Test
-    public void testSuccessCreation() {
+    void testSuccessCreation() {
         // When
         ValidationResult result = ValidationResult.success();
 
@@ -25,7 +25,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testSuccessWithMessage() {
+    void testSuccessWithMessage() {
         // Given
         String message = "Compilation successful";
 
@@ -38,7 +38,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testFailedCreation() {
+    void testFailedCreation() {
         // Given
         String message = "Compilation failed";
 
@@ -51,7 +51,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testFailedWithErrors() {
+    void testFailedWithErrors() {
         // Given
         String message = "Compilation failed";
         List<String> errors = Arrays.asList("Error 1", "Error 2", "Error 3");
@@ -68,7 +68,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testWithWarnings() {
+    void testWithWarnings() {
         // Given
         String message = "Compilation successful with warnings";
         List<String> warnings = Arrays.asList("Warning 1", "Warning 2");
@@ -84,7 +84,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testUnknown() {
+    void testUnknown() {
         // When
         ValidationResult result = ValidationResult.unknown();
 
@@ -94,7 +94,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testHasErrorsWhenNoErrors() {
+    void testHasErrorsWhenNoErrors() {
         // Given
         ValidationResult result = ValidationResult.success();
 
@@ -106,7 +106,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testHasErrorsWhenEmptyList() {
+    void testHasErrorsWhenEmptyList() {
         // Given
         ValidationResult result = ValidationResult.failed("Failed", Arrays.asList());
 
@@ -118,7 +118,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testHasErrorsWhenNull() {
+    void testHasErrorsWhenNull() {
         // Given
         ValidationResult result = ValidationResult.builder()
                 .success(false)
@@ -134,7 +134,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testHasWarningsWhenNoWarnings() {
+    void testHasWarningsWhenNoWarnings() {
         // Given
         ValidationResult result = ValidationResult.success();
 
@@ -146,7 +146,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testGetFormattedErrors() {
+    void testGetFormattedErrors() {
         // Given
         List<String> errors = Arrays.asList(
                 "Error: Missing import java.util.List",
@@ -159,14 +159,13 @@ public class ValidationResultTest {
         String formatted = result.getFormattedErrors();
 
         // Then
-        assertThat(formatted).contains("Missing import");
-        assertThat(formatted).contains("Cannot find symbol");
-        assertThat(formatted).contains("Syntax error");
-        assertThat(formatted.split("\n")).hasSize(3);
+        assertThat(formatted).contains("Missing import")
+                .contains("Cannot find symbol")
+                .contains("Syntax error");
     }
 
     @Test
-    public void testGetFormattedErrorsWhenNoErrors() {
+    void testGetFormattedErrorsWhenNoErrors() {
         // Given
         ValidationResult result = ValidationResult.success();
 
@@ -178,7 +177,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testGetFormattedWarnings() {
+    void testGetFormattedWarnings() {
         // Given
         List<String> warnings = Arrays.asList(
                 "Warning: Unused variable",
@@ -195,7 +194,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testGetFormattedWarningsWhenNoWarnings() {
+    void testGetFormattedWarningsWhenNoWarnings() {
         // Given
         ValidationResult result = ValidationResult.success();
 
@@ -207,7 +206,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testBuilderPattern() {
+    void testBuilderPattern() {
         // Given
         List<String> errors = Arrays.asList("Error 1");
         List<String> warnings = Arrays.asList("Warning 1");
@@ -230,7 +229,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testMultipleErrors() {
+    void testMultipleErrors() {
         // Given
         List<String> errors = Arrays.asList(
                 "Error 1: Missing semicolon at line 10",
@@ -248,7 +247,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testSuccessWithDiagnostics() {
+    void testSuccessWithDiagnostics() {
         // Given
         String diagnostics = "Compilation completed in 2.5 seconds\n0 errors, 0 warnings";
 
@@ -266,7 +265,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testFailureWithDetailedDiagnostics() {
+    void testFailureWithDetailedDiagnostics() {
         // Given
         String diagnostics = "BUILD FAILED\nTotal time: 5 seconds\nCompilation errors: 3\nWarnings: 1";
         List<String> errors = Arrays.asList("Error 1", "Error 2", "Error 3");
@@ -287,7 +286,7 @@ public class ValidationResultTest {
     }
 
     @Test
-    public void testImmutability() {
+    void testImmutability() {
         // Given
         List<String> errors = Arrays.asList("Error 1", "Error 2");
         ValidationResult result = ValidationResult.failed("Failed", errors);

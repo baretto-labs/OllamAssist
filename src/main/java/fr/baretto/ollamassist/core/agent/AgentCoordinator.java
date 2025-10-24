@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.core.agent;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import fr.baretto.ollamassist.core.agent.execution.ExecutionEngine;
@@ -27,7 +28,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 @Slf4j
 @Service(Service.Level.PROJECT)
-public final class AgentCoordinator {
+public final class AgentCoordinator implements Disposable {
 
     private final Project project;
     private final AgentService agentService;
@@ -282,6 +283,17 @@ public final class AgentCoordinator {
                 setState(AgentState.IDLE);
             }
         });
+    }
+
+    /**
+     * Nettoie les ressources de l'AgentCoordinator
+     */
+    @Override
+    public void dispose() {
+        if (executionEngine != null) {
+            executionEngine.dispose();
+        }
+        log.info("🧹 AgentCoordinator disposed");
     }
 
     /**

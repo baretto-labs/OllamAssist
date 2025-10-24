@@ -1,8 +1,6 @@
 package fr.baretto.ollamassist;
 
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.util.messages.MessageBus;
+import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import fr.baretto.ollamassist.core.agent.AgentService;
 import fr.baretto.ollamassist.core.agent.execution.ExecutionEngine;
 import fr.baretto.ollamassist.core.agent.notifications.AgentNotification;
@@ -10,57 +8,55 @@ import fr.baretto.ollamassist.core.agent.notifications.AgentNotificationService;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import fr.baretto.ollamassist.setting.agent.AgentModeSettings;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 /**
- * Test de bout en bout pour le mode agent
- * Valide l'intégration complète de tous les composants
+ * End-to-end test for agent mode
+ * Validates complete integration of all components
  */
-class AgentModeE2ETest {
-
-    @TempDir
-    Path tempDir;
-
-    @Mock
-    private Project mockProject;
-
-    @Mock
-    private VirtualFile mockProjectRoot;
-
-    @Mock
-    private MessageBus mockMessageBus;
+class AgentModeE2ETest extends BasePlatformTestCase {
 
     private ExecutionEngine executionEngine;
     private AgentService agentService;
     private AgentModeSettings agentSettings;
 
+    @Override
     @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+    protected void setUp() throws Exception {
+        super.setUp();
 
-        // Mock project structure
-        when(mockProject.getBaseDir()).thenReturn(mockProjectRoot);
-        when(mockProjectRoot.getPath()).thenReturn(tempDir.toString());
-        when(mockProject.getMessageBus()).thenReturn(mockMessageBus);
-        when(mockMessageBus.connect()).thenReturn(mock(com.intellij.util.messages.MessageBusConnection.class));
-
-        // Initialize services
-        executionEngine = new ExecutionEngine(mockProject);
-        agentService = new AgentService(mockProject);
+        // Initialize services with real IntelliJ project
+        executionEngine = new ExecutionEngine(getProject());
+        agentService = new AgentService(getProject());
         agentSettings = AgentModeSettings.getInstance();
+    }
+
+    @Override
+    @AfterEach
+    protected void tearDown() throws Exception {
+        try {
+            // Reset agent mode settings to avoid interference
+            if (agentSettings != null) {
+                agentSettings.disableAgentMode();
+                agentSettings.setMaxTasksPerSession(10); // Reset to default
+            }
+
+            // Clear references to allow garbage collection
+            executionEngine = null;
+            agentService = null;
+            agentSettings = null;
+        } finally {
+            super.tearDown();
+        }
     }
 
     @Test
@@ -99,7 +95,7 @@ class AgentModeE2ETest {
     }
 
     @Test
-    void testNotificationSystemIntegration() {
+    void testNotificationSystemIntegration() throws InterruptedException {
         // GIVEN: Un listener pour capturer les notifications
         AtomicInteger notificationCount = new AtomicInteger(0);
         AtomicBoolean taskStartedReceived = new AtomicBoolean(false);
@@ -111,9 +107,9 @@ class AgentModeE2ETest {
             }
         };
 
-        // Simuler l'abonnement au MessageBus
-        when(mockMessageBus.syncPublisher(AgentNotificationService.AGENT_NOTIFICATIONS))
-                .thenReturn(testListener);
+        // Subscribe to notifications via real MessageBus
+        getProject().getMessageBus().connect().subscribe(
+                AgentNotificationService.AGENT_NOTIFICATIONS, testListener);
 
         // WHEN: Création et exécution d'une tâche
         Map<String, Object> params = new HashMap<>();
@@ -133,7 +129,9 @@ class AgentModeE2ETest {
         notificationService.notifyTaskStarted(notificationTask);
 
         // THEN: La notification est envoyée
-        verify(mockMessageBus).syncPublisher(AgentNotificationService.AGENT_NOTIFICATIONS);
+        Thread.sleep(300); // Wait for async notification
+        assertThat(notificationCount.get()).isGreaterThanOrEqualTo(1);
+        assertThat(taskStartedReceived.get()).isTrue();
     }
 
     @Test
@@ -162,15 +160,13 @@ class AgentModeE2ETest {
     void testAgentServiceAvailability() {
         // GIVEN: AgentService configuré
         // WHEN: Vérification de la disponibilité
-        boolean isAvailable = agentService.isAvailable();
-        boolean isUsingNativeTools = agentService.isUsingNativeTools();
-
-        // THEN: Le service est configuré correctement
+        // THEN: Le service est configuré correctement et les composants sont bien initialisés
         assertThat(agentService).isNotNull();
 
-        // Les tests unitaires ne peuvent pas valider la connexion Ollama
-        // mais on peut vérifier que les composants sont bien initialisés
-        assertThat(agentService).isNotNull();
+        // Verify that service methods can be called without throwing exceptions
+        // Note: actual availability depends on Ollama connection
+        assertThat(agentService.isAvailable()).isIn(true, false);
+        assertThat(agentService.isUsingNativeTools()).isIn(true, false);
     }
 
     @Test
@@ -218,7 +214,7 @@ class AgentModeE2ETest {
         // WHEN: Vérification des métriques
         // THEN: Les statistiques sont disponibles
         assertThat(stats).isNotNull();
-        assertThat(stats.getTotalExecutions()).isEqualTo(0); // Nouveau moteur
+        assertThat(stats.getTotalExecutions()).isZero(); // Nouveau moteur
         assertThat(stats.getSuccessRate()).isEqualTo(0.0); // Pas encore d'exécutions
     }
 

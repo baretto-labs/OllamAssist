@@ -33,7 +33,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testRequiresCompilationCheckForJavaClass() {
+    void testRequiresCompilationCheckForJavaClass() {
         // Given
         TaskResult successResult = TaskResult.success("File created");
 
@@ -45,7 +45,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testRequiresCompilationCheckForCreateFile() {
+    void testRequiresCompilationCheckForCreateFile() {
         // Given
         TaskResult successResult = TaskResult.success("File created");
 
@@ -57,7 +57,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testDoesNotRequireCompilationCheckForFailedTask() {
+    void testDoesNotRequireCompilationCheckForFailedTask() {
         // Given
         TaskResult failedResult = TaskResult.failure("Task failed");
 
@@ -69,7 +69,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testDoesNotRequireCompilationCheckForNonCodeOperations() {
+    void testDoesNotRequireCompilationCheckForNonCodeOperations() {
         // Given
         TaskResult successResult = TaskResult.success("Operation successful");
 
@@ -85,7 +85,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testFormatValidationFeedbackForSuccess() {
+    void testFormatValidationFeedbackForSuccess() {
         // Given
         ValidationResult validation = ValidationResult.success("Compilation successful");
         String originalMessage = "File created";
@@ -100,7 +100,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testFormatValidationFeedbackForFailure() {
+    void testFormatValidationFeedbackForFailure() {
         // Given
         ValidationResult validation = ValidationResult.failed(
                 "Compilation failed",
@@ -120,7 +120,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testAsyncValidatorIsInitialized() {
+    void testAsyncValidatorIsInitialized() {
         // When
         AsyncCompilationValidator asyncValidator = validationInterceptor.getAsyncValidator();
 
@@ -129,7 +129,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
     }
 
     @Test
-    public void testCleanupReleasesResources() {
+    void testCleanupReleasesResources() {
         // Given
         AsyncCompilationValidator asyncValidator = validationInterceptor.getAsyncValidator();
 

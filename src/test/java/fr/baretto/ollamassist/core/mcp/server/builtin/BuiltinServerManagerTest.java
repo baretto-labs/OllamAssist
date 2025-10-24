@@ -15,6 +15,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @DisplayName("BuiltinServerManager Tests")
 class BuiltinServerManagerTest {
@@ -45,8 +46,8 @@ class BuiltinServerManagerTest {
     @Test
     @DisplayName("Should register servers in registry")
     void shouldRegisterServersInRegistry() {
-        // Then - verify servers were registered
-        verify(serverRegistry).registerServer(any(MCPServerConfig.class));
+        // Then - verify servers were registered (2 builtin servers: filesystem + websearch)
+        verify(serverRegistry, times(2)).registerServer(any(MCPServerConfig.class));
     }
 
     @Test

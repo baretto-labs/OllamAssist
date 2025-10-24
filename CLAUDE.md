@@ -240,6 +240,71 @@ The plugin indexes workspace files for context-aware responses:
 - Lombok for boilerplate reduction
 - Configuration cache and build cache enabled for performance
 
+## Best Practices
+
+### Logging Standards
+
+**CRITICAL**: All Java code logging must use SLF4J loggers via Lombok's `@Slf4j` annotation. **NEVER** use `System.out.println()` or `System.err.println()`.
+
+**Why:**
+- Proper log levels (DEBUG, INFO, WARN, ERROR) for filtering and analysis
+- Structured logging with context, correlation IDs, and parameterized messages
+- Performance (logging frameworks have buffering, async capabilities, and lazy evaluation)
+- Production readiness (logs can be aggregated, searched, and analyzed in production)
+- IntelliJ IDEA plugin best practices and platform integration
+- Compatibility with logging frameworks (Logback, Log4j2) without code changes
+
+**Bad Practice (NEVER DO THIS):**
+```java
+// ❌ WRONG - Console output bypasses logging infrastructure
+System.out.println("Processing user request: " + request);
+System.err.println("Error occurred: " + error);
+
+// ❌ WRONG - String concatenation evaluated even if log level is disabled
+log.debug("Request details: " + expensiveToString());
+
+// ❌ WRONG - No exception stack trace
+log.error("Error occurred: " + exception.getMessage());
+```
+
+**Good Practice (ALWAYS DO THIS):**
+```java
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j  // Lombok annotation creates 'log' field automatically
+public class MyService {
+
+    public void processRequest(String request) {
+        // ✅ CORRECT - Parameterized logging (lazy evaluation)
+        log.info("Processing user request: {}", request);
+
+        // ✅ CORRECT - Debug details with multiple parameters
+        log.debug("Request details: userId={}, action={}", userId, action);
+
+        // ✅ CORRECT - Error with full exception stack trace
+        log.error("Error processing request", exception);
+
+        // ✅ CORRECT - Warning with context
+        log.warn("Retrying operation after failure: attempt {}/{}", attempt, maxAttempts);
+    }
+}
+```
+
+**Log Level Guidelines:**
+- **`log.trace()`**: Very detailed diagnostic information (rarely used, very verbose)
+- **`log.debug()`**: Detailed debugging information for development and troubleshooting
+- **`log.info()`**: Important business events and state changes (user actions, system events)
+- **`log.warn()`**: Potentially harmful situations or recoverable issues
+- **`log.error()`**: Error events that might still allow the application to continue
+
+**Important Rules:**
+- ✅ Use parameterized messages (`{}`) for performance: `log.info("User {} logged in", username)`
+- ✅ Always include exception as last parameter: `log.error("Failed to process", exception)`
+- ✅ Use meaningful context in messages to aid debugging
+- ❌ NEVER use string concatenation in log messages (forces evaluation even if disabled)
+- ❌ NEVER use `System.out` or `System.err` even for temporary debugging
+- ❌ NEVER log sensitive data (passwords, tokens, PII) even at debug level
+
 ## Agent Mode Integration
 
 OllamAssist includes an autonomous Agent Mode that executes development tasks with user validation.
