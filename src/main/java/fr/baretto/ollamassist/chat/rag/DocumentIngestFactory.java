@@ -6,12 +6,15 @@ import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15Quantize
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.codehaus.plexus.util.StringUtils;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -45,10 +48,18 @@ public class DocumentIngestFactory {
             embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel(createExecutor());
         } else {
             OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = new OllamaEmbeddingModel.OllamaEmbeddingModelBuilder();
-            embeddingModel = builder.baseUrl(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl())
+            builder.baseUrl(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getEmbeddingModelName())
-                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
-                    .build();
+                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
+            
+            // Add authentication if configured
+            if (AuthenticationHelper.isAuthenticationConfigured()) {
+                Map<String, String> customHeaders = new HashMap<>();
+                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                builder.customHeaders(customHeaders);
+            }
+            
+            embeddingModel = builder.build();
         }
         return embeddingModel;
     }

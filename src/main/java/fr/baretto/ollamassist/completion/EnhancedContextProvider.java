@@ -13,6 +13,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -276,11 +279,19 @@ public class EnhancedContextProvider {
     private void initializeEmbeddingModel() {
         try {
             OllamAssistSettings settings = OllamAssistSettings.getInstance();
-            this.embeddingModel = OllamaEmbeddingModel.builder()
+            OllamaEmbeddingModel.OllamaEmbeddingModelBuilder builder = OllamaEmbeddingModel.builder()
                 .baseUrl(settings.getEmbeddingOllamaUrl())
                 .modelName(settings.getEmbeddingModelName())
-                .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
-                .build();
+                .timeout(Duration.ofSeconds(TIMEOUT_SECONDS));
+            
+            // Add authentication if configured
+            if (AuthenticationHelper.isAuthenticationConfigured()) {
+                Map<String, String> customHeaders = new HashMap<>();
+                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                builder.customHeaders(customHeaders);
+            }
+            
+            this.embeddingModel = builder.build();
                 
         } catch (Exception e) {
             log.warn("Failed to initialize embedding model for similar patterns retrieval", e);
