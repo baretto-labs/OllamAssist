@@ -259,7 +259,7 @@ public class ReActContextTest extends BasePlatformTestCase {
         assertThat(history).contains("Iterations: 1");
         assertThat(history).contains("THINK: I will create a class");
         assertThat(history).contains("ACT: createJavaClass - Create Calculator");
-        assertThat(history).contains("OBSERVE: ✅ Class created");
+        assertThat(history).contains("OBSERVE: Class created");
     }
 
     @Test

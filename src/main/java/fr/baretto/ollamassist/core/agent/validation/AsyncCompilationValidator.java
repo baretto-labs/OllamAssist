@@ -45,7 +45,7 @@ public class AsyncCompilationValidator {
             return;
         }
 
-        log.info("🚀 Triggering async compilation");
+        log.info("Triggering async compilation");
         isCompiling = true;
 
         lastCompilation = CompletableFuture.supplyAsync(() -> {
@@ -73,7 +73,7 @@ public class AsyncCompilationValidator {
         try {
             // Wait for compilation to complete (with timeout)
             ValidationResult result = lastCompilation.get(120, TimeUnit.SECONDS);
-            log.debug("✅ Retrieved async compilation result: {}", result.isSuccess());
+            log.debug("Retrieved async compilation result: {}", result.isSuccess());
             return result;
         } catch (Exception e) {
             log.error("Error getting compilation result", e);
@@ -109,7 +109,7 @@ public class AsyncCompilationValidator {
      * Performs the actual compilation
      */
     private ValidationResult performCompilation() {
-        log.debug("🔨 Performing compilation");
+        log.debug("Performing compilation");
 
         try {
             Task compileTask = Task.builder()
@@ -124,10 +124,10 @@ public class AsyncCompilationValidator {
             TaskResult result = buildExecutor.execute(compileTask);
 
             if (result.isSuccess()) {
-                log.debug("✅ Compilation successful");
+                log.debug("Compilation successful");
                 return ValidationResult.success("Compilation successful");
             } else {
-                log.debug("❌ Compilation failed: {}", result.getErrorMessage());
+                log.debug("Compilation failed: {}", result.getErrorMessage());
                 return ValidationResult.failed(
                         "Compilation failed",
                         extractErrors(result)

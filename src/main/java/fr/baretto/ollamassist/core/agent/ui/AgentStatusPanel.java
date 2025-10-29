@@ -228,9 +228,9 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
     public void finishTaskProgress(boolean success, String message) {
         SwingUtilities.invokeLater(() -> {
             if (success) {
-                progressIndicator.showTemporaryStatus("✅ " + message, 3000);
+                progressIndicator.showTemporaryStatus(message, 3000);
             } else {
-                progressIndicator.showTemporaryStatus("❌ " + message, 5000);
+                progressIndicator.showTemporaryStatus(message, 5000);
             }
 
             // Hide progress after delay

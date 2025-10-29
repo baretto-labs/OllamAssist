@@ -20,7 +20,7 @@ import java.util.UUID;
  * Agent de développement IntelliJ utilisant LangChain4J avec vrais tools
  * Remplace progressivement le TaskPlanner custom par une approche agentic moderne
  *
- * ✨ NEW: Automatic validation with ValidationInterceptor
+ * NEW: Automatic validation with ValidationInterceptor
  * - Code changes are automatically validated with compilation checks
  * - Validation runs asynchronously to reduce latency
  * - Detailed error feedback provided for fixing
@@ -46,8 +46,8 @@ public class IntelliJDevelopmentAgent {
             @P("The file path where to create the class (e.g., 'src/main/java/com/example/MyClass.java')") String filePath,
             @P("The complete Java code content for the class") String classContent) {
 
-        log.error("🔥 TOOL CALLED: createJavaClass");
-        log.error("🔥 Parameters: className='{}', filePath='{}', contentLength={}",
+        log.error("TOOL CALLED: createJavaClass");
+        log.error("Parameters: className='{}', filePath='{}', contentLength={}",
                 className, filePath, classContent != null ? classContent.length() : 0);
         log.info("Creating Java class: {} at path: {}", className, filePath);
 
@@ -65,12 +65,12 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(createFileTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("✅ Successfully created Java class '%s' at '%s'", className, filePath);
+                String successMessage = String.format("Successfully created Java class '%s' at '%s'", className, filePath);
                 log.info(successMessage);
 
-                // ✨ AUTOMATIC VALIDATION: Check compilation after creating Java class
+                // AUTOMATIC VALIDATION: Check compilation after creating Java class
                 if (validationInterceptor.requiresCompilationCheck("createJavaClass", result)) {
-                    log.info("🔍 Auto-validating compilation for {}", className);
+                    log.info("Auto-validating compilation for {}", className);
                     ValidationResult validation = validationInterceptor.autoValidate("createJavaClass", result);
 
                     if (!validation.isSuccess()) {
@@ -81,13 +81,13 @@ public class IntelliJDevelopmentAgent {
 
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Failed to create Java class '%s': %s", className, result.getErrorMessage());
+                String errorMessage = String.format("Failed to create Java class '%s': %s", className, result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error creating Java class '%s': %s", className, e.getMessage());
+            String errorMessage = String.format("Error creating Java class '%s': %s", className, e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -98,8 +98,8 @@ public class IntelliJDevelopmentAgent {
             @P("The full file path where to create the file") String filePath,
             @P("The content to write to the file") String content) {
 
-        log.error("🔥 TOOL CALLED: createFile");
-        log.error("🔥 Parameters: filePath='{}', contentLength={}",
+        log.error("TOOL CALLED: createFile");
+        log.error("Parameters: filePath='{}', contentLength={}",
                 filePath, content != null ? content.length() : 0);
         log.info("Creating file: {}", filePath);
 
@@ -116,12 +116,12 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(createFileTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("✅ Successfully created file '%s'", filePath);
+                String successMessage = String.format("Successfully created file '%s'", filePath);
                 log.info(successMessage);
 
-                // ✨ AUTOMATIC VALIDATION: Check compilation if it's a Java file
+                // AUTOMATIC VALIDATION: Check compilation if it's a Java file
                 if (validationInterceptor.requiresCompilationCheck("createFile", result)) {
-                    log.info("🔍 Auto-validating compilation for {}", filePath);
+                    log.info("Auto-validating compilation for {}", filePath);
                     ValidationResult validation = validationInterceptor.autoValidate("createFile", result);
 
                     if (!validation.isSuccess()) {
@@ -131,13 +131,13 @@ public class IntelliJDevelopmentAgent {
 
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Failed to create file '%s': %s", filePath, result.getErrorMessage());
+                String errorMessage = String.format("Failed to create file '%s': %s", filePath, result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error creating file '%s': %s", filePath, e.getMessage());
+            String errorMessage = String.format("Error creating file '%s': %s", filePath, e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -163,17 +163,17 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(analysisTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("✅ Code analysis completed: %s", result.getMessage());
+                String successMessage = String.format("Code analysis completed: %s", result.getMessage());
                 log.info(successMessage);
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Code analysis failed: %s", result.getErrorMessage());
+                String errorMessage = String.format("Code analysis failed: %s", result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error during code analysis: %s", e.getMessage());
+            String errorMessage = String.format("Error during code analysis: %s", e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -199,17 +199,17 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(gitTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("✅ Git command '%s' executed successfully: %s", operation, result.getMessage());
+                String successMessage = String.format("Git command '%s' executed successfully: %s", operation, result.getMessage());
                 log.info(successMessage);
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Git command '%s' failed: %s", operation, result.getErrorMessage());
+                String errorMessage = String.format("Git command '%s' failed: %s", operation, result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error executing Git command '%s': %s", operation, e.getMessage());
+            String errorMessage = String.format("Error executing Git command '%s': %s", operation, e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -234,17 +234,17 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(buildTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("✅ Build operation '%s' completed successfully: %s", buildOperation, result.getMessage());
+                String successMessage = String.format("Build operation '%s' completed successfully: %s", buildOperation, result.getMessage());
                 log.info(successMessage);
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Build operation '%s' failed: %s", buildOperation, result.getErrorMessage());
+                String errorMessage = String.format("Build operation '%s' failed: %s", buildOperation, result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error during build operation '%s': %s", buildOperation, e.getMessage());
+            String errorMessage = String.format("Error during build operation '%s': %s", buildOperation, e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -258,11 +258,11 @@ public class IntelliJDevelopmentAgent {
 
         try {
             String result = webSearchTool.searchOnDuckDuckGo(query);
-            String successMessage = String.format("✅ Web search completed for query: '%s'", query);
+            String successMessage = String.format("Web search completed for query: '%s'", query);
             log.info(successMessage);
             return result;
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error during web search for '%s': %s", query, e.getMessage());
+            String errorMessage = String.format("Error during web search for '%s': %s", query, e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -270,7 +270,7 @@ public class IntelliJDevelopmentAgent {
 
     @Tool("Compile the project and check for compilation errors")
     public String compileAndCheckErrors() {
-        log.error("🔥 TOOL CALLED: compileAndCheckErrors");
+        log.error("TOOL CALLED: compileAndCheckErrors");
         log.info("Compiling project and checking for errors");
 
         try {
@@ -287,17 +287,17 @@ public class IntelliJDevelopmentAgent {
             TaskResult result = executionEngine.executeTask(compileTask);
 
             if (result.isSuccess()) {
-                String successMessage = "✅ Project compiled successfully - no errors detected";
+                String successMessage = "Project compiled successfully - no errors detected";
                 log.info(successMessage);
                 return successMessage;
             } else {
-                String errorMessage = String.format("❌ Compilation failed with errors: %s", result.getErrorMessage());
+                String errorMessage = String.format("Compilation failed with errors: %s", result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error during compilation check: %s", e.getMessage());
+            String errorMessage = String.format("Error during compilation check: %s", e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }
@@ -305,7 +305,7 @@ public class IntelliJDevelopmentAgent {
 
     @Tool("Get project compilation diagnostics and errors")
     public String getCompilationDiagnostics() {
-        log.error("🔥 TOOL CALLED: getCompilationDiagnostics");
+        log.error("TOOL CALLED: getCompilationDiagnostics");
         log.info("Getting compilation diagnostics");
 
         try {
@@ -324,15 +324,15 @@ public class IntelliJDevelopmentAgent {
             if (result.isSuccess()) {
                 String message = result.getMessage() != null ? result.getMessage() : "No compilation issues found";
                 log.info("Diagnostics retrieved successfully");
-                return "📊 Compilation diagnostics:\n" + message;
+                return "Compilation diagnostics:\n" + message;
             } else {
-                String errorMessage = String.format("❌ Failed to get diagnostics: %s", result.getErrorMessage());
+                String errorMessage = String.format("Failed to get diagnostics: %s", result.getErrorMessage());
                 log.error(errorMessage);
                 return errorMessage;
             }
 
         } catch (Exception e) {
-            String errorMessage = String.format("💥 Error getting diagnostics: %s", e.getMessage());
+            String errorMessage = String.format("Error getting diagnostics: %s", e.getMessage());
             log.error(errorMessage, e);
             return errorMessage;
         }

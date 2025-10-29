@@ -41,7 +41,7 @@ public class ModelNotAvailableNotification {
             return;
         }
 
-        String title = "❌ Modèle Agent Non Disponible";
+        String title = "Modèle Agent Non Disponible";
         String content = buildNotificationContent(result);
 
         Notification notification = group.createNotification(title, content, NotificationType.ERROR);
@@ -58,7 +58,7 @@ public class ModelNotAvailableNotification {
                     NotificationGroup successGroup = NotificationGroupManager.getInstance()
                             .getNotificationGroup(NOTIFICATION_GROUP_ID);
                     successGroup.createNotification(
-                            "✅ Commande copiée dans le presse-papiers",
+                            "Commande copiée dans le presse-papiers",
                             "Collez-la dans votre terminal pour télécharger le modèle.",
                             NotificationType.INFORMATION
                     ).notify(project);
@@ -111,7 +111,7 @@ public class ModelNotAvailableNotification {
             return;
         }
 
-        String title = "❌ Erreur de vérification du modèle";
+        String title = "Erreur de vérification du modèle";
         String content = buildErrorContent(result);
 
         Notification notification = group.createNotification(title, content, NotificationType.ERROR);
@@ -128,13 +128,13 @@ public class ModelNotAvailableNotification {
 
                 if (reachable) {
                     statusGroup.createNotification(
-                            "✅ Ollama est accessible",
+                            "Ollama est accessible",
                             "Ollama fonctionne correctement. Le problème vient peut-être du modèle configuré.",
                             NotificationType.INFORMATION
                     ).notify(project);
                 } else {
                     statusGroup.createNotification(
-                            "❌ Ollama n'est pas accessible",
+                            "Ollama n'est pas accessible",
                             "Vérifiez qu'Ollama est lancé avec la commande: ollama serve",
                             NotificationType.WARNING
                     ).notify(project);
@@ -166,7 +166,7 @@ public class ModelNotAvailableNotification {
             return;
         }
 
-        String title = "⚠️ Modèle Agent Non Configuré";
+        String title = "Modèle Agent Non Configuré";
         String content = "Aucun modèle n'est configuré pour le mode agent.\n" +
                 "Modèle recommandé: <b>gpt-oss</b>";
 
@@ -191,14 +191,14 @@ public class ModelNotAvailableNotification {
             StringBuilder content = new StringBuilder();
 
             content.append("Le modèle <b>").append(modelName).append("</b> n'est pas disponible sur votre système.<br><br>");
-            content.append("📥 <b>Pour télécharger le modèle :</b><br>");
+            content.append("<b>Pour télécharger le modèle :</b><br>");
             content.append("1. Ouvrez un terminal<br>");
             content.append("2. Exécutez : <code>ollama pull ").append(modelName).append("</code><br>");
             content.append("3. Attendez la fin du téléchargement<br>");
             content.append("4. Relancez le plugin<br><br>");
 
             if (result.getAvailableModels() != null && !result.getAvailableModels().isEmpty()) {
-                content.append("📋 <b>Modèles disponibles :</b> ");
+                content.append("<b>Modèles disponibles :</b> ");
                 content.append(String.join(", ", result.getAvailableModels()));
             }
 
@@ -218,9 +218,9 @@ public class ModelNotAvailableNotification {
                 .append(result.getModelName())
                 .append("</b>.<br><br>");
 
-        content.append("🔴 <b>Erreur :</b> ").append(result.getErrorMessage()).append("<br><br>");
+        content.append("<b>Erreur :</b> ").append(result.getErrorMessage()).append("<br><br>");
 
-        content.append("🔧 <b>Solutions possibles :</b><br>");
+        content.append("<b>Solutions possibles :</b><br>");
         content.append("• Vérifiez qu'Ollama est lancé : <code>ollama serve</code><br>");
         content.append("• Vérifiez l'URL Ollama dans les paramètres<br>");
         content.append("• Vérifiez votre connexion réseau<br>");

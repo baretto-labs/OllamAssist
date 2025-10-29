@@ -143,7 +143,7 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
 
             @Override
             public void agentProcessingStarted(String userRequest) {
-                log.error("🔍 DEBUG: MessagesPanel.agentProcessingStarted called with: {}", userRequest);
+                log.error("DEBUG: MessagesPanel.agentProcessingStarted called with: {}", userRequest);
                 SwingUtilities.invokeLater(() -> {
                     // Nettoyer le presentation panel comme dans addUserMessage()
                     if (presentationPanel != null) {
@@ -163,7 +163,7 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
                     container.revalidate();
                     container.repaint();
 
-                    log.error("🔍 DEBUG: UI components added and refreshed");
+                    log.error("DEBUG: UI components added and refreshed");
                 });
             }
 
@@ -179,16 +179,16 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
 
             @Override
             public void agentProcessingCompleted(String userRequest, String response) {
-                log.error("🔍 DEBUG: MessagesPanel.agentProcessingCompleted called with response: {}", response);
+                log.error("DEBUG: MessagesPanel.agentProcessingCompleted called with response: {}", response);
                 SwingUtilities.invokeLater(() -> {
                     // Si c'était du streaming, finaliser le message
                     if (currentStreamingMessage != null) {
                         latestOllamaMessage = currentStreamingMessage;
                         currentStreamingMessage = null;
-                        log.error("🔍 DEBUG: Finalized streaming message");
+                        log.error("DEBUG: Finalized streaming message");
                     } else {
                         // Sinon c'était une action - créer et afficher le message de réponse
-                        log.error("🔍 DEBUG: Creating new response message for action");
+                        log.error("DEBUG: Creating new response message for action");
                         OllamaMessage responseMessage = new OllamaMessage(context);
                         responseMessage.append(response);
                         container.add(responseMessage, createGbc(container.getComponentCount()));
@@ -204,7 +204,7 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
                         promptPanel.toggleGenerationState(false);
                     }
 
-                    log.error("🔍 DEBUG: agentProcessingCompleted finished");
+                    log.error("DEBUG: agentProcessingCompleted finished");
                 });
             }
 
@@ -213,12 +213,12 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
                 SwingUtilities.invokeLater(() -> {
                     // Si streaming en cours, l'arrêter et afficher l'erreur
                     if (currentStreamingMessage != null) {
-                        currentStreamingMessage.append("\n\n❌ " + errorMessage);
+                        currentStreamingMessage.append("\n\n" + errorMessage);
                         currentStreamingMessage = null;
                     } else {
                         // Sinon créer un nouveau message d'erreur
                         OllamaMessage errorMsg = new OllamaMessage(context);
-                        errorMsg.append("❌ " + errorMessage);
+                        errorMsg.append("" + errorMessage);
                         container.add(errorMsg, createGbc(container.getComponentCount()));
                         container.revalidate();
                         container.repaint();
@@ -236,7 +236,7 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
             @Override
             public void agentProposalRequested(String userRequest, List<Task> proposedTasks, fr.baretto.ollamassist.core.agent.ui.ActionProposalCard.ActionValidator validator) {
                 SwingUtilities.invokeLater(() -> {
-                    log.error("🔍 DEBUG: MessagesPanel.agentProposalRequested called with {} tasks", proposedTasks.size());
+                    log.error("DEBUG: MessagesPanel.agentProposalRequested called with {} tasks", proposedTasks.size());
 
                     // Finaliser le streaming en cours s'il y en a un
                     if (currentStreamingMessage != null) {
@@ -251,7 +251,7 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
                         promptPanel.toggleGenerationState(false);
                     }
 
-                    log.error("🔍 DEBUG: Action proposal displayed successfully");
+                    log.error("DEBUG: Action proposal displayed successfully");
                 });
             }
         });

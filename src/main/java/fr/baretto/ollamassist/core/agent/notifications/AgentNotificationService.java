@@ -51,7 +51,7 @@ public class AgentNotificationService {
      * Notifie le début d'une tâche
      */
     public void notifyTaskStarted(Task task) {
-        String message = "🚀 Starting: " + task.getDescription();
+        String message = "Starting: " + task.getDescription();
 
         AgentNotification notification = AgentNotification.builder()
                 .type(AgentNotification.NotificationType.TASK_STARTED)
@@ -75,7 +75,7 @@ public class AgentNotificationService {
         activeNotifications.put(task.getId(), ideNotification);
         ideNotification.notify(project);
 
-        log.info("📢 Task started notification: {}", task.getId());
+        log.info("Task started notification: {}", task.getId());
     }
 
     /**
@@ -110,7 +110,7 @@ public class AgentNotificationService {
      * Notifie le succès d'une tâche
      */
     public void notifyTaskSuccess(Task task, TaskResult result) {
-        String message = "✅ Completed: " + task.getDescription();
+        String message = "Completed: " + task.getDescription();
         if (result.getMessage() != null) {
             message += "\n" + result.getMessage();
         }
@@ -152,14 +152,14 @@ public class AgentNotificationService {
             expireTimer.start();
         }
 
-        log.info("✅ Task success notification: {}", task.getId());
+        log.info("Task success notification: {}", task.getId());
     }
 
     /**
      * Notifie l'échec d'une tâche
      */
     public void notifyTaskFailure(Task task, TaskResult result) {
-        String message = "❌ Failed: " + task.getDescription();
+        String message = "Failed: " + task.getDescription();
         if (result.getErrorMessage() != null) {
             message += "\nError: " + result.getErrorMessage();
         }
@@ -191,14 +191,14 @@ public class AgentNotificationService {
 
         errorNotification.notify(project);
 
-        log.error("❌ Task failure notification: {} - {}", task.getId(), result.getErrorMessage());
+        log.error("Task failure notification: {} - {}", task.getId(), result.getErrorMessage());
     }
 
     /**
      * Notifie l'annulation d'une tâche
      */
     public void notifyTaskCancelled(Task task) {
-        String message = "🚫 Cancelled: " + task.getDescription();
+        String message = "Cancelled: " + task.getDescription();
 
         AgentNotification notification = AgentNotification.builder()
                 .type(AgentNotification.NotificationType.TASK_CANCELLED)
@@ -213,7 +213,7 @@ public class AgentNotificationService {
         // Expirer la notification active
         expireTaskNotification(task.getId());
 
-        log.info("🚫 Task cancelled notification: {}", task.getId());
+        log.info("Task cancelled notification: {}", task.getId());
     }
 
     /**
@@ -243,7 +243,7 @@ public class AgentNotificationService {
         );
         ideNotification.notify(project);
 
-        log.info("📢 Agent event notification: {} - {}", title, type);
+        log.info("Agent event notification: {} - {}", title, type);
     }
 
     /**
@@ -252,7 +252,7 @@ public class AgentNotificationService {
     public void notifyAgentStateChange(boolean enabled) {
         String message = enabled ?
                 "🤖 Agent Mode activated - Ready for autonomous tasks" :
-                "💤 Agent Mode deactivated";
+                "Agent Mode deactivated";
 
         AgentNotification notification = AgentNotification.builder()
                 .type(enabled ? AgentNotification.NotificationType.AGENT_ACTIVATED :
@@ -272,7 +272,7 @@ public class AgentNotificationService {
         ideNotification.setImportant(true);
         ideNotification.notify(project);
 
-        log.info("🔄 Agent state change notification: enabled={}", enabled);
+        log.info("Agent state change notification: enabled={}", enabled);
     }
 
     /**

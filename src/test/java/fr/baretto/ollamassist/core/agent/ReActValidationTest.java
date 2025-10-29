@@ -54,28 +54,28 @@ public class ReActValidationTest extends BasePlatformTestCase {
     void completeReActValidationSummary() {
         // This test provides a summary of ReAct implementation completeness
 
-        // 1. Tools availability ✓
+        // 1. Tools availability 
         assertThat(agent).isNotNull();
 
-        // 2. Compilation tools ✓
+        // 2. Compilation tools 
         String compileResult = agent.compileAndCheckErrors();
         assertThat(compileResult).isNotNull();
 
         String diagnosticsResult = agent.getCompilationDiagnostics();
         assertThat(diagnosticsResult).isNotNull();
 
-        // 3. Core development tools ✓
+        // 3. Core development tools 
         String createClassResult = agent.createJavaClass("Test", "Test.java", "class Test {}");
         assertThat(createClassResult).isNotNull();
 
         String createFileResult = agent.createFile("test.txt", "content");
         assertThat(createFileResult).isNotNull();
 
-        // 4. Build system integration ✓
+        // 4. Build system integration 
         BuildOperationExecutor buildExecutor = new BuildOperationExecutor(getProject());
         assertThat(buildExecutor.getExecutorName()).isEqualTo("BuildOperationExecutor");
 
-        // 5. Agent service integration ✓
+        // 5. Agent service integration 
         try {
             agentService = new AgentService(getProject());
             // May fail in test environment, but class should be loadable

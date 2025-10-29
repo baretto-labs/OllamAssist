@@ -139,7 +139,7 @@ public class EnhancedCompletionService {
             String cachedSuggestion = cache.get(cacheKey);
             if (cachedSuggestion != null) {
                 log.debug("Cache HIT! Using cached suggestion");
-                log.info("✅ Using cached suggestion: '{}'", cachedSuggestion.substring(0, Math.min(50, cachedSuggestion.length())));
+                log.info("Using cached suggestion: '{}'", cachedSuggestion.substring(0, Math.min(50, cachedSuggestion.length())));
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!indicator.isCanceled()) {
                         int caretOffset = ApplicationManager.getApplication().runReadAction(
@@ -152,7 +152,7 @@ public class EnhancedCompletionService {
                 return;
             } else {
                 log.debug("Cache MISS for key");
-                log.info("❌ Cache miss for key: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
+                log.info("Cache miss for key: {}", cacheKey.substring(0, Math.min(8, cacheKey.length())));
             }
 
             // Generate new suggestion
@@ -199,7 +199,7 @@ public class EnhancedCompletionService {
         completionFuture.thenAccept(rawSuggestion -> {
             log.debug("AI completion thenAccept() callback executing");
             if (indicator.isCanceled()) {
-                log.info("🚫 Enhanced suggestion cancelled by user");
+                log.info("Enhanced suggestion cancelled by user");
                 return;
             }
 
@@ -207,10 +207,10 @@ public class EnhancedCompletionService {
 
             try {
                 String processedSuggestion = processSuggestion(rawSuggestion, editor);
-                log.info("✨ Processed suggestion: '{}'", processedSuggestion);
+                log.info("Processed suggestion: '{}'", processedSuggestion);
 
                 if (processedSuggestion.trim().isEmpty()) {
-                    log.warn("⚠️ Processed suggestion is empty, falling back to basic");
+                    log.warn("️ Processed suggestion is empty, falling back to basic");
                     generateBasicSuggestion(editor, indicator);
                     return;
                 }
@@ -223,19 +223,19 @@ public class EnhancedCompletionService {
                         int caretOffset = ApplicationManager.getApplication().runReadAction(
                                 (Computable<Integer>) () -> editor.getCaretModel().getOffset()
                         );
-                        log.info("🎯 Showing enhanced suggestion at offset {} with content: '{}'", caretOffset, processedSuggestion);
+                        log.info("Showing enhanced suggestion at offset {} with content: '{}'", caretOffset, processedSuggestion);
                         suggestionManager.showSuggestion(editor, caretOffset, processedSuggestion);
                         attachActionHandler(editor);
                     }
                 });
 
             } catch (Exception e) {
-                log.error("❌ Suggestion processing failed", e);
+                log.error("Suggestion processing failed", e);
                 generateBasicSuggestion(editor, indicator);
             }
 
         }).exceptionally(throwable -> {
-            log.error("❌ Enhanced suggestion generation failed", throwable);
+            log.error("Enhanced suggestion generation failed", throwable);
             generateBasicSuggestion(editor, indicator);
             return null;
         });

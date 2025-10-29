@@ -62,14 +62,14 @@ public class StreamingReActAgent {
      * Exécute une requête utilisateur avec ReAct streaming
      */
     public void executeWithStreaming(String userRequest) {
-        log.info("🚀 STREAMING REACT: Starting execution for: {}", userRequest);
+        log.info("STREAMING REACT: Starting execution for: {}", userRequest);
 
         try {
             executeReActCycle(userRequest, null, 0);
         } catch (Exception e) {
             log.error("Error in ReAct execution", e);
             if (onError != null) {
-                onError.accept("❌ Erreur lors de l'exécution: " + e.getMessage());
+                onError.accept("Erreur lors de l'exécution: " + e.getMessage());
             }
         }
     }
@@ -83,12 +83,12 @@ public class StreamingReActAgent {
         if (iteration >= MAX_ITERATIONS) {
             log.warn("Max iterations reached for ReAct cycle");
             if (onFinalAnswer != null) {
-                onFinalAnswer.accept("⚠️ Limite d'itérations atteinte. Tâche partiellement complétée.");
+                onFinalAnswer.accept("Limite d'itérations atteinte. Tâche partiellement complétée.");
             }
             return;
         }
 
-        log.info("🔄 ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
+        log.info("ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
 
         // Construire le prompt ReAct structuré
         String structuredPrompt = buildStructuredReActPrompt(userRequest, previousObservation, iteration);
@@ -158,7 +158,7 @@ public class StreamingReActAgent {
             // 4. Pas d'action et pas de réponse finale - problème
             log.warn("No action or final answer in structured response");
             if (onFinalAnswer != null) {
-                onFinalAnswer.accept("⚠️ Réponse incomplète du modèle.");
+                onFinalAnswer.accept("Réponse incomplète du modèle.");
             }
         }
     }
@@ -215,7 +215,7 @@ public class StreamingReActAgent {
     private void handleExecutionError(StructuredAgentResponse response, String userRequest, int iteration,
                                       StructuredAgentResponse.AgentAction action, Exception e) {
         log.error("Error executing action: {}", action.getTool(), e);
-        String errorObservation = "❌ Erreur lors de l'exécution de " + action.getTool() + ": " + e.getMessage();
+        String errorObservation = "Erreur lors de l'exécution de " + action.getTool() + ": " + e.getMessage();
 
         if (onObservation != null) {
             onObservation.accept(errorObservation);
@@ -226,7 +226,7 @@ public class StreamingReActAgent {
             executeReActCycle(userRequest, errorObservation, iteration + 1);
         } else {
             if (onFinalAnswer != null) {
-                onFinalAnswer.accept("⚠️ Tâche interrompue due à des erreurs.");
+                onFinalAnswer.accept("Tâche interrompue due à des erreurs.");
             }
         }
     }
@@ -238,7 +238,7 @@ public class StreamingReActAgent {
         String tool = action.getTool();
         Map<String, Object> params = action.getParameters();
 
-        log.info("🔧 Executing tool: {} with params: {}", tool, params);
+        log.info("Executing tool: {} with params: {}", tool, params);
 
         return switch (tool.toLowerCase()) {
             case "createjavaclass" -> executeCreateJavaClass(params);
@@ -248,7 +248,7 @@ public class StreamingReActAgent {
             case "executegitcommand" -> executeGitCommand(params);
             case "buildproject" -> executeBuildProject(params);
             case "analyzecode" -> executeAnalyzeCode(params);
-            default -> "❌ Outil non reconnu: " + tool;
+            default -> "Outil non reconnu: " + tool;
         };
     }
 

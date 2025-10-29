@@ -196,9 +196,9 @@ public class ModelAvailabilityChecker {
          */
         public String getUserMessage() {
             return switch (status) {
-                case AVAILABLE -> String.format("✅ Le modèle '%s' est disponible", modelName);
+                case AVAILABLE -> String.format("Le modèle '%s' est disponible", modelName);
                 case NOT_AVAILABLE -> String.format(
-                        "❌ Le modèle '%s' n'est pas disponible.\n\n" +
+                        "Le modèle '%s' n'est pas disponible.\n\n" +
                         "Pour télécharger le modèle, exécutez:\n" +
                         "  ollama pull %s\n\n" +
                         "Modèles disponibles: %s",
@@ -208,12 +208,12 @@ public class ModelAvailabilityChecker {
                                 : "aucun"
                 );
                 case ERROR -> String.format(
-                        "❌ Erreur lors de la vérification du modèle '%s':\n%s\n\n" +
+                        "Erreur lors de la vérification du modèle '%s':\n%s\n\n" +
                         "Vérifiez qu'Ollama est en cours d'exécution.",
                         modelName, errorMessage
                 );
                 case NOT_CONFIGURED ->
-                        "⚠️ Aucun modèle agent n'est configuré.\n\n" +
+                        "️ Aucun modèle agent n'est configuré.\n\n" +
                         "Veuillez configurer le modèle dans les paramètres (recommandé: gpt-oss).";
             };
         }

@@ -143,7 +143,7 @@ public class RollbackManager {
                     WriteCommandAction.runWriteCommandAction(project, () -> {
                         try {
                             fileToDelete.delete(this);
-                            log.info("🔙 Rollback: fichier créé supprimé: {}", afterState.getFilePath());
+                            log.info("Rollback: fichier créé supprimé: {}", afterState.getFilePath());
                         } catch (IOException e) {
                             throw new RuntimeException("Erreur lors de la suppression: " + e.getMessage(), e);
                         }
@@ -185,7 +185,7 @@ public class RollbackManager {
                         VirtualFile restoredFile = parentDir.createChildData(this, fileName);
                         restoredFile.setBinaryContent(beforeState.getFileContent().getBytes());
 
-                        log.info("🔙 Rollback: fichier supprimé recréé: {}", beforeState.getFilePath());
+                        log.info("Rollback: fichier supprimé recréé: {}", beforeState.getFilePath());
                     } catch (IOException e) {
                         throw new RuntimeException("Erreur lors de la recréation: " + e.getMessage(), e);
                     }
@@ -225,7 +225,7 @@ public class RollbackManager {
                             FileDocumentManager.getInstance().saveDocument(document);
                         }
 
-                        log.info("🔙 Rollback: contenu original restauré: {}", beforeState.getFilePath());
+                        log.info("Rollback: contenu original restauré: {}", beforeState.getFilePath());
                     } catch (IOException e) {
                         throw new RuntimeException("Erreur lors de la restauration: " + e.getMessage(), e);
                     }
@@ -274,7 +274,7 @@ public class RollbackManager {
                             currentFile.rename(this, originalName);
                         }
 
-                        log.info("🔙 Rollback: fichier remis en place {} -> {}", afterState.getFilePath(), beforeState.getFilePath());
+                        log.info("Rollback: fichier remis en place {} -> {}", afterState.getFilePath(), beforeState.getFilePath());
                     } catch (IOException e) {
                         throw new RuntimeException("Erreur lors du déplacement de rollback: " + e.getMessage(), e);
                     }

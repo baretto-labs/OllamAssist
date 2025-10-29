@@ -122,7 +122,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
         assertThat(ollamaService).isNotNull();
         assertThat(ollamaService.getAssistant()).isNotNull();
 
-        log.info("✅ Chat service initialization test passed");
+        log.info("Chat service initialization test passed");
     }
 
     @Test
@@ -143,9 +143,9 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
             assertThat(content).contains("add");
             assertThat(content).contains("multiply");
 
-            log.info("✅ Document indexing test passed");
+            log.info("Document indexing test passed");
         } else {
-            log.warn("⚠️ Test file not created, skipping document indexing test");
+            log.warn("️ Test file not created, skipping document indexing test");
         }
     }
 
@@ -164,7 +164,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
         // In a full implementation, we would verify retrieved context contains Calculator.add()
 
         assertThat(ollamaService).isNotNull();
-        log.info("✅ Context retrieval test passed");
+        log.info("Context retrieval test passed");
     }
 
     @Test
@@ -221,7 +221,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
                     .withFailMessage("Response should not be empty")
                     .isNotEmpty();
 
-            log.info("✅ Streaming chat response test passed with response: {}",
+            log.info("Streaming chat response test passed with response: {}",
                     fullResponse.get().substring(0, Math.min(100, fullResponse.get().length())));
         }
     }
@@ -266,7 +266,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
         if (response.get().isEmpty()) {
             log.warn("Received empty response - Ollama may not be running or model not available");
         } else {
-            log.info("✅ Context-aware query test completed");
+            log.info("Context-aware query test completed");
         }
     }
 
@@ -314,7 +314,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
             if (!response.get().isEmpty()) {
                 // If Ollama is available, response should contain "42"
                 log.info("Memory test response: {}", response.get());
-                log.info("✅ Chat memory test completed");
+                log.info("Chat memory test completed");
             } else {
                 log.warn("Empty response - Ollama may not be running");
             }
@@ -338,7 +338,7 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
         // The service should be initialized even if Ollama is not running
         // Actual errors should be caught during chat execution, not initialization
 
-        log.info("✅ Graceful degradation test passed");
+        log.info("Graceful degradation test passed");
     }
 
     @Test
@@ -358,6 +358,6 @@ public class ChatWithRAGIntegrationTest extends BasePlatformTestCase {
             log.warn("Test file was not created");
         }
 
-        log.info("✅ Resource cleanup test passed");
+        log.info("Resource cleanup test passed");
     }
 }

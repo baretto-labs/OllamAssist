@@ -69,12 +69,12 @@ public class StructuredAgentResponse {
             return finalAnswer;
         }
         if (thinking != null && !thinking.trim().isEmpty()) {
-            return "🤔 " + thinking;
+            return thinking;
         }
         if (action != null && action.getReasoning() != null) {
-            return "⚡ " + action.getReasoning();
+            return action.getReasoning();
         }
-        return "🔄 Processing...";
+        return "Processing...";
     }
 
     /**

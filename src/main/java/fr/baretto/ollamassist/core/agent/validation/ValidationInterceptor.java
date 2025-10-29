@@ -44,7 +44,7 @@ public class ValidationInterceptor {
      * Uses async compilation to reduce latency
      */
     public ValidationResult autoValidate(String toolName, TaskResult actionResult) {
-        log.info("🔍 Auto-validating after {}", toolName);
+        log.info("Auto-validating after {}", toolName);
 
         try {
             // Trigger async compilation
@@ -54,10 +54,10 @@ public class ValidationInterceptor {
             ValidationResult compilationResult = asyncValidator.getLastCompilationResult();
 
             if (compilationResult.isSuccess()) {
-                log.info("✅ Auto-validation passed for {}", toolName);
+                log.info("Auto-validation passed for {}", toolName);
                 return ValidationResult.success("Code compiles successfully");
             } else {
-                log.warn("❌ Auto-validation failed for {}: {}", toolName, compilationResult.getMessage());
+                log.warn("Auto-validation failed for {}: {}", toolName, compilationResult.getMessage());
 
                 // Get detailed diagnostics
                 TaskResult diagnostics = getDiagnostics();
@@ -80,7 +80,7 @@ public class ValidationInterceptor {
      * Used when async compilation is not desired
      */
     public ValidationResult validateSync() {
-        log.debug("🔍 Synchronous validation started");
+        log.debug("Synchronous validation started");
 
         try {
             // 1. Compile
@@ -96,7 +96,7 @@ public class ValidationInterceptor {
             TaskResult compileResult = buildExecutor.execute(compileTask);
 
             if (compileResult.isSuccess()) {
-                log.debug("✅ Synchronous compilation passed");
+                log.debug("Synchronous compilation passed");
                 return ValidationResult.success("Compilation successful");
             }
 
@@ -104,7 +104,7 @@ public class ValidationInterceptor {
             TaskResult diagnostics = getDiagnostics();
             List<String> errors = extractErrors(diagnostics);
 
-            log.debug("❌ Synchronous compilation failed with {} errors", errors.size());
+            log.debug("Synchronous compilation failed with {} errors", errors.size());
             return ValidationResult.failed("Compilation failed", errors);
 
         } catch (Exception e) {
@@ -159,28 +159,28 @@ public class ValidationInterceptor {
      */
     public String formatValidationFeedback(ValidationResult validation, String originalMessage) {
         if (validation.isSuccess()) {
-            return String.format("%s\n✅ Code validated - compilation successful", originalMessage);
+            return String.format("%s\nCode validated - compilation successful", originalMessage);
         }
 
         StringBuilder feedback = new StringBuilder();
         feedback.append(originalMessage).append("\n\n");
-        feedback.append("⚠️ Compilation validation failed:\n\n");
+        feedback.append("️ Compilation validation failed:\n\n");
 
         if (validation.hasErrors()) {
-            feedback.append("🔧 Errors to fix:\n");
+            feedback.append("Errors to fix:\n");
             for (String error : validation.getErrors()) {
                 feedback.append("  - ").append(error).append("\n");
             }
         }
 
         if (validation.hasWarnings()) {
-            feedback.append("\n⚠️ Warnings:\n");
+            feedback.append("\n️ Warnings:\n");
             for (String warning : validation.getWarnings()) {
                 feedback.append("  - ").append(warning).append("\n");
             }
         }
 
-        feedback.append("\n💡 Please fix these issues before continuing.");
+        feedback.append("\nPlease fix these issues before continuing.");
 
         return feedback.toString();
     }

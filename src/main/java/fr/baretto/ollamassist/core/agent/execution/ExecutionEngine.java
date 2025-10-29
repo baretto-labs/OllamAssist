@@ -51,7 +51,7 @@ public class ExecutionEngine {
                 return TaskResult.failure(error);
             }
 
-            log.error("🎯 USING EXECUTOR: {} for task type: {}", executor.getExecutorName(), task.getType());
+            log.error("USING EXECUTOR: {} for task type: {}", executor.getExecutorName(), task.getType());
 
             // Exécuter la tâche
             TaskResult result = executor.execute(task);
@@ -114,7 +114,7 @@ public class ExecutionEngine {
         GitOperationExecutor gitExecutor = new GitOperationExecutor(project);
         BuildOperationExecutor buildExecutor = new BuildOperationExecutor(project);
 
-        // VRAIS EXECUTORS - Production Ready ! 🚀
+        // VRAIS EXECUTORS - Production Ready ! 
         executors.put(Task.TaskType.FILE_OPERATION, fileExecutor);
         executors.put(Task.TaskType.CODE_MODIFICATION, codeExecutor);
         executors.put(Task.TaskType.GIT_OPERATION, gitExecutor);
@@ -125,7 +125,7 @@ public class ExecutionEngine {
         executors.put(Task.TaskType.MCP_OPERATION, debugExecutor);
         executors.put(Task.TaskType.COMPOSITE, debugExecutor);
 
-        log.error("🚀 PRODUCTION EXECUTORS: FILE -> {}, CODE -> {}, GIT -> {}, BUILD -> {}, DEBUG -> {}",
+        log.error("PRODUCTION EXECUTORS: FILE -> {}, CODE -> {}, GIT -> {}, BUILD -> {}, DEBUG -> {}",
                 fileExecutor.getExecutorName(), codeExecutor.getExecutorName(),
                 gitExecutor.getExecutorName(), buildExecutor.getExecutorName(), debugExecutor.getExecutorName());
         log.info("Initialized {} task executors", executors.size());
@@ -180,7 +180,7 @@ public class ExecutionEngine {
         if (notificationService != null) {
             notificationService.dispose();
         }
-        log.info("🧹 ExecutionEngine disposed");
+        log.info("ExecutionEngine disposed");
     }
 
     /**

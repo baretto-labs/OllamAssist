@@ -15,6 +15,7 @@ public class AgentChatIntegration {
     private final Project project;
     private final AgentCoordinator agentCoordinator;
     private final MessageBusConnection messageBusConnection;
+    private ChatFallbackHandler fallbackHandler;
 
     public AgentChatIntegration(Project project, AgentCoordinator agentCoordinator) {
         this.project = project;

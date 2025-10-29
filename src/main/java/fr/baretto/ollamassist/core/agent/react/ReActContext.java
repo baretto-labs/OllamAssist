@@ -64,7 +64,7 @@ public class ReActContext {
      */
     public void markValidationCompleted() {
         this.completedValidation = true;
-        log.info("✅ Validation marked as completed");
+        log.info("Validation marked as completed");
     }
 
     /**
@@ -73,7 +73,7 @@ public class ReActContext {
     public void markAsRequiringFix(String reason) {
         this.requiresFix = true;
         this.fixReason = reason;
-        log.info("🔧 Context marked as requiring fix: {}", reason);
+        log.info("Context marked as requiring fix: {}", reason);
     }
 
     /**
@@ -193,8 +193,7 @@ public class ReActContext {
             }
             if (i < observationSteps.size()) {
                 ObservationStep obs = observationSteps.get(i);
-                history.append("OBSERVE: ").append(obs.isSuccess() ? "✅" : "❌")
-                        .append(" ").append(obs.getResult()).append("\n");
+                history.append("OBSERVE: ").append(obs.getResult()).append("\n");
             }
             history.append("\n");
         }

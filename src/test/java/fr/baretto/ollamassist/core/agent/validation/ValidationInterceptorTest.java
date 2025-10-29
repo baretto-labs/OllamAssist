@@ -95,7 +95,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
 
         // Then
         assertThat(feedback).contains("File created");
-        assertThat(feedback).contains("✅");
+        assertThat(feedback).contains("");
         assertThat(feedback).contains("validated");
     }
 
@@ -113,7 +113,7 @@ public class ValidationInterceptorTest extends BasePlatformTestCase {
 
         // Then
         assertThat(feedback).contains("File created");
-        assertThat(feedback).contains("⚠️");
+        assertThat(feedback).contains("️");
         assertThat(feedback).contains("Compilation validation failed");
         assertThat(feedback).contains("Missing import");
         assertThat(feedback).contains("Unknown symbol");

@@ -63,15 +63,15 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
                     ? task.getParameter("content", String.class)
                     : "";
 
-            log.error("📁 FILE OPERATION: Creating file '{}' with content length: {}", filePath, content.length());
+            log.error("FILE OPERATION: Creating file '{}' with content length: {}", filePath, content.length());
 
             VirtualFile projectRoot = project.getBaseDir();
             if (projectRoot == null) {
-                log.error("❌ PROJECT ROOT IS NULL!");
+                log.error("PROJECT ROOT IS NULL!");
                 return TaskResult.failure("Impossible de déterminer le répertoire racine du projet");
             }
 
-            log.error("📁 PROJECT ROOT: {}", projectRoot.getPath());
+            log.error("PROJECT ROOT: {}", projectRoot.getPath());
 
             // Exécuter dans un WriteCommandAction pour IntelliJ
             final Exception[] writingException = {null};
@@ -79,32 +79,32 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
             WriteCommandAction.runWriteCommandAction(project, () -> {
                 try {
                     Path targetPath = Paths.get(filePath);
-                    log.error("📁 TARGET PATH: {}", targetPath);
+                    log.error("TARGET PATH: {}", targetPath);
 
                     // Créer les répertoires parents si nécessaire
                     VirtualFile parentDir = projectRoot;
                     if (targetPath.getParent() != null) {
-                        log.error("📁 CREATING PARENT DIRS: {}", targetPath.getParent());
+                        log.error("CREATING PARENT DIRS: {}", targetPath.getParent());
                         parentDir = VfsUtil.createDirectoryIfMissing(projectRoot, targetPath.getParent().toString());
-                        log.error("📁 PARENT DIR CREATED: {}", parentDir.getPath());
+                        log.error("PARENT DIR CREATED: {}", parentDir.getPath());
                     }
 
                     // Créer le fichier
                     String fileName = targetPath.getFileName().toString();
-                    log.error("📁 CREATING FILE: {} in {}", fileName, parentDir.getPath());
+                    log.error("CREATING FILE: {} in {}", fileName, parentDir.getPath());
 
                     VirtualFile targetFile = parentDir.createChildData(this, fileName);
                     targetFile.setBinaryContent(content.getBytes());
 
-                    log.error("✅ FILE CREATED SUCCESSFULLY: {}", targetFile.getPath());
+                    log.error("FILE CREATED SUCCESSFULLY: {}", targetFile.getPath());
                     log.info("File created: {}", filePath);
 
                 } catch (IOException e) {
-                    log.error("❌ IOException during file creation: {}", filePath, e);
+                    log.error("IOException during file creation: {}", filePath, e);
                     writingException[0] = e;
                     throw new RuntimeException(e);
                 } catch (Exception e) {
-                    log.error("❌ Unexpected error during file creation: {}", filePath, e);
+                    log.error("Unexpected error during file creation: {}", filePath, e);
                     writingException[0] = e;
                     throw new RuntimeException(e);
                 }
@@ -117,7 +117,7 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
             return TaskResult.success("Fichier créé avec succès: " + filePath);
 
         } catch (Exception e) {
-            log.error("❌ Error creating file: {}", filePath, e);
+            log.error("Error creating file: {}", filePath, e);
             return TaskResult.failure("Erreur lors de la création du fichier: " + e.getMessage());
         }
     }

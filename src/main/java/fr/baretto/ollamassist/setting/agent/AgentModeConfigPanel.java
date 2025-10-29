@@ -25,7 +25,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
     private final ComboBox<AgentModeSettings.AgentSecurityLevel> securityLevelComboBox;
     private final JBCheckBox taskProgressUIEnabledCheckBox;
 
-    // ✨ Agent model configuration
+    // Agent model configuration
     private final JBTextField agentModelNameField;
     private final JBTextField agentOllamaUrlField;
     private final JButton checkModelButton;
@@ -47,7 +47,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         securityLevelComboBox = new ComboBox<>(AgentModeSettings.AgentSecurityLevel.values());
         taskProgressUIEnabledCheckBox = new JBCheckBox("Afficher l'interface de progression des tâches");
 
-        // ✨ Agent model configuration
+        // Agent model configuration
         agentModelNameField = new JBTextField(20);
         agentOllamaUrlField = new JBTextField(30);
         checkModelButton = new JButton("Vérifier la disponibilité");
@@ -65,7 +65,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
     }
 
     private void setupUI() {
-        // ✨ Model configuration panel
+        // Model configuration panel
         JPanel modelPanel = new JBPanel<>(new GridBagLayout());
         modelPanel.setBorder(JBUI.Borders.empty(5));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -188,7 +188,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
             }
         });
 
-        // ✨ Check model availability button
+        // Check model availability button
         checkModelButton.addActionListener(e -> checkModelAvailability());
 
         // Initial update
@@ -203,12 +203,12 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         String ollamaUrl = agentOllamaUrlField.getText().trim();
 
         if (modelName.isEmpty()) {
-            modelStatusLabel.setText("⚠️ Veuillez entrer un nom de modèle");
+            modelStatusLabel.setText("️ Veuillez entrer un nom de modèle");
             modelStatusLabel.setForeground(JBColor.ORANGE);
             return;
         }
 
-        modelStatusLabel.setText("🔍 Vérification en cours...");
+        modelStatusLabel.setText("Vérification en cours...");
         modelStatusLabel.setForeground(JBColor.GRAY);
         checkModelButton.setEnabled(false);
 
@@ -232,18 +232,18 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
                 checkModelButton.setEnabled(true);
 
                 if (result.isAvailable()) {
-                    modelStatusLabel.setText("✅ Modèle disponible");
+                    modelStatusLabel.setText("Modèle disponible");
                     modelStatusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(50, 200, 50)));
                 } else if (result.isNotAvailable()) {
                     String message = String.format(
-                            "<html>❌ Modèle non disponible<br>" +
+                            "<html>Modèle non disponible<br>" +
                             "<small>Exécutez: <b>ollama pull %s</b></small></html>",
                             modelName
                     );
                     modelStatusLabel.setText(message);
                     modelStatusLabel.setForeground(JBColor.RED);
                 } else if (result.isError()) {
-                    modelStatusLabel.setText("❌ Erreur: " + result.getErrorMessage());
+                    modelStatusLabel.setText("Erreur: " + result.getErrorMessage());
                     modelStatusLabel.setForeground(JBColor.RED);
                 }
             });
@@ -294,7 +294,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         securityLevelComboBox.setSelectedItem(settings.getSecurityLevel());
         taskProgressUIEnabledCheckBox.setSelected(settings.isTaskProgressUIEnabled());
 
-        // ✨ Load agent model settings
+        // Load agent model settings
         agentModelNameField.setText(settings.getAgentModelName() != null ? settings.getAgentModelName() : "gpt-oss");
         agentOllamaUrlField.setText(settings.getAgentOllamaUrl() != null ? settings.getAgentOllamaUrl() : "");
 
@@ -316,7 +316,7 @@ public class AgentModeConfigPanel extends JBPanel<AgentModeConfigPanel> {
         settings.setSnapshotEnabled(snapshotEnabledCheckBox.isSelected());
         settings.setMcpIntegrationEnabled(mcpIntegrationEnabledCheckBox.isSelected());
 
-        // ✨ Save agent model settings
+        // Save agent model settings
         String modelName = agentModelNameField.getText().trim();
         if (!modelName.isEmpty()) {
             settings.setAgentModelName(modelName);

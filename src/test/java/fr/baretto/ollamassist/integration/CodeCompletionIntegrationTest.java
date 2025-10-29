@@ -43,7 +43,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
 
         // Skip tests if Ollama container failed to start
         if (!isOllamaAvailable()) {
-            log.warn("⚠️ Ollama container not available, tests will be skipped");
+            log.warn("️ Ollama container not available, tests will be skipped");
             return;
         }
 
@@ -98,7 +98,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .as("SuggestionManager service should be registered as a project service")
                 .isNotNull();
 
-        log.info("✅ Code completion services initialization test passed");
+        log.info("Code completion services initialization test passed");
     }
 
     @Test
@@ -125,7 +125,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .contains("TestClass")
                 .contains("package com.example");
 
-        log.info("✅ Editor context creation test passed");
+        log.info("Editor context creation test passed");
     }
 
     @Test
@@ -156,7 +156,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .isNotNull()
                 .isNotBlank();
 
-        log.info("✅ Simple method completion test passed with suggestion: {}",
+        log.info("Simple method completion test passed with suggestion: {}",
                 completion.substring(0, Math.min(50, completion.length())));
     }
 
@@ -176,7 +176,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
             assertThat(result)
                     .as("Completion should be returned or handle timeout gracefully")
                     .isNotNull();
-            log.info("✅ Completion received successfully");
+            log.info("Completion received successfully");
         } catch (Exception e) {
             log.info("Completion timeout handled gracefully: {}", e.getClass().getSimpleName());
             // Timeout is acceptable behavior
@@ -185,7 +185,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                     .isNotNull();
         }
 
-        log.info("✅ Completion timeout handling test passed");
+        log.info("Completion timeout handling test passed");
     }
 
     @Test
@@ -222,7 +222,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .isNotNull()
                 .isNotBlank();
 
-        log.info("✅ Class field completion test passed with suggestion: {}", completion);
+        log.info("Class field completion test passed with suggestion: {}", completion);
     }
 
     @Test
@@ -251,7 +251,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                     .isNotNull();
         }
 
-        log.info("✅ Invalid context handling test passed");
+        log.info("Invalid context handling test passed");
     }
 
     @Test
@@ -287,7 +287,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .as("At least one sequential completion request should succeed")
                 .isGreaterThan(0);
 
-        log.info("✅ Sequential completion requests test passed ({}/{} succeeded)", successCount, contexts.length);
+        log.info("Sequential completion requests test passed ({}/{} succeeded)", successCount, contexts.length);
     }
 
     @Test
@@ -307,7 +307,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
         // Note: Full integration with editor inlays requires UI testing framework
         // This test verifies the service layer is properly initialized
 
-        log.info("✅ Suggestion manager integration test passed");
+        log.info("Suggestion manager integration test passed");
     }
 
     @Test
@@ -343,7 +343,7 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .isNotNull()
                 .isNotBlank();
 
-        log.info("✅ Different file type completion test completed successfully");
+        log.info("Different file type completion test completed successfully");
     }
 
     @Test
@@ -367,6 +367,6 @@ public class CodeCompletionIntegrationTest extends OllamaIntegrationTestBase {
                 .as("Test file should still be available")
                 .isNotNull();
 
-        log.info("✅ Resource cleanup test passed");
+        log.info("Resource cleanup test passed");
     }
 }

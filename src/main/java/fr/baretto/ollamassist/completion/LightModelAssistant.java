@@ -177,8 +177,8 @@ public class LightModelAssistant {
                 3. Write a single commit message that summarizes **that goal**.
                 
                 Examples:
-                ❌ `refactor: clean diff logic` → (bad, if the goal was to enable auto commit message generation)
-                ✅ `feat: add automatic commit message generation` → (good, reflects the purpose)
+                `refactor: clean diff logic` → (bad, if the goal was to enable auto commit message generation)
+                `feat: add automatic commit message generation` → (good, reflects the purpose)
                 
                 Only return the final commit message. No explanation.
                 

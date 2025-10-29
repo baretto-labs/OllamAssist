@@ -128,7 +128,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
             // Exécuter la modification dans un WriteCommandAction
             WriteCommandAction.runWriteCommandAction(project, () -> {
                 try {
-                    log.info("🔧 Adding method to class {} in {}", className, filePath);
+                    log.info("Adding method to class {} in {}", className, filePath);
 
                     // Trouver la position d'insertion (avant la dernière accolade de la classe)
                     String currentContent = document.getText();
@@ -174,7 +174,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
 
             WriteCommandAction.runWriteCommandAction(project, () -> {
                 try {
-                    log.info("🔧 Modifying method {} in {}", methodName, filePath);
+                    log.info("Modifying method {} in {}", methodName, filePath);
 
                     String content = document.getText();
 
@@ -185,7 +185,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
                     if (methodPos >= 0) {
                         // Pour une démo, on remplace tout le contenu après le nom de méthode
                         // En production, on ferait une analyse plus sophistiquée
-                        log.info("🔧 Found method at position {}, replacement logic would go here", methodPos);
+                        log.info("Found method at position {}, replacement logic would go here", methodPos);
                         // TODO: Implémenter logique de remplacement sophistiquée
                     } else {
                         log.warn("Method {} not found in {}", methodName, filePath);
@@ -230,7 +230,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
                         if (insertPos > 0) {
                             String toInsert = "\nimport " + importStatement + ";";
                             document.insertString(insertPos, toInsert);
-                            log.info("🔧 Added import: {}", importStatement);
+                            log.info("Added import: {}", importStatement);
                         }
                     }
                 } catch (Exception e) {
@@ -267,7 +267,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
                     Document document = FileDocumentManager.getInstance().getDocument(file);
                     if (document != null) {
                         document.setText(newContent);
-                        log.info("🔧 Replaced content in file: {}", filePath);
+                        log.info("Replaced content in file: {}", filePath);
                     }
                 } catch (Exception e) {
                     throw new RuntimeException("Erreur lors du remplacement de contenu", e);
@@ -317,7 +317,7 @@ public class CodeModificationExecutor implements ExecutionEngine.TaskExecutor, S
                         }
 
                         document.insertString(insertPos, codeToInsert);
-                        log.info("🔧 Inserted code at position {} in {}", insertPos, filePath);
+                        log.info("Inserted code at position {} in {}", insertPos, filePath);
                     }
                 } catch (Exception e) {
                     throw new RuntimeException("Erreur lors de l'insertion de code", e);

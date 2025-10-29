@@ -29,7 +29,7 @@ public class ModelCapabilityDiagnostic {
         String modelName = settings.getCompletionModelName();
         String baseUrl = settings.getCompletionOllamaUrl();
 
-        log.info("🔍 DIAGNOSTIC: Testing model capabilities for: {}", modelName);
+        log.info("DIAGNOSTIC: Testing model capabilities for: {}", modelName);
 
         return diagnoseModel(modelName, baseUrl);
     }
@@ -86,7 +86,7 @@ public class ModelCapabilityDiagnostic {
         }
 
         ModelCapabilityReport finalReport = report.build();
-        log.info("🔍 DIAGNOSTIC COMPLETE for {}: Function Calling={}, Structured Output={}, Recommended={}",
+        log.info("DIAGNOSTIC COMPLETE for {}: Function Calling={}, Structured Output={}, Recommended={}",
                 modelName, finalReport.isFunctionCallingSupported(),
                 finalReport.isStructuredOutputSupported(), finalReport.isRecommendedForAgent());
 
@@ -136,11 +136,11 @@ public class ModelCapabilityDiagnostic {
             String result = testAgent.testFunctionCall("test");
 
             // Si on arrive ici sans exception, function calling fonctionne
-            log.info("✅ Function calling test successful for {}: {}", modelName, result);
+            log.info("Function calling test successful for {}: {}", modelName, result);
             return true;
 
         } catch (Exception e) {
-            log.warn("❌ Function calling test failed for {}: {}", modelName, e.getMessage());
+            log.warn("Function calling test failed for {}: {}", modelName, e.getMessage());
             return false;
         }
     }
@@ -279,21 +279,21 @@ public class ModelCapabilityDiagnostic {
 
         public String generateReport() {
             StringBuilder sb = new StringBuilder();
-            sb.append("🔍 Model Capability Report for: ").append(modelName).append("\n\n");
+            sb.append("Model Capability Report for: ").append(modelName).append("\n\n");
 
-            sb.append("✅ Basic Connectivity: ").append(basicConnectivity ? "✓" : "✗").append("\n");
-            sb.append("🔧 Function Calling: ").append(functionCallingSupported ? "✓" : "✗").append("\n");
-            sb.append("📄 Structured Output: ").append(structuredOutputSupported ? "✓" : "✗").append("\n");
-            sb.append("🎯 Recommended for Agent: ").append(recommendedForAgent ? "✓" : "✗").append("\n\n");
+            sb.append("Basic Connectivity: ").append(basicConnectivity ? "" : "").append("\n");
+            sb.append("Function Calling: ").append(functionCallingSupported ? "" : "").append("\n");
+            sb.append("Structured Output: ").append(structuredOutputSupported ? "" : "").append("\n");
+            sb.append("Recommended for Agent: ").append(recommendedForAgent ? "" : "").append("\n\n");
 
             if (!issues.isEmpty()) {
-                sb.append("⚠️ Issues:\n");
+                sb.append("️ Issues:\n");
                 issues.forEach(issue -> sb.append("  - ").append(issue).append("\n"));
                 sb.append("\n");
             }
 
             if (!recommendations.isEmpty()) {
-                sb.append("💡 Recommendations:\n");
+                sb.append("Recommendations:\n");
                 recommendations.forEach(rec -> sb.append("  - ").append(rec).append("\n"));
             }
 

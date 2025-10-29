@@ -13,7 +13,7 @@ public class LangChain4JToolTest {
 
     @Test
     public void verifyToolAnnotationsArePresent() {
-        System.out.println("🔍 VERIFICATION: Annotations @Tool dans IntelliJDevelopmentAgent");
+        System.out.println("VERIFICATION: Annotations @Tool dans IntelliJDevelopmentAgent");
 
         Class<IntelliJDevelopmentAgent> agentClass = IntelliJDevelopmentAgent.class;
         Method[] methods = agentClass.getMethods();
@@ -23,7 +23,7 @@ public class LangChain4JToolTest {
             Tool toolAnnotation = method.getAnnotation(Tool.class);
             if (toolAnnotation != null) {
                 toolCount++;
-                System.out.println("✅ Tool trouvé: " + method.getName() + " - " + toolAnnotation.value());
+                System.out.println("Tool trouvé: " + method.getName() + " - " + toolAnnotation.value());
 
                 // Vérifier les paramètres
                 var paramTypes = method.getParameterTypes();
@@ -34,33 +34,33 @@ public class LangChain4JToolTest {
                     for (var annotation : paramAnnotations[i]) {
                         if (annotation instanceof P p) {
                             hasP = true;
-                            System.out.println("  📝 Param " + i + ": " + paramTypes[i].getSimpleName() + " - " + p.value());
+                            System.out.println("  Param " + i + ": " + paramTypes[i].getSimpleName() + " - " + p.value());
                         }
                     }
                     if (!hasP) {
-                        System.out.println("  ⚠️ Param " + i + ": " + paramTypes[i].getSimpleName() + " (pas d'annotation @P)");
+                        System.out.println("  ️ Param " + i + ": " + paramTypes[i].getSimpleName() + " (pas d'annotation @P)");
                     }
                 }
             }
         }
 
-        System.out.println("🔍 Total tools trouvés: " + toolCount);
+        System.out.println("Total tools trouvés: " + toolCount);
 
         if (toolCount == 0) {
-            System.out.println("❌ PROBLEME: Aucun tool @Tool trouvé!");
+            System.out.println("PROBLEME: Aucun tool @Tool trouvé!");
         } else {
-            System.out.println("✅ " + toolCount + " tools détectés correctement");
+            System.out.println("" + toolCount + " tools détectés correctement");
         }
     }
 
     @Test
     public void verifySimpleToolClass() {
-        System.out.println("🔍 VERIFICATION: Création d'une classe de test avec tool simple");
+        System.out.println("VERIFICATION: Création d'une classe de test avec tool simple");
 
         // Créer une classe simple avec un tool pour test
         SimpleTestTool testTool = new SimpleTestTool();
 
-        System.out.println("✅ SimpleTestTool créé");
+        System.out.println("SimpleTestTool créé");
 
         // Vérifier que la méthode a l'annotation
         try {
@@ -68,12 +68,12 @@ public class LangChain4JToolTest {
             Tool annotation = testMethod.getAnnotation(Tool.class);
 
             if (annotation != null) {
-                System.out.println("✅ Annotation @Tool détectée: " + annotation.value());
+                System.out.println("Annotation @Tool détectée: " + annotation.value());
             } else {
-                System.out.println("❌ Annotation @Tool non détectée");
+                System.out.println("Annotation @Tool non détectée");
             }
         } catch (NoSuchMethodException e) {
-            System.out.println("❌ Méthode testTool non trouvée: " + e.getMessage());
+            System.out.println("Méthode testTool non trouvée: " + e.getMessage());
         }
     }
 
@@ -81,7 +81,7 @@ public class LangChain4JToolTest {
     public static class SimpleTestTool {
         @Tool("Test tool for debugging")
         public String testTool(@P("Input parameter") String input) {
-            System.out.println("🔧 TEST TOOL CALLED: " + input);
+            System.out.println("TEST TOOL CALLED: " + input);
             return "Tool result: " + input;
         }
     }

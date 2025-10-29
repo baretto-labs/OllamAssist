@@ -56,7 +56,7 @@ public class MultiSuggestionManager {
      * Shows a single suggestion (fallback mode).
      */
     public void showSuggestion(@NotNull Editor editor, int offset, @NotNull String suggestion) {
-        log.info("🎭 MultiSuggestionManager.showSuggestion called with: '{}'", suggestion);
+        log.info("MultiSuggestionManager.showSuggestion called with: '{}'", suggestion);
         showSuggestions(editor, offset, List.of(suggestion));
     }
 
@@ -64,13 +64,13 @@ public class MultiSuggestionManager {
      * Shows multiple suggestions with navigation support.
      */
     public void showSuggestions(@NotNull Editor editor, int offset, @NotNull List<String> suggestionList) {
-        log.info("🎭 MultiSuggestionManager.showSuggestions called with {} suggestions at offset {}", suggestionList.size(), offset);
+        log.info("MultiSuggestionManager.showSuggestions called with {} suggestions at offset {}", suggestionList.size(), offset);
 
         disposeLoadingInlay();
         disposeCurrentInlay();
 
         if (suggestionList.isEmpty()) {
-            log.warn("⚠️ No suggestions to display - suggestionList is empty");
+            log.warn("️ No suggestions to display - suggestionList is empty");
             return;
         }
 
@@ -78,10 +78,10 @@ public class MultiSuggestionManager {
         this.currentSuggestionIndex = 0;
         this.hasMultipleSuggestions = suggestionList.size() > 1;
 
-        log.info("📋 About to display current suggestion: '{}'", suggestions.get(currentSuggestionIndex));
+        log.info("About to display current suggestion: '{}'", suggestions.get(currentSuggestionIndex));
         displayCurrentSuggestion(editor, offset);
 
-        log.info("✅ Successfully set up {} suggestion(s), current index: {}", suggestions.size(), currentSuggestionIndex);
+        log.info("Successfully set up {} suggestion(s), current index: {}", suggestions.size(), currentSuggestionIndex);
     }
 
     /**
@@ -118,7 +118,7 @@ public class MultiSuggestionManager {
      * Displays the current suggestion with navigation hints.
      */
     private void displayCurrentSuggestion(@NotNull Editor editor, int offset) {
-        log.info("🎨 displayCurrentSuggestion called with offset: {}", offset);
+        log.info("displayCurrentSuggestion called with offset: {}", offset);
         disposeCurrentInlay();
 
         Application application = ApplicationManager.getApplication();
@@ -136,10 +136,10 @@ public class MultiSuggestionManager {
     private void displaySuggestionInlay(@NotNull Editor editor, int offset) {
         try {
             String currentSuggestion = suggestions.get(currentSuggestionIndex);
-            log.info("🎨 Creating inlay for suggestion: '{}'", currentSuggestion);
+            log.info("Creating inlay for suggestion: '{}'", currentSuggestion);
 
             List<String> lines = Arrays.asList(currentSuggestion.split("\n"));
-            log.info("🎨 Split into {} lines", lines.size());
+            log.info("Split into {} lines", lines.size());
 
             InlayModel inlayModel = editor.getInlayModel();
 
@@ -151,17 +151,17 @@ public class MultiSuggestionManager {
                     suggestions.size()
             );
 
-            log.info("🎨 Adding block element to InlayModel at offset: {}", offset);
+            log.info("Adding block element to InlayModel at offset: {}", offset);
             currentInlay = inlayModel.addBlockElement(offset, true, false, 0, renderer);
 
             if (currentInlay != null) {
-                log.info("✅ Successfully created inlay: {}", currentInlay);
+                log.info("Successfully created inlay: {}", currentInlay);
             } else {
-                log.error("❌ Failed to create inlay - addBlockElement returned null");
+                log.error("Failed to create inlay - addBlockElement returned null");
             }
 
         } catch (Exception e) {
-            log.error("❌ Error creating inlay display", e);
+            log.error("Error creating inlay display", e);
         }
     }
 

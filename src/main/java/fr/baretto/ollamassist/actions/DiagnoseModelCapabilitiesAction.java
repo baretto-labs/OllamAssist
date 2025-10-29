@@ -38,11 +38,11 @@ public class DiagnoseModelCapabilitiesAction extends AnAction {
                 "qwen2.5"        // Très capable
         );
 
-        showProgressNotification("🔍 Testing model capabilities...", project);
+        showProgressNotification("Testing model capabilities...", project);
 
         CompletableFuture.runAsync(() -> {
             StringBuilder report = new StringBuilder();
-            report.append("🔍 MODEL CAPABILITY DIAGNOSTIC REPORT\n");
+            report.append("MODEL CAPABILITY DIAGNOSTIC REPORT\n");
             report.append("=====================================\n\n");
 
             ModelCapabilityDiagnostic diagnostic = new ModelCapabilityDiagnostic(project);
@@ -58,13 +58,13 @@ public class DiagnoseModelCapabilitiesAction extends AnAction {
                     report.append("---\n\n");
 
                 } catch (Exception ex) {
-                    report.append("❌ Error testing ").append(modelName).append(": ")
+                    report.append("Error testing ").append(modelName).append(": ")
                             .append(ex.getMessage()).append("\n\n");
                 }
             }
 
             // Recommandations générales
-            report.append("🎯 GENERAL RECOMMENDATIONS\n");
+            report.append("GENERAL RECOMMENDATIONS\n");
             report.append("=========================\n");
             report.append("Based on current testing:\n\n");
 
@@ -111,7 +111,7 @@ public class DiagnoseModelCapabilitiesAction extends AnAction {
             Notification notification = new Notification(
                     "OllamAssist.Agent",
                     "Model Diagnostic Complete",
-                    "✅ Model capability diagnostic completed. Check the report for recommendations.",
+                    "Model capability diagnostic completed. Check the report for recommendations.",
                     NotificationType.INFORMATION
             );
             Notifications.Bus.notify(notification, project);

@@ -94,18 +94,18 @@ public final class AgentService {
         // Utiliser le service Ollama existant qui a RAG/web/context
         this.ollamaService = project.getService(OllamaService.class);
 
-        // ✨ Check agent model availability
+        // Check agent model availability
         ModelAvailabilityChecker checker = new ModelAvailabilityChecker();
         ModelAvailabilityChecker.ModelAvailabilityResult availabilityCheck = checker.checkAgentModelAvailability();
 
         if (!availabilityCheck.isAvailable()) {
-            log.error("❌ AGENT MODEL NOT AVAILABLE: {}", availabilityCheck.getUserMessage());
+            log.error("AGENT MODEL NOT AVAILABLE: {}", availabilityCheck.getUserMessage());
             // Will be handled in executeUserRequest
         } else {
-            log.info("✅ Agent model '{}' is available", agentSettings.getAgentModelName());
+            log.info("Agent model '{}' is available", agentSettings.getAgentModelName());
         }
 
-        // ✨ Use agent-specific model configuration (gpt-oss) instead of completion model
+        // Use agent-specific model configuration (gpt-oss) instead of completion model
         String agentUrl = agentSettings.getAgentOllamaUrl() != null
                 ? agentSettings.getAgentOllamaUrl()
                 : OllamAssistSettings.getInstance().getCompletionOllamaUrl();
@@ -125,7 +125,7 @@ public final class AgentService {
                 .build();
 
         // Activer les tools natifs LangChain4J avec Ollama
-        log.info("🔧 Initializing agent with native tools");
+        log.info("Initializing agent with native tools");
         boolean nativeToolsSuccess = false;
         AgentInterface tempInterface = null;
 
@@ -135,10 +135,10 @@ public final class AgentService {
                     .tools(developmentAgent) // ACTIVATION DES TOOLS NATIFS
                     .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                     .build();
-            log.info("✅ NATIVE TOOLS: Successfully initialized with tools");
+            log.info("NATIVE TOOLS: Successfully initialized with tools");
             nativeToolsSuccess = true;
         } catch (Exception e) {
-            log.error("❌ NATIVE TOOLS: Failed to initialize with tools, falling back to no-tools mode", e);
+            log.error("NATIVE TOOLS: Failed to initialize with tools, falling back to no-tools mode", e);
             // Fallback si les tools ne marchent pas
             tempInterface = AiServices.builder(AgentInterface.class)
                     .chatModel(chatModel)
@@ -149,7 +149,7 @@ public final class AgentService {
         this.agentInterface = tempInterface;
         this.useNativeTools = nativeToolsSuccess;
 
-        log.info("🔧 AGENT ARCHITECTURE: {} mode activated with model '{}'",
+        log.info("AGENT ARCHITECTURE: {} mode activated with model '{}'",
                 useNativeTools ? "NATIVE TOOLS" : "JSON FALLBACK", agentModelName);
         log.info("AgentService initialized with LangChain4J tools for project: {}", project.getName());
     }
@@ -158,16 +158,16 @@ public final class AgentService {
      * Exécute une requête utilisateur avec streaming unifié intelligent
      */
     public void executeUserRequestWithStreaming(String userRequest) {
-        log.error("🚀 DEBUG: UNIFIED STREAMING AGENT: Processing user request: {}", userRequest);
+        log.error("DEBUG: UNIFIED STREAMING AGENT: Processing user request: {}", userRequest);
 
-        // ✨ Vérifier si le modèle agent est disponible
+        // Vérifier si le modèle agent est disponible
         ModelAvailabilityChecker checker = new ModelAvailabilityChecker();
         ModelAvailabilityChecker.ModelAvailabilityResult modelCheck = checker.checkAgentModelAvailability();
 
         if (!modelCheck.isAvailable()) {
-            log.error("❌ Agent model not available: {}", modelCheck.getStatus());
+            log.error("Agent model not available: {}", modelCheck.getStatus());
 
-            // ✨ Afficher une notification visuelle riche selon le type d'erreur
+            // Afficher une notification visuelle riche selon le type d'erreur
             if (modelCheck.isNotAvailable()) {
                 fr.baretto.ollamassist.core.agent.ui.ModelNotAvailableNotification.showModelNotAvailable(project, modelCheck);
             } else if (modelCheck.isError()) {
@@ -193,15 +193,15 @@ public final class AgentService {
         try {
             // Détecter si c'est une action de développement ou une question
             if (isActionRequest(userRequest)) {
-                log.info("🛠️ ACTION detected - using development agent (streaming)");
+                log.info("️ ACTION detected - using development agent (streaming)");
                 executeActionRequestWithStreaming(userRequest);
             } else {
-                log.info("💬 QUESTION detected - using RAG chat (streaming)");
+                log.info("QUESTION detected - using RAG chat (streaming)");
                 executeChatRequestWithStreaming(userRequest);
             }
 
         } catch (Exception e) {
-            log.error("🚀 ERROR in unified streaming agent execution", e);
+            log.error("ERROR in unified streaming agent execution", e);
             // Notifier l'erreur via MessageBus
             project.getMessageBus()
                     .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
@@ -215,20 +215,20 @@ public final class AgentService {
     public CompletableFuture<String> executeUserRequest(String userRequest) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("🚀 UNIFIED AGENT: Processing user request: {}", userRequest);
+                log.info("UNIFIED AGENT: Processing user request: {}", userRequest);
 
                 // Détecter si c'est une action de développement ou une question
                 if (isActionRequest(userRequest)) {
-                    log.info("🛠️ ACTION detected - using development agent");
+                    log.info("️ ACTION detected - using development agent");
                     return executeActionRequest(userRequest);
                 } else {
-                    log.info("💬 QUESTION detected - using RAG chat");
+                    log.info("QUESTION detected - using RAG chat");
                     return executeChatRequest(userRequest);
                 }
 
             } catch (Exception e) {
-                log.error("🚀 ERROR in unified agent execution", e);
-                return "❌ Erreur lors de l'exécution: " + e.getMessage();
+                log.error("ERROR in unified agent execution", e);
+                return "Erreur lors de l'exécution: " + e.getMessage();
             }
         });
     }
@@ -239,13 +239,13 @@ public final class AgentService {
     private boolean isActionRequest(String userRequest) {
         String lower = userRequest.toLowerCase();
 
-        log.error("🔍 DEBUG: Analyzing request: '{}'", userRequest);
+        log.error("DEBUG: Analyzing request: '{}'", userRequest);
 
         // Exclure les phrases de clarification ou de reformulation UNIQUEMENT si explicitement mentionnées
         if (lower.startsWith("reformule") || lower.startsWith("clarifi") || lower.startsWith("explique") ||
                 lower.contains("qu'est-ce que") || lower.contains("comment ça") ||
                 lower.contains("je veux dire") || lower.contains("en fait")) {
-            log.error("🔍 DEBUG: isActionRequest('{}') = false (reformulation explicite détectée)", userRequest);
+            log.error("DEBUG: isActionRequest('{}') = false (reformulation explicite détectée)", userRequest);
             return false;
         }
 
@@ -257,7 +257,7 @@ public final class AgentService {
         isAction = isAction || lower.contains("commit") || lower.contains("push") || lower.contains("build") ||
                 lower.contains("compile") || lower.contains("test") || lower.contains("refactor");
 
-        log.error("🔍 DEBUG: isActionRequest('{}') = {}", userRequest, isAction);
+        log.error("DEBUG: isActionRequest('{}') = {}", userRequest, isAction);
         return isAction;
     }
 
@@ -267,8 +267,8 @@ public final class AgentService {
     private String executeActionRequest(String userRequest) {
         try {
             if (useNativeTools) {
-                // ✨ NEW: Use explicit ReAct loop controller
-                log.info("🔧 NATIVE MODE: Using explicit ReAct loop controller");
+                // NEW: Use explicit ReAct loop controller
+                log.info("NATIVE MODE: Using explicit ReAct loop controller");
                 ReActLoopController controller = new ReActLoopController(
                         project,
                         developmentAgent,
@@ -288,7 +288,7 @@ public final class AgentService {
                 }
             } else {
                 // MODE FALLBACK: Parser le JSON et exécuter manuellement
-                log.info("📄 FALLBACK MODE: Using JSON parsing");
+                log.info("FALLBACK MODE: Using JSON parsing");
                 ;
                 String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
                 String jsonResult = agentInterface.executeRequest(fullRequest);
@@ -296,7 +296,7 @@ public final class AgentService {
             }
         } catch (Exception e) {
             log.error("Error executing action request", e);
-            return "❌ Erreur lors de l'exécution de l'action: " + e.getMessage();
+            return "Erreur lors de l'exécution de l'action: " + e.getMessage();
         }
     }
 
@@ -306,10 +306,10 @@ public final class AgentService {
     private void executeChatRequestWithStreaming(String userRequest) {
         try {
             if (ollamaService != null && ollamaService.getAssistant() != null) {
-                log.info("💬 Using OllamaService with RAG for streaming chat");
+                log.info("Using OllamaService with RAG for streaming chat");
 
                 // Notifier le démarrage
-                log.error("🔍 DEBUG: Publishing agentProcessingStarted for: {}", userRequest);
+                log.error("DEBUG: Publishing agentProcessingStarted for: {}", userRequest);
                 project.getMessageBus()
                         .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
                         .agentProcessingStarted(userRequest);
@@ -361,8 +361,8 @@ public final class AgentService {
                     .agentProcessingStarted(userRequest);
 
             if (useNativeTools) {
-                // ✨ MODE NATIF: Utiliser ReActLoopController pour exécution réelle des tools
-                log.info("🔧 NATIVE MODE: Using explicit ReAct loop controller with streaming");
+                // MODE NATIF: Utiliser ReActLoopController pour exécution réelle des tools
+                log.info("NATIVE MODE: Using explicit ReAct loop controller with streaming");
 
                 CompletableFuture.runAsync(() -> {
                     ReActLoopController controller = new ReActLoopController(
@@ -395,7 +395,7 @@ public final class AgentService {
 
             } else if (ollamaService != null && ollamaService.getAssistant() != null) {
                 // MODE FALLBACK: JSON parsing avec streaming
-                log.info("📄 FALLBACK MODE: Using JSON parsing with streaming");
+                log.info("FALLBACK MODE: Using JSON parsing with streaming");
 
                 StringBuilder fullResponse = new StringBuilder();
                 String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
@@ -410,7 +410,7 @@ public final class AgentService {
                         })
                         .onCompleteResponse(chatResponse -> {
                             String jsonResult = fullResponse.toString();
-                            log.info("🛠️ Agent JSON response streaming completed");
+                            log.info("️ Agent JSON response streaming completed");
 
                             // Parser et exécuter les actions du JSON
                             String executionResult = parseAndExecuteActions(jsonResult);
@@ -479,14 +479,14 @@ public final class AgentService {
                 public void rejectActions(List<fr.baretto.ollamassist.core.agent.task.Task> tasks) {
                     project.getMessageBus()
                             .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                            .agentProcessingCompleted(userRequest, "❌ Actions rejetées par l'utilisateur.");
+                            .agentProcessingCompleted(userRequest, "Actions rejetées par l'utilisateur.");
                 }
 
                 @Override
                 public void modifyActions(List<fr.baretto.ollamassist.core.agent.task.Task> tasks) {
                     project.getMessageBus()
                             .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                            .agentProcessingCompleted(userRequest, "🔄 Modification des actions demandée. Veuillez reformuler votre demande.");
+                            .agentProcessingCompleted(userRequest, "Modification des actions demandée. Veuillez reformuler votre demande.");
                 }
             };
 
@@ -510,26 +510,26 @@ public final class AgentService {
         List<fr.baretto.ollamassist.core.agent.task.Task> tasks = new ArrayList<>();
         String lower = userRequest.toLowerCase();
 
-        log.error("🔍 DEBUG: analyzeRequestAndCreateTasks for: '{}'", userRequest);
+        log.error("DEBUG: analyzeRequestAndCreateTasks for: '{}'", userRequest);
 
         // Détection de création de classe Java ou fichier
         boolean hasCreateVerb = lower.contains("crée") || lower.contains("créer") || lower.contains("créé") || lower.contains("create");
         boolean hasClass = lower.contains("classe") || lower.contains("class");
         boolean hasFile = lower.contains("fichier") || lower.contains("file");
 
-        log.error("🔍 DEBUG: hasCreateVerb={}, hasClass={}, hasFile={}", hasCreateVerb, hasClass, hasFile);
+        log.error("DEBUG: hasCreateVerb={}, hasClass={}, hasFile={}", hasCreateVerb, hasClass, hasFile);
 
         if (hasCreateVerb) {
             if (hasClass) {
-                log.error("🔍 DEBUG: Creating Java class task");
+                log.error("DEBUG: Creating Java class task");
                 tasks.add(createJavaClassTask(userRequest));
             } else if (hasFile) {
-                log.error("🔍 DEBUG: Creating file task");
+                log.error("DEBUG: Creating file task");
                 tasks.add(createFileTask(userRequest));
             }
         }
 
-        log.error("🔍 DEBUG: Created {} tasks", tasks.size());
+        log.error("DEBUG: Created {} tasks", tasks.size());
         return tasks;
     }
 
@@ -575,7 +575,7 @@ public final class AgentService {
             message.append(String.format("   - Priorité: %s\n\n", task.getPriority().name()));
         }
 
-        message.append("⚠️ **Ces actions nécessitent votre validation avant exécution.**\n");
+        message.append("️ **Ces actions nécessitent votre validation avant exécution.**\n");
         message.append("Utilisez les boutons d'action pour approuver, rejeter ou modifier ces propositions.");
 
         return message.toString();
@@ -587,7 +587,7 @@ public final class AgentService {
     private void executeApprovedTasks(List<fr.baretto.ollamassist.core.agent.task.Task> tasks, String originalRequest) {
         CompletableFuture.supplyAsync(() -> {
                     StringBuilder results = new StringBuilder();
-                    results.append("✅ **Exécution des actions approuvées:**\n\n");
+                    results.append("**Exécution des actions approuvées:**\n\n");
 
                     for (fr.baretto.ollamassist.core.agent.task.Task task : tasks) {
                         task.markStarted();
@@ -597,7 +597,7 @@ public final class AgentService {
                             results.append(String.format("%s%n%s%n%n", task.getDescription(), taskResult));
                         } catch (Exception e) {
                             task.markFailed(e.getMessage());
-                            results.append(String.format("❌ %s%nErreur: %s%n%n", task.getDescription(), e.getMessage()));
+                            results.append(String.format("%s%nErreur: %s%n%n", task.getDescription(), e.getMessage()));
                         }
                     }
 
@@ -633,7 +633,7 @@ public final class AgentService {
     private String executeChatRequest(String userRequest) {
         try {
             if (ollamaService != null && ollamaService.getAssistant() != null) {
-                log.info("💬 Using OllamaService with RAG for chat");
+                log.info("Using OllamaService with RAG for chat");
 
                 // Collecter la réponse en streaming de manière synchrone
                 StringBuilder response = new StringBuilder();
@@ -659,7 +659,7 @@ public final class AgentService {
             }
         } catch (Exception e) {
             log.error("Error executing chat request", e);
-            return "❌ Erreur lors de la conversation: " + e.getMessage();
+            return "Erreur lors de la conversation: " + e.getMessage();
         }
     }
 
@@ -696,11 +696,11 @@ public final class AgentService {
      */
     private String parseAndExecuteActions(String jsonResponse) {
         try {
-            log.error("🔍 PARSING JSON: {}", jsonResponse);
+            log.error("PARSING JSON: {}", jsonResponse);
 
             // Extraire le JSON si c'est dans des ```json
             String cleanJson = extractJsonFromResponse(jsonResponse);
-            log.error("🔍 CLEAN JSON: {}", cleanJson);
+            log.error("CLEAN JSON: {}", cleanJson);
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(cleanJson);
@@ -714,7 +714,7 @@ public final class AgentService {
                     String tool = actionNode.get("tool").asText();
                     JsonNode parametersNode = actionNode.get("parameters");
 
-                    log.error("🔧 EXECUTING TOOL: {} with params: {}", tool, parametersNode);
+                    log.error("EXECUTING TOOL: {} with params: {}", tool, parametersNode);
 
                     String toolResult = executeToolAction(tool, parametersNode);
                     resultBuilder.append(toolResult).append("\n");
@@ -723,14 +723,14 @@ public final class AgentService {
 
             // Ajouter le message de l'agent
             if (messageNode != null) {
-                resultBuilder.append("\n📝 ").append(messageNode.asText());
+                resultBuilder.append("\n").append(messageNode.asText());
             }
 
             return resultBuilder.toString();
 
         } catch (Exception e) {
-            log.error("❌ Erreur lors du parsing JSON: {}", e.getMessage(), e);
-            return "❌ Erreur lors de l'exécution: " + e.getMessage() + "\n\nRéponse brute: " + jsonResponse;
+            log.error("Erreur lors du parsing JSON: {}", e.getMessage(), e);
+            return "Erreur lors de l'exécution: " + e.getMessage() + "\n\nRéponse brute: " + jsonResponse;
         }
     }
 
@@ -772,7 +772,7 @@ public final class AgentService {
      * Exécute une action tool spécifique
      */
     private String executeToolAction(String tool, JsonNode parameters) {
-        log.error("🛠️ EXECUTING: {} with {}", tool, parameters);
+        log.error("️ EXECUTING: {} with {}", tool, parameters);
 
         try {
             switch (tool) {
@@ -807,11 +807,11 @@ public final class AgentService {
                     );
 
                 default:
-                    return "❌ Tool inconnu: " + tool;
+                    return "Tool inconnu: " + tool;
             }
         } catch (Exception e) {
-            log.error("❌ Erreur lors de l'exécution du tool {}: {}", tool, e.getMessage(), e);
-            return "❌ Erreur lors de l'exécution du tool " + tool + ": " + e.getMessage();
+            log.error("Erreur lors de l'exécution du tool {}: {}", tool, e.getMessage(), e);
+            return "Erreur lors de l'exécution du tool " + tool + ": " + e.getMessage();
         }
     }
 

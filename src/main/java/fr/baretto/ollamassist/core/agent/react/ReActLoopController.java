@@ -42,7 +42,7 @@ public class ReActLoopController {
      * Executes a user request with explicit ReAct loop
      */
     public CompletableFuture<ReActResult> executeWithLoop(String userRequest) {
-        log.info("🔄 Starting ReAct loop for: {}", userRequest);
+        log.info("Starting ReAct loop for: {}", userRequest);
 
         ReActContext context = new ReActContext(userRequest, project);
 
@@ -62,7 +62,7 @@ public class ReActLoopController {
     private ReActResult runReActCycle(ReActContext context) {
         for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
             context.incrementIteration();
-            log.info("🔄 ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
+            log.info("ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
 
             // 1. THINK: Ask model to reason
             ThinkingResult thinking = askModelToThink(context);
@@ -78,7 +78,7 @@ public class ReActLoopController {
 
             // 2. Check if model has final answer
             if (thinking.hasFinalAnswer()) {
-                log.info("✅ Model provided final answer");
+                log.info("Model provided final answer");
                 return ReActResult.success(context, thinking.finalAnswer());
             }
 
@@ -106,19 +106,19 @@ public class ReActLoopController {
 
             // 5. DECIDE: Should we terminate?
             if (shouldTerminate(context, observation)) {
-                log.info("✅ ReAct cycle completed successfully");
+                log.info("ReAct cycle completed successfully");
                 return ReActResult.success(context, observation.message());
             }
 
             // 6. FIX: Prepare for next iteration if errors detected
             if (observation.hasErrors()) {
                 context.prepareFixIteration(observation.errors());
-                log.info("🔧 Preparing fix iteration for {} errors", observation.errors().size());
+                log.info("Preparing fix iteration for {} errors", observation.errors().size());
             }
         }
 
         // Max iterations reached
-        log.warn("⚠️ Max iterations reached without completion");
+        log.warn("️ Max iterations reached without completion");
         return ReActResult.maxIterationsReached(context);
     }
 
@@ -160,7 +160,7 @@ public class ReActLoopController {
         String toolName = thinking.toolName();
         Map<String, Object> params = thinking.parameters();
 
-        log.info("🔧 Executing action: {}", toolName);
+        log.info("Executing action: {}", toolName);
 
         try {
             String result = executeToolAction(toolName, params);
@@ -198,7 +198,7 @@ public class ReActLoopController {
                     (String) params.get("request"),
                     (String) params.get("scope")
             );
-            default -> "❌ Unknown tool: " + toolName;
+            default -> "Unknown tool: " + toolName;
         };
     }
 
@@ -206,7 +206,7 @@ public class ReActLoopController {
      * Observes the result of an action with automatic validation
      */
     private ObservationResult observeResult(ActionResult actionResult, String toolName, ReActContext context) {
-        log.debug("👁️ Observing result of: {}", toolName);
+        log.debug("️ Observing result of: {}", toolName);
 
         if (!actionResult.success()) {
             return ObservationResult.failure(
@@ -219,9 +219,9 @@ public class ReActLoopController {
         fr.baretto.ollamassist.core.agent.task.TaskResult taskResult =
                 fr.baretto.ollamassist.core.agent.task.TaskResult.success(actionResult.message());
 
-        // ✨ AUTOMATIC VALIDATION: Check if action requires compilation check
+        // AUTOMATIC VALIDATION: Check if action requires compilation check
         if (validationInterceptor.requiresCompilationCheck(toolName, taskResult)) {
-            log.info("🔍 Auto-validating compilation after {}", toolName);
+            log.info("Auto-validating compilation after {}", toolName);
 
             ValidationResult validation = validationInterceptor.autoValidate(
                     toolName,
@@ -231,7 +231,7 @@ public class ReActLoopController {
             if (validation.isSuccess()) {
                 context.markValidationCompleted();
                 return ObservationResult.success(
-                        actionResult.message() + "\n✅ Code validated - compilation successful"
+                        actionResult.message() + "\nCode validated - compilation successful"
                 );
             } else {
                 // Compilation failed - return errors for fixing
@@ -345,11 +345,11 @@ public class ReActLoopController {
         prompt.append("PREVIOUS OBSERVATION:\n");
 
         if (lastObs != null) {
-            prompt.append(lastObs.isSuccess() ? "✅ " : "❌ ");
+            prompt.append(lastObs.isSuccess() ? "" : "");
             prompt.append(lastObs.getResult()).append("\n");
 
             if (lastObs.hasErrors()) {
-                prompt.append("\n🔧 ERRORS TO FIX:\n");
+                prompt.append("\nERRORS TO FIX:\n");
                 for (String error : lastObs.getErrors()) {
                     prompt.append("  - ").append(error).append("\n");
                 }

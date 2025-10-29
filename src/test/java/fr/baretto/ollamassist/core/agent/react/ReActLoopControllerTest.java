@@ -252,7 +252,7 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
 
         // Then
         assertThat(successMessage).isEqualTo("All done");
-        assertThat(errorMessage).contains("❌");
+        assertThat(errorMessage).contains("");
         assertThat(errorMessage).contains("Failed");
     }
 
@@ -294,6 +294,6 @@ public class ReActLoopControllerTest extends BasePlatformTestCase {
         assertThat(history).contains("THINK:");
         assertThat(history).contains("ACT:");
         assertThat(history).contains("OBSERVE:");
-        assertThat(history).contains("✅");
+        assertThat(history).contains("");
     }
 }

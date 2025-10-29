@@ -164,7 +164,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         // Agent mode should be available
         assertThat(agentService.isAgentModeAvailable()).isTrue();
 
-        log.info("✅ Plugin initialization test passed");
+        log.info("Plugin initialization test passed");
     }
 
     @Test
@@ -193,7 +193,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
 
             @Override
             public void agentProcessingStarted(String userRequest) {
-                log.info("✅ Test received agentProcessingStarted: {}", userRequest);
+                log.info("Test received agentProcessingStarted: {}", userRequest);
                 if (userRequest.equals(testMessage)) {
                     messageProcessed.set(true);
                     processingResult.set("started");
@@ -206,12 +206,12 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
 
             @Override
             public void agentProcessingCompleted(String userRequest, String result) {
-                log.info("✅ Test received agentProcessingCompleted");
+                log.info("Test received agentProcessingCompleted");
             }
 
             @Override
             public void agentProcessingFailed(String userRequest, String error) {
-                log.warn("⚠️ Test received agentProcessingFailed: {}", error);
+                log.warn("️ Test received agentProcessingFailed: {}", error);
                 if (userRequest.equals(testMessage)) {
                     // Si le modèle n'est pas disponible, considérer que le message a été routé correctement
                     // même s'il n'a pas pu être traité
@@ -227,7 +227,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         });
 
         // Publish message
-        log.info("📤 Publishing test message: {}", testMessage);
+        log.info("Publishing test message: {}", testMessage);
         getProject().getMessageBus()
                 .syncPublisher(NewUserMessageNotifier.TOPIC)
                 .newUserMessage(testMessage);
@@ -244,11 +244,11 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
                 .as("Message should be processed by agent (either started or failed due to model unavailability)")
                 .isTrue();
 
-        log.info("✅ User message routing test passed - Result: {}", processingResult.get());
+        log.info("User message routing test passed - Result: {}", processingResult.get());
 
         // If the agent model is not available, log a warning but don't fail the test
         if (processingResult.get() != null && processingResult.get().startsWith("failed")) {
-            log.warn("⚠️ Agent model not available - test validates routing only: {}", processingResult.get());
+            log.warn("️ Agent model not available - test validates routing only: {}", processingResult.get());
         }
     }
 
@@ -272,7 +272,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         assertThat(chatQuestion).doesNotContain("crée");
         assertThat(chatQuestion).doesNotContain("créer");
 
-        log.info("✅ Request type detection test passed");
+        log.info("Request type detection test passed");
     }
 
     @Test
@@ -293,7 +293,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         assertThat(configSummary).isNotNull();
         assertThat(configSummary).contains("Sécurité");
 
-        log.info("✅ Agent service configuration test passed");
+        log.info("Agent service configuration test passed");
     }
 
     @Test
@@ -306,8 +306,8 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         ModelAvailabilityChecker.ModelAvailabilityResult modelCheck = checker.checkAgentModelAvailability();
 
         if (!modelCheck.isAvailable()) {
-            log.warn("⚠️ Skipping test - Agent model not available: {}", modelCheck.getStatus());
-            log.info("✅ Test skipped gracefully - model not configured");
+            log.warn("️ Skipping test - Agent model not available: {}", modelCheck.getStatus());
+            log.info("Test skipped gracefully - model not configured");
             return;
         }
 
@@ -322,12 +322,12 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         getProject().getMessageBus().connect().subscribe(AgentTaskNotifier.TOPIC, new AgentTaskNotifier() {
             @Override
             public void taskStarted(Task task) {
-                log.info("📋 Task started: {}", task.getDescription());
+                log.info("Task started: {}", task.getDescription());
             }
 
             @Override
             public void taskCompleted(Task task, TaskResult result) {
-                log.info("✅ Task completed: {} - {}", task.getDescription(), result.getMessage());
+                log.info("Task completed: {} - {}", task.getDescription(), result.getMessage());
             }
 
             @Override
@@ -337,12 +337,12 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
 
             @Override
             public void taskCancelled(Task task) {
-                log.warn("❌ Task cancelled: {}", task.getDescription());
+                log.warn("Task cancelled: {}", task.getDescription());
             }
 
             @Override
             public void agentProcessingStarted(String userRequest) {
-                log.info("🚀 Agent processing started for: {}", userRequest);
+                log.info("Agent processing started for: {}", userRequest);
             }
 
             @Override
@@ -353,7 +353,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
             @Override
             public void agentProcessingCompleted(String userRequest, String result) {
                 if (userRequest.equals(request)) {
-                    log.info("✅ Agent processing completed successfully");
+                    log.info("Agent processing completed successfully");
                     resultMessage.set(result);
                     workflowCompleted.set(true);
                     latch.countDown();
@@ -363,7 +363,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
             @Override
             public void agentProcessingFailed(String userRequest, String error) {
                 if (userRequest.equals(request)) {
-                    log.warn("❌ Agent processing failed: {}", error);
+                    log.warn("Agent processing failed: {}", error);
                     resultMessage.set(error);
                     workflowFailed.set(true);
                     latch.countDown();
@@ -373,17 +373,17 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
             @Override
             public void agentProposalRequested(String userRequest, List<Task> proposedTasks,
                                              fr.baretto.ollamassist.core.agent.ui.ActionProposalCard.ActionValidator validator) {
-                log.info("📝 Agent proposal requested with {} tasks", proposedTasks.size());
+                log.info("Agent proposal requested with {} tasks", proposedTasks.size());
                 // Auto-approve for integration test
                 if (!proposedTasks.isEmpty()) {
                     validator.approveActions(proposedTasks);
-                    log.info("✅ Auto-approved {} tasks for integration test", proposedTasks.size());
+                    log.info("Auto-approved {} tasks for integration test", proposedTasks.size());
                 }
             }
         });
 
         // When - Submit the request
-        log.info("📤 Submitting file creation request: {}", request);
+        log.info("Submitting file creation request: {}", request);
         getProject().getMessageBus()
                 .syncPublisher(NewUserMessageNotifier.TOPIC)
                 .newUserMessage(request);
@@ -396,20 +396,20 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
                 .as("Workflow should complete within timeout (either success or failure)")
                 .isTrue();
 
-        log.info("📊 Workflow result - Completed: {}, Failed: {}", workflowCompleted.get(), workflowFailed.get());
-        log.info("📄 Result message: {}", resultMessage.get());
+        log.info("Workflow result - Completed: {}, Failed: {}", workflowCompleted.get(), workflowFailed.get());
+        log.info("Result message: {}", resultMessage.get());
 
         // If workflow failed, log warning but don't fail test (model might not support the request)
         if (workflowFailed.get()) {
-            log.warn("⚠️ Workflow failed - this may be expected if model doesn't support file operations");
-            log.warn("⚠️ Failure reason: {}", resultMessage.get());
+            log.warn("Workflow failed - this may be expected if model doesn't support file operations");
+            log.warn("Failure reason: {}", resultMessage.get());
             // Test still passes - we verified the workflow executed
         } else if (workflowCompleted.get()) {
-            log.info("✅ File creation workflow completed successfully");
+            log.info("File creation workflow completed successfully");
             // Optionally verify file was created (if in test workspace)
         }
 
-        log.info("✅ Simple file creation workflow test completed");
+        log.info("Simple file creation workflow test completed");
     }
 
     @Test
@@ -429,7 +429,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
             // Then
             assertThat(isAvailable).isFalse();
 
-            log.info("✅ Agent mode unavailable handling test passed");
+            log.info("Agent mode unavailable handling test passed");
 
         } finally {
             // Restore original state
@@ -453,7 +453,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
                 stats.getTotalTasksExecuted(),
                 stats.getFormattedSuccessRate());
 
-        log.info("✅ Task execution statistics test passed");
+        log.info("Task execution statistics test passed");
     }
 
     @Test
@@ -470,6 +470,6 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
         assertThat(tempIntegration).isNotNull();
         tempIntegration.dispose();
 
-        log.info("✅ Resource cleanup test passed");
+        log.info("Resource cleanup test passed");
     }
 }

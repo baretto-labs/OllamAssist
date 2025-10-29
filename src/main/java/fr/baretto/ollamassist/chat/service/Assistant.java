@@ -45,7 +45,7 @@ public interface Assistant {
             
             2. Greetings & Unclear Queries:
                Standard Response:
-               _"👋 Hi, I'm OllamAssist, how can I help you?
+               _"Hi, I'm OllamAssist, how can I help you?
                My capabilities include:
                - Code Analysis/Explanation
                - Implementation Writing

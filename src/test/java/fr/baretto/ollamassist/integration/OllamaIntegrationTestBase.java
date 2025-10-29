@@ -37,7 +37,7 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
             return;
         }
         try {
-            log.info("🐳 Starting Ollama container with Testcontainers...");
+            log.info("Starting Ollama container with Testcontainers...");
 
             ollamaContainer = new GenericContainer<>(DockerImageName.parse("ollama/ollama:latest"))
                     .withExposedPorts(11434)
@@ -51,7 +51,7 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
             Integer port = ollamaContainer.getMappedPort(11434);
             ollamaUrl = String.format("http://%s:%d", host, port);
 
-            log.info("✅ Ollama container started successfully at: {}", ollamaUrl);
+            log.info("Ollama container started successfully at: {}", ollamaUrl);
 
             // Pull a lightweight model for testing
             pullModel("tinyllama");
@@ -60,8 +60,8 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
             ollamaInitialized = true;
 
         } catch (Exception e) {
-            log.error("❌ Failed to start Ollama container: {}", e.getMessage());
-            log.warn("⚠️ Integration tests requiring Ollama will be skipped");
+            log.error("Failed to start Ollama container: {}", e.getMessage());
+            log.warn("️ Integration tests requiring Ollama will be skipped");
             ollamaAvailable = false;
         }
     }
@@ -69,9 +69,9 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
     @AfterAll
     public static void tearDownOllama() {
         if (ollamaContainer != null && ollamaContainer.isRunning()) {
-            log.info("🛑 Stopping Ollama container...");
+            log.info("Stopping Ollama container...");
             ollamaContainer.stop();
-            log.info("✅ Ollama container stopped");
+            log.info("Ollama container stopped");
         }
     }
 
@@ -86,7 +86,7 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
             settings.setCompletionOllamaUrl(ollamaUrl);
             settings.setChatOllamaUrl(ollamaUrl);
 
-            log.debug("🔧 Configured Ollama URL: {}", ollamaUrl);
+            log.debug("Configured Ollama URL: {}", ollamaUrl);
         }
     }
 
@@ -110,7 +110,7 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
         }
 
         try {
-            log.info("📥 Pulling model '{}' (this may take a few minutes on first run)...", modelName);
+            log.info("Pulling model '{}' (this may take a few minutes on first run)...", modelName);
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMinutes(5))
@@ -128,13 +128,13 @@ public abstract class OllamaIntegrationTestBase extends BasePlatformTestCase {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                log.info("✅ Model '{}' pulled successfully", modelName);
+                log.info("Model '{}' pulled successfully", modelName);
             } else {
-                log.warn("⚠️ Failed to pull model '{}': HTTP {}", modelName, response.statusCode());
+                log.warn("️ Failed to pull model '{}': HTTP {}", modelName, response.statusCode());
             }
 
         } catch (IOException | InterruptedException e) {
-            log.warn("⚠️ Could not pull model '{}': {}", modelName, e.getMessage());
+            log.warn("️ Could not pull model '{}': {}", modelName, e.getMessage());
             Thread.currentThread().interrupt();
         }
     }

@@ -33,7 +33,7 @@ public class ReActResult {
 
     public static ReActResult maxIterationsReached(ReActContext context) {
         String message = String.format(
-                "⚠️ Max iterations (%d) reached. Task partially completed.",
+                "️ Max iterations (%d) reached. Task partially completed.",
                 context.getIterationCount()
         );
         return new ReActResult(context, false, message, ReActStatus.MAX_ITERATIONS, message);
@@ -79,10 +79,10 @@ public class ReActResult {
         }
 
         return switch (status) {
-            case ERROR -> "❌ Une erreur s'est produite: " + errorMessage;
-            case MAX_ITERATIONS -> "⚠️ Limite d'itérations atteinte. La tâche est partiellement complétée.";
-            case CANCELLED -> "🛑 Opération annulée: " + errorMessage;
-            default -> "❌ Échec de l'exécution";
+            case ERROR -> "Une erreur s'est produite: " + errorMessage;
+            case MAX_ITERATIONS -> "️ Limite d'itérations atteinte. La tâche est partiellement complétée.";
+            case CANCELLED -> "Opération annulée: " + errorMessage;
+            default -> "Échec de l'exécution";
         };
     }
 

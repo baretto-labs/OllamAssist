@@ -79,7 +79,7 @@ public class TaskProgressIndicator extends JPanel {
         cancelled = false;
         progressBar.setIndeterminate(true);
         progressBar.setString("Starting...");
-        statusLabel.setText("🚀 " + taskName);
+        statusLabel.setText(taskName);
         detailsLabel.setText("Initializing task execution...");
         cancelButton.setEnabled(true);
         updateTimer.start();
@@ -90,7 +90,7 @@ public class TaskProgressIndicator extends JPanel {
                     progressBar.setIndeterminate(false);
                     progressBar.setValue(10);
                     progressBar.setString("Executing...");
-                    statusLabel.setText("⚙️ " + taskName + " - Running");
+                    statusLabel.setText(taskName + " - Running");
                     detailsLabel.setText("Task is being executed...");
                 });
 
@@ -151,7 +151,7 @@ public class TaskProgressIndicator extends JPanel {
                     indicator.setText("Starting " + title + "...");
 
                     SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText("🔄 " + title);
+                        statusLabel.setText(title);
                         progressBar.setIndeterminate(false);
                         progressBar.setValue(0);
                         progressBar.setString("IntelliJ Task Running...");
@@ -207,7 +207,7 @@ public class TaskProgressIndicator extends JPanel {
         updateTimer.stop();
         progressBar.setValue(100);
         progressBar.setString("Completed");
-        statusLabel.setText("✅ " + taskName + " - Success");
+        statusLabel.setText(taskName + " - Success");
         detailsLabel.setText(result.getMessage());
         cancelButton.setEnabled(false);
 
@@ -221,7 +221,7 @@ public class TaskProgressIndicator extends JPanel {
         updateTimer.stop();
         progressBar.setValue(0);
         progressBar.setString("Failed");
-        statusLabel.setText("❌ " + taskName + " - Failed");
+        statusLabel.setText(taskName + " - Failed");
         detailsLabel.setText(result.getErrorMessage());
         cancelButton.setEnabled(false);
 
@@ -236,7 +236,7 @@ public class TaskProgressIndicator extends JPanel {
         updateTimer.stop();
         progressBar.setValue(0);
         progressBar.setString("Cancelled");
-        statusLabel.setText("🚫 " + taskName + " - Cancelled");
+        statusLabel.setText(taskName + " - Cancelled");
         detailsLabel.setText("Task was cancelled by user");
         cancelButton.setEnabled(false);
 
@@ -250,7 +250,7 @@ public class TaskProgressIndicator extends JPanel {
         updateTimer.stop();
         progressBar.setValue(0);
         progressBar.setString("Error");
-        statusLabel.setText("💥 " + taskName + " - Error");
+        statusLabel.setText(taskName + " - Error");
         detailsLabel.setText("Error: " + error.getMessage());
         cancelButton.setEnabled(false);
 
@@ -268,7 +268,7 @@ public class TaskProgressIndicator extends JPanel {
         }
         cancelButton.setEnabled(false);
         progressBar.setString("Cancelling...");
-        statusLabel.setText("🚫 Cancelling task...");
+        statusLabel.setText("Cancelling task...");
     }
 
     private void resetProgress() {
@@ -287,7 +287,7 @@ public class TaskProgressIndicator extends JPanel {
         String originalStatus = statusLabel.getText();
         String originalDetails = detailsLabel.getText();
 
-        statusLabel.setText("ℹ️ " + message);
+        statusLabel.setText(message);
         detailsLabel.setText("Temporary status message");
 
         Timer resetTimer = new Timer(durationMs, e -> {

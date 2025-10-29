@@ -55,7 +55,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     void testCompleteSuccessfulCycle() {
         // Given - Mock successful class creation
         when(mockAgent.createJavaClass(anyString(), anyString(), anyString()))
-                .thenReturn("✅ Successfully created Java class 'Calculator' at 'Calculator.java'\n✅ Code validated - compilation successful");
+                .thenReturn("Successfully created Java class 'Calculator' at 'Calculator.java'\nCode validated - compilation successful");
 
         // When - This would require mocking the LLM response, which is complex
         // For now, we test the components separately
@@ -80,7 +80,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
     void testCycleWithCompilationError() {
         // Given - Mock class creation with compilation error
         when(mockAgent.createJavaClass(anyString(), anyString(), anyString()))
-                .thenReturn("✅ Successfully created Java class 'Calculator'\n⚠️ Compilation validation failed:\n🔧 Errors to fix:\n  - Error: Missing import java.util.List");
+                .thenReturn("Successfully created Java class 'Calculator'\n️ Compilation validation failed:\nErrors to fix:\n  - Error: Missing import java.util.List");
 
         // Simulate error detection and fix cycle
         ReActContext context = new ReActContext("Create Calculator class", getProject());
@@ -99,7 +99,7 @@ public class ReActIntegrationFullCycleTest extends BasePlatformTestCase {
         // Iteration 2: Fix the error
         context.incrementIteration();
         when(mockAgent.createFile(anyString(), anyString()))
-                .thenReturn("✅ Successfully created file\n✅ Code validated - compilation successful");
+                .thenReturn("Successfully created file\nCode validated - compilation successful");
 
         context.addThinking(new ReActContext.ThinkingStep("Fix import", "createFile"));
         context.addAction(new ReActContext.ActionStep("createFile", "Fix import", null));

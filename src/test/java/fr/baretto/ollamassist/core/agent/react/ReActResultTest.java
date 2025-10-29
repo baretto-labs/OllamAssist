@@ -118,7 +118,7 @@ public class ReActResultTest extends BasePlatformTestCase {
         String userMessage = result.getUserMessage();
 
         // Then
-        assertThat(userMessage).contains("❌");
+        assertThat(userMessage).contains("");
         assertThat(userMessage).contains("erreur");
         assertThat(userMessage).contains(errorMessage);
     }
@@ -132,7 +132,7 @@ public class ReActResultTest extends BasePlatformTestCase {
         String userMessage = result.getUserMessage();
 
         // Then
-        assertThat(userMessage).contains("⚠️");
+        assertThat(userMessage).contains("️");
         assertThat(userMessage).contains("Limite");
         assertThat(userMessage).contains("partiellement");
     }
@@ -146,7 +146,7 @@ public class ReActResultTest extends BasePlatformTestCase {
         String userMessage = result.getUserMessage();
 
         // Then
-        assertThat(userMessage).contains("🛑");
+        assertThat(userMessage).contains("");
         assertThat(userMessage).contains("annulée");
         assertThat(userMessage).contains("User stopped");
     }
