@@ -4,12 +4,15 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -93,7 +96,7 @@ public class OptimizedLightModelAssistant {
     private static ModelConnection createOptimizedConnection(@NotNull OllamAssistSettings settings) {
         log.debug("Creating optimized connection for model: {}", settings.getCompletionModelName());
         
-        OllamaChatModel model = OllamaChatModel.builder()
+        OllamaChatModel.OllamaChatModelBuilder builder = OllamaChatModel.builder()
             .baseUrl(settings.getCompletionOllamaUrl())
             .modelName(settings.getCompletionModelName())
             .temperature(0.1)                    // Lower temperature for more deterministic completions
@@ -101,8 +104,16 @@ public class OptimizedLightModelAssistant {
             .topP(0.8)                          // Balanced creativity vs consistency
             .timeout(CONNECTION_TIMEOUT)        // Shorter timeout for responsiveness
             .logRequests(false)                 // Disable request logging for performance
-            .logResponses(false)                // Disable response logging for performance
-            .build();
+            .logResponses(false);               // Disable response logging for performance
+        
+        // Add authentication if configured
+        if (AuthenticationHelper.isAuthenticationConfigured()) {
+            Map<String, String> customHeaders = new HashMap<>();
+            customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+            builder.customHeaders(customHeaders);
+        }
+        
+        OllamaChatModel model = builder.build();
         
         Service service = AiServices.builder(Service.class)
             .chatModel(model)

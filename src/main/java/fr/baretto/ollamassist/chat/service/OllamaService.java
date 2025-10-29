@@ -14,11 +14,15 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -73,14 +77,22 @@ public final class OllamaService implements Disposable, ModelListener {
             documentIndexingPipeline.processSingleDocument(Document.from("empty doc"));
 
 
-            OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+            OllamaStreamingChatModel.OllamaStreamingChatModelBuilder builder = OllamaStreamingChatModel.builder()
                     .temperature(0.7)
                     .topK(50)
                     .topP(0.85)
                     .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
-                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration())
-                    .build();
+                    .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
+            
+            // Add authentication if configured
+            if (AuthenticationHelper.isAuthenticationConfigured()) {
+                Map<String, String> customHeaders = new HashMap<>();
+                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                builder.customHeaders(customHeaders);
+            }
+            
+            OllamaStreamingChatModel model = builder.build();
 
 
             AiServices<Assistant> assistantAiServices = AiServices.builder(Assistant.class)
