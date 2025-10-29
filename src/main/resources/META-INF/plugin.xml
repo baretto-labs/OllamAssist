@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.8.0</h2>
+        <UL>
+            <LI>feat: Added an optional Authorization header for connecting to the OllamAssist server.</LI>
+        </UL>
         <h2>V1.7.2</h2>
         <UL>
             <LI>fix: Remove dependencies that conflict with 2025.3.</LI>
