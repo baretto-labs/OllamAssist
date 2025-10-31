@@ -74,9 +74,9 @@ public final class AgentCoordinator implements Disposable {
                         .agentProcessingStarted(userRequest);
 
                 // Exécuter via l'agent LangChain4J avec tools
-                log.error("⭐ COORDINATOR: About to call agentService.executeUserRequest()");
+                log.debug("Calling agentService to execute user request");
                 String agentResponse = agentService.executeUserRequest(userRequest).get();
-                log.error("⭐ COORDINATOR: AgentService returned: {}", agentResponse);
+                log.debug("AgentService completed request execution");
 
                 // Notifier la completion
                 project.getMessageBus()

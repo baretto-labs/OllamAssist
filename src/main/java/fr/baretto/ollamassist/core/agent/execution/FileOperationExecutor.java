@@ -12,6 +12,7 @@ import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -261,7 +262,7 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
 
             if (file != null && file.exists()) {
                 // Fichier existe, capturer son contenu
-                String content = new String(file.contentsToByteArray());
+                String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
                 beforeState = SnapshotData.forFile(filePath, content);
             } else {
                 // Fichier n'existe pas
@@ -310,7 +311,7 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
 
             VirtualFile file = projectRoot.findFileByRelativePath(effectivePath);
             if (file != null && file.exists()) {
-                String content = new String(file.contentsToByteArray());
+                String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
                 afterState = SnapshotData.forFile(effectivePath, content);
             } else {
                 afterState = SnapshotData.forDeletedFile(effectivePath);

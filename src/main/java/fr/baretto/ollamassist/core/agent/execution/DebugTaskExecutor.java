@@ -19,30 +19,30 @@ public class DebugTaskExecutor implements ExecutionEngine.TaskExecutor {
 
     @Override
     public TaskResult execute(Task task) {
-        log.error("=== DEBUG TASK EXECUTOR ===");
-        log.error("Task ID: {}", task.getId());
-        log.error("Task Type: {}", task.getType());
-        log.error("Task Description: {}", task.getDescription());
-        log.error("Task Priority: {}", task.getPriority());
-        log.error("Task Status: {}", task.getStatus());
+        log.debug("=== DEBUG TASK EXECUTOR ===");
+        log.debug("Task ID: {}", task.getId());
+        log.debug("Task Type: {}", task.getType());
+        log.debug("Task Description: {}", task.getDescription());
+        log.debug("Task Priority: {}", task.getPriority());
+        log.debug("Task Status: {}", task.getStatus());
 
-        log.error("=== PARAMETERS ===");
+        log.debug("=== PARAMETERS ===");
         if (task.getParameters() != null) {
             task.getParameters().forEach((key, value) ->
-                    log.error("Parameter '{}': '{}'", key, value));
+                    log.debug("Parameter '{}': '{}'", key, value));
         } else {
-            log.error("NO PARAMETERS FOUND!");
+            log.debug("NO PARAMETERS FOUND!");
         }
 
-        log.error("=== SPECIFIC PARAMETER CHECKS ===");
-        log.error("request parameter: '{}'", task.getParameter("request", String.class));
-        log.error("operation parameter: '{}'", task.getParameter("operation", String.class));
-        log.error("filePath parameter: '{}'", task.getParameter("filePath", String.class));
-        log.error("content parameter: '{}'", task.getParameter("content", String.class));
-        log.error("original_request parameter: '{}'", task.getParameter("original_request", String.class));
-        log.error("llm_analyzed parameter: '{}'", task.getParameter("llm_analyzed", Boolean.class));
+        log.debug("=== SPECIFIC PARAMETER CHECKS ===");
+        log.debug("request parameter: '{}'", task.getParameter("request", String.class));
+        log.debug("operation parameter: '{}'", task.getParameter("operation", String.class));
+        log.debug("filePath parameter: '{}'", task.getParameter("filePath", String.class));
+        log.debug("content parameter: '{}'", task.getParameter("content", String.class));
+        log.debug("original_request parameter: '{}'", task.getParameter("original_request", String.class));
+        log.debug("llm_analyzed parameter: '{}'", task.getParameter("llm_analyzed", Boolean.class));
 
-        log.error("=== END DEBUG ===");
+        log.debug("=== END DEBUG ===");
 
         // Toujours retourner succès pour le debug
         return TaskResult.success("Debug task executor - check logs for details");

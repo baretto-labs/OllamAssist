@@ -125,7 +125,7 @@ public class ExecutionEngine {
         executors.put(Task.TaskType.MCP_OPERATION, debugExecutor);
         executors.put(Task.TaskType.COMPOSITE, debugExecutor);
 
-        log.error("PRODUCTION EXECUTORS: FILE -> {}, CODE -> {}, GIT -> {}, BUILD -> {}, DEBUG -> {}",
+        log.info("Production executors initialized - FILE: {}, CODE: {}, GIT: {}, BUILD: {}, DEBUG: {}",
                 fileExecutor.getExecutorName(), codeExecutor.getExecutorName(),
                 gitExecutor.getExecutorName(), buildExecutor.getExecutorName(), debugExecutor.getExecutorName());
         log.info("Initialized {} task executors", executors.size());

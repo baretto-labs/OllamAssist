@@ -158,7 +158,7 @@ public final class AgentService {
      * Exécute une requête utilisateur avec streaming unifié intelligent
      */
     public void executeUserRequestWithStreaming(String userRequest) {
-        log.error("DEBUG: UNIFIED STREAMING AGENT: Processing user request: {}", userRequest);
+        log.debug("Processing unified streaming agent request: {}", userRequest);
 
         // Vérifier si le modèle agent est disponible
         ModelAvailabilityChecker checker = new ModelAvailabilityChecker();
@@ -239,13 +239,13 @@ public final class AgentService {
     private boolean isActionRequest(String userRequest) {
         String lower = userRequest.toLowerCase();
 
-        log.error("DEBUG: Analyzing request: '{}'", userRequest);
+        log.debug("Analyzing request: '{}'", userRequest);
 
         // Exclure les phrases de clarification ou de reformulation UNIQUEMENT si explicitement mentionnées
         if (lower.startsWith("reformule") || lower.startsWith("clarifi") || lower.startsWith("explique") ||
                 lower.contains("qu'est-ce que") || lower.contains("comment ça") ||
                 lower.contains("je veux dire") || lower.contains("en fait")) {
-            log.error("DEBUG: isActionRequest('{}') = false (reformulation explicite détectée)", userRequest);
+            log.debug("Request classified as reformulation: '{}'", userRequest);
             return false;
         }
 
@@ -257,7 +257,7 @@ public final class AgentService {
         isAction = isAction || lower.contains("commit") || lower.contains("push") || lower.contains("build") ||
                 lower.contains("compile") || lower.contains("test") || lower.contains("refactor");
 
-        log.error("DEBUG: isActionRequest('{}') = {}", userRequest, isAction);
+        log.debug("Request classified as action: {}", isAction);
         return isAction;
     }
 
@@ -309,7 +309,7 @@ public final class AgentService {
                 log.info("Using OllamaService with RAG for streaming chat");
 
                 // Notifier le démarrage
-                log.error("DEBUG: Publishing agentProcessingStarted for: {}", userRequest);
+                log.debug("Publishing agentProcessingStarted event");
                 project.getMessageBus()
                         .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
                         .agentProcessingStarted(userRequest);
@@ -510,26 +510,26 @@ public final class AgentService {
         List<fr.baretto.ollamassist.core.agent.task.Task> tasks = new ArrayList<>();
         String lower = userRequest.toLowerCase();
 
-        log.error("DEBUG: analyzeRequestAndCreateTasks for: '{}'", userRequest);
+        log.debug("Analyzing request to create tasks: '{}'", userRequest);
 
         // Détection de création de classe Java ou fichier
         boolean hasCreateVerb = lower.contains("crée") || lower.contains("créer") || lower.contains("créé") || lower.contains("create");
         boolean hasClass = lower.contains("classe") || lower.contains("class");
         boolean hasFile = lower.contains("fichier") || lower.contains("file");
 
-        log.error("DEBUG: hasCreateVerb={}, hasClass={}, hasFile={}", hasCreateVerb, hasClass, hasFile);
+        log.debug("Task detection - hasCreateVerb: {}, hasClass: {}, hasFile: {}", hasCreateVerb, hasClass, hasFile);
 
         if (hasCreateVerb) {
             if (hasClass) {
-                log.error("DEBUG: Creating Java class task");
+                log.debug("Creating Java class task");
                 tasks.add(createJavaClassTask(userRequest));
             } else if (hasFile) {
-                log.error("DEBUG: Creating file task");
+                log.debug("Creating file task");
                 tasks.add(createFileTask(userRequest));
             }
         }
 
-        log.error("DEBUG: Created {} tasks", tasks.size());
+        log.debug("Created {} task(s) from request", tasks.size());
         return tasks;
     }
 
@@ -696,11 +696,11 @@ public final class AgentService {
      */
     private String parseAndExecuteActions(String jsonResponse) {
         try {
-            log.error("PARSING JSON: {}", jsonResponse);
+            log.debug("Parsing JSON response from agent");
 
             // Extraire le JSON si c'est dans des ```json
             String cleanJson = extractJsonFromResponse(jsonResponse);
-            log.error("CLEAN JSON: {}", cleanJson);
+            log.debug("Extracted clean JSON, length: {}", cleanJson.length());
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(cleanJson);
@@ -714,7 +714,7 @@ public final class AgentService {
                     String tool = actionNode.get("tool").asText();
                     JsonNode parametersNode = actionNode.get("parameters");
 
-                    log.error("EXECUTING TOOL: {} with params: {}", tool, parametersNode);
+                    log.debug("Executing tool: {} with {} parameter(s)", tool, parametersNode.size());
 
                     String toolResult = executeToolAction(tool, parametersNode);
                     resultBuilder.append(toolResult).append("\n");
@@ -729,7 +729,7 @@ public final class AgentService {
             return resultBuilder.toString();
 
         } catch (Exception e) {
-            log.error("Erreur lors du parsing JSON: {}", e.getMessage(), e);
+            log.error("JSON parsing error", e);
             return "Erreur lors de l'exécution: " + e.getMessage() + "\n\nRéponse brute: " + jsonResponse;
         }
     }
@@ -772,7 +772,7 @@ public final class AgentService {
      * Exécute une action tool spécifique
      */
     private String executeToolAction(String tool, JsonNode parameters) {
-        log.error("️ EXECUTING: {} with {}", tool, parameters);
+        log.debug("Executing tool action: {}", tool);
 
         try {
             switch (tool) {

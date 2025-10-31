@@ -5,9 +5,6 @@ import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Exécuteur pour les tâches d'analyse de code
  */
@@ -30,14 +27,12 @@ public class CodeAnalysisExecutor implements ExecutionEngine.TaskExecutor {
                 return TaskResult.failure("Paramètre 'request' manquant");
             }
 
-            // Simulation d'analyse de code
-            // TODO: Intégrer avec le système d'analyse réel
-            Map<String, Object> analysisResults = performAnalysis(request);
+            // L'analyse de code automatique n'est pas encore implémentée
+            log.warn("Code analysis not yet implemented for request: {}", request);
 
-            return TaskResult.success(
-                    "Analyse de code terminée",
-                    analysisResults
-            );
+            return TaskResult.failure("L'analyse automatique de code n'est pas encore disponible. " +
+                    "Veuillez utiliser les outils d'analyse intégrés d'IntelliJ IDEA " +
+                    "(Code → Inspect Code) pour analyser votre projet.");
 
         } catch (Exception e) {
             log.error("Error in code analysis execution", e);
@@ -53,19 +48,5 @@ public class CodeAnalysisExecutor implements ExecutionEngine.TaskExecutor {
     @Override
     public String getExecutorName() {
         return "CodeAnalysisExecutor";
-    }
-
-    private Map<String, Object> performAnalysis(String request) {
-        Map<String, Object> results = new HashMap<>();
-
-        // Simulation d'analyse
-        results.put("projectName", project.getName());
-        results.put("analysisType", "basic");
-        results.put("fileCount", 0); // TODO: Compter les fichiers réels
-        results.put("issuesFound", 0); // TODO: Analyser les problèmes réels
-        results.put("recommendations", "Aucune recommandation pour le moment");
-
-        log.debug("Code analysis completed for project: {}", project.getName());
-        return results;
     }
 }

@@ -30,9 +30,11 @@ public class CompositeTaskExecutor implements ExecutionEngine.TaskExecutor {
             }
 
             // Pour une tâche composite, on peut analyser la demande et créer des sous-tâches
-            // TODO: Implémenter la logique de décomposition et d'exécution des sous-tâches
+            // La fonctionnalité composite n'est pas encore implémentée
+            log.warn("Composite task execution not yet implemented: {}", task.getId());
 
-            return TaskResult.success("Tâche composite exécutée (TODO: implémentation réelle)");
+            return TaskResult.failure("Les tâches composites ne sont pas encore supportées. " +
+                    "Cette fonctionnalité sera disponible dans une future version.");
 
         } catch (Exception e) {
             log.error("Error in composite task execution", e);
