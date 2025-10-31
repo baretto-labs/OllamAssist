@@ -29,6 +29,9 @@ public class ReActLoopController {
     private final OllamaService ollamaService;
     private final ValidationInterceptor validationInterceptor;
 
+    // Cancellation support
+    private volatile boolean cancelled = false;
+
     public ReActLoopController(Project project,
                                IntelliJDevelopmentAgent agent,
                                OllamaService ollamaService) {
@@ -60,13 +63,39 @@ public class ReActLoopController {
      * Runs the complete ReAct cycle
      */
     private ReActResult runReActCycle(ReActContext context) {
+        long startTime = System.currentTimeMillis();
+
         for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+            // Check cancellation
+            if (cancelled) {
+                log.info("ReAct loop cancelled by user");
+                return ReActResult.error(context, "Opération annulée par l'utilisateur");
+            }
+
+            // Calculate timeout remaining
+            long elapsed = System.currentTimeMillis() - startTime;
+            long remainingMs = (TIMEOUT_SECONDS * 1000L) - elapsed;
+            long remainingSec = remainingMs / 1000;
+
+            // Check timeout
+            if (remainingMs <= 0) {
+                log.warn("ReAct loop timeout exceeded");
+                publishProgress(context, iteration, "Timeout", "Timeout dépassé (120s)");
+                return ReActResult.error(context, "Timeout dépassé (120 secondes)");
+            }
+
             context.incrementIteration();
             log.info("ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
+
+            // Publish progress notification
+            publishProgress(context, iteration, "Think",
+                String.format("Itération %d/%d - Think (Timeout dans %ds)",
+                    iteration + 1, MAX_ITERATIONS, remainingSec));
 
             // 1. THINK: Ask model to reason
             ThinkingResult thinking = askModelToThink(context);
             if (thinking == null) {
+                publishProgress(context, iteration, "Error", "Échec de la réflexion du modèle");
                 return ReActResult.error(context, "Failed to get thinking from model");
             }
 
@@ -85,8 +114,12 @@ public class ReActLoopController {
             // 3. ACT: Execute the proposed action
             if (!thinking.hasAction()) {
                 log.warn("No action proposed by model");
+                publishProgress(context, iteration, "Error", "Aucune action proposée");
                 return ReActResult.error(context, "Model did not propose any action");
             }
+
+            publishProgress(context, iteration, "Act",
+                String.format("Exécution: %s", thinking.toolName()));
 
             ActionResult actionResult = executeAction(thinking, context);
             context.addAction(new ReActContext.ActionStep(
@@ -96,6 +129,9 @@ public class ReActLoopController {
             ));
 
             // 4. OBSERVE: Verify the result (with automatic validation)
+            publishProgress(context, iteration, "Observe",
+                String.format("Vérification: %s", thinking.toolName()));
+
             ObservationResult observation = observeResult(actionResult, thinking.toolName(), context);
             context.addObservation(new ReActContext.ObservationStep(
                     observation.success(),
@@ -427,6 +463,47 @@ public class ReActLoopController {
         }
 
         return responseText;
+    }
+
+    /**
+     * Publishes progress notification to UI
+     */
+    private void publishProgress(ReActContext context, int iteration, String phase, String message) {
+        try {
+            // Create a minimal task for progress notification
+            fr.baretto.ollamassist.core.agent.task.Task dummyTask =
+                fr.baretto.ollamassist.core.agent.task.Task.builder()
+                    .id("react_progress_" + iteration)
+                    .description(context.getOriginalRequest())
+                    .type(fr.baretto.ollamassist.core.agent.task.Task.TaskType.FILE_OPERATION)
+                    .priority(fr.baretto.ollamassist.core.agent.task.Task.TaskPriority.NORMAL)
+                    .parameters(java.util.Map.of("phase", phase))
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build();
+
+            project.getMessageBus()
+                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                    .taskProgress(dummyTask, message);
+
+            log.debug("Progress published: {} - {}", phase, message);
+        } catch (Exception e) {
+            log.warn("Failed to publish progress notification: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Cancels the current ReAct loop
+     */
+    public void cancel() {
+        log.info("Cancelling ReAct loop");
+        this.cancelled = true;
+    }
+
+    /**
+     * Checks if the loop has been cancelled
+     */
+    public boolean isCancelled() {
+        return cancelled;
     }
 
     /**
