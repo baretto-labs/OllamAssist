@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import fr.baretto.ollamassist.core.agent.rollback.ActionSnapshot;
 import fr.baretto.ollamassist.core.agent.rollback.SnapshotCapable;
 import fr.baretto.ollamassist.core.agent.rollback.SnapshotData;
+import fr.baretto.ollamassist.core.agent.security.InputValidator;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,19 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
 
             if (filePath == null) {
                 return TaskResult.failure("Paramètre 'filePath' manquant");
+            }
+
+            // SECURITY: Validate file path to prevent path traversal attacks
+            VirtualFile projectRoot = project.getBaseDir();
+            if (projectRoot == null) {
+                return TaskResult.failure("Impossible de déterminer le répertoire racine du projet");
+            }
+
+            try {
+                filePath = InputValidator.validateFilePath(filePath, projectRoot.getPath());
+            } catch (InputValidator.ValidationException e) {
+                log.warn("File path validation failed: {}", e.getMessage());
+                return TaskResult.failure("Chemin de fichier invalide: " + e.getMessage());
             }
 
             return switch (operation.toLowerCase()) {
@@ -165,6 +179,15 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
                 return TaskResult.failure("Impossible de déterminer le répertoire racine du projet");
             }
 
+            // SECURITY: Validate target path to prevent path traversal
+            final String validatedTargetPath;
+            try {
+                validatedTargetPath = InputValidator.validateFilePath(targetPath, projectRoot.getPath());
+            } catch (InputValidator.ValidationException e) {
+                log.warn("Target path validation failed: {}", e.getMessage());
+                return TaskResult.failure("Chemin de destination invalide: " + e.getMessage());
+            }
+
             VirtualFile sourceFile = projectRoot.findFileByRelativePath(filePath);
             if (sourceFile == null) {
                 return TaskResult.failure("Fichier source non trouvé: " + filePath);
@@ -172,20 +195,20 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
 
             WriteCommandAction.runWriteCommandAction(project, () -> {
                 try {
-                    Path target = Paths.get(targetPath);
+                    Path target = Paths.get(validatedTargetPath);
                     VirtualFile targetDir = VfsUtil.createDirectoryIfMissing(projectRoot, target.getParent().toString());
                     sourceFile.move(this, targetDir);
                     if (!sourceFile.getName().equals(target.getFileName().toString())) {
                         sourceFile.rename(this, target.getFileName().toString());
                     }
-                    log.info("File moved from {} to {}", filePath, targetPath);
+                    log.info("File moved from {} to {}", filePath, validatedTargetPath);
                 } catch (IOException e) {
-                    log.error("Error moving file from {} to {}", filePath, targetPath, e);
+                    log.error("Error moving file from {} to {}", filePath, validatedTargetPath, e);
                     throw new RuntimeException(e);
                 }
             });
 
-            return TaskResult.success("Fichier déplacé avec succès de " + filePath + " vers " + targetPath);
+            return TaskResult.success("Fichier déplacé avec succès de " + filePath + " vers " + validatedTargetPath);
 
         } catch (Exception e) {
             log.error("Error moving file from {} to {}", filePath, task.getParameter("targetPath", String.class), e);
@@ -205,6 +228,15 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
                 return TaskResult.failure("Impossible de déterminer le répertoire racine du projet");
             }
 
+            // SECURITY: Validate target path to prevent path traversal
+            final String validatedTargetPath;
+            try {
+                validatedTargetPath = InputValidator.validateFilePath(targetPath, projectRoot.getPath());
+            } catch (InputValidator.ValidationException e) {
+                log.warn("Target path validation failed: {}", e.getMessage());
+                return TaskResult.failure("Chemin de destination invalide: " + e.getMessage());
+            }
+
             VirtualFile sourceFile = projectRoot.findFileByRelativePath(filePath);
             if (sourceFile == null) {
                 return TaskResult.failure("Fichier source non trouvé: " + filePath);
@@ -212,17 +244,17 @@ public class FileOperationExecutor implements ExecutionEngine.TaskExecutor, Snap
 
             WriteCommandAction.runWriteCommandAction(project, () -> {
                 try {
-                    Path target = Paths.get(targetPath);
+                    Path target = Paths.get(validatedTargetPath);
                     VirtualFile targetDir = VfsUtil.createDirectoryIfMissing(projectRoot, target.getParent().toString());
                     sourceFile.copy(this, targetDir, target.getFileName().toString());
-                    log.info("File copied from {} to {}", filePath, targetPath);
+                    log.info("File copied from {} to {}", filePath, validatedTargetPath);
                 } catch (IOException e) {
-                    log.error("Error copying file from {} to {}", filePath, targetPath, e);
+                    log.error("Error copying file from {} to {}", filePath, validatedTargetPath, e);
                     throw new RuntimeException(e);
                 }
             });
 
-            return TaskResult.success("Fichier copié avec succès de " + filePath + " vers " + targetPath);
+            return TaskResult.success("Fichier copié avec succès de " + filePath + " vers " + validatedTargetPath);
 
         } catch (Exception e) {
             log.error("Error copying file from {} to {}", filePath, task.getParameter("targetPath", String.class), e);

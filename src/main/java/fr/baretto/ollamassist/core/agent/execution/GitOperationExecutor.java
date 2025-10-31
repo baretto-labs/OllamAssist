@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.core.agent.execution;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vcs.changes.ChangeListManager;
 import com.intellij.openapi.vfs.VirtualFile;
+import fr.baretto.ollamassist.core.agent.security.InputValidator;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import git4idea.GitUtil;
@@ -92,6 +93,14 @@ public class GitOperationExecutor implements ExecutionEngine.TaskExecutor {
             String message = task.getParameter("message", String.class);
             if (message == null || message.trim().isEmpty()) {
                 return TaskResult.failure("Paramètre 'message' manquant pour le commit");
+            }
+
+            // SECURITY: Sanitize commit message to prevent command injection
+            try {
+                message = InputValidator.sanitizeGitMessage(message);
+            } catch (InputValidator.ValidationException e) {
+                log.warn("Git commit message validation failed: {}", e.getMessage());
+                return TaskResult.failure("Message de commit invalide: " + e.getMessage());
             }
 
             Git git = Git.getInstance();

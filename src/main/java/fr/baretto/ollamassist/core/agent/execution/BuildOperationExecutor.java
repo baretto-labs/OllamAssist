@@ -8,6 +8,7 @@ import com.intellij.execution.process.ProcessListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
+import fr.baretto.ollamassist.core.agent.security.InputValidator;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,14 @@ public class BuildOperationExecutor implements ExecutionEngine.TaskExecutor {
                 return TaskResult.failure("Paramètre 'operation' manquant");
             }
 
+            // SECURITY: Validate build operation against whitelist to prevent command injection
+            try {
+                InputValidator.validateBuildOperation(operation);
+            } catch (InputValidator.ValidationException e) {
+                log.warn("Build operation validation failed: {}", e.getMessage());
+                return TaskResult.failure("Opération de build invalide: " + e.getMessage());
+            }
+
             VirtualFile projectRoot = project.getBaseDir();
             if (projectRoot == null) {
                 return TaskResult.failure("Impossible de déterminer le répertoire racine du projet");
@@ -47,7 +56,7 @@ public class BuildOperationExecutor implements ExecutionEngine.TaskExecutor {
                 case "compile", "build" -> runBuild(task, projectRoot);
                 case "test" -> runTests(task, projectRoot);
                 case "clean" -> runClean(task, projectRoot);
-                case "package" -> runPackage(task, projectRoot);
+                case "package", "jar" -> runPackage(task, projectRoot);
                 case "diagnostics" -> runDiagnostics(task, projectRoot);
                 default -> TaskResult.failure("Opération de build non supportée: " + operation);
             };
