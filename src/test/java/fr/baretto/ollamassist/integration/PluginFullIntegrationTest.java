@@ -300,6 +300,7 @@ public class PluginFullIntegrationTest extends BasePlatformTestCase {
     @Order(5)
     @DisplayName("Should create and execute a simple file creation task (requires Ollama)")
     @Tag("requires-ollama")
+    @Disabled("Test requires running Ollama instance - enable manually for integration testing")
     public void testSimpleFileCreationWorkflow() throws InterruptedException {
         // Given - Check if agent model is available first
         ModelAvailabilityChecker checker = new ModelAvailabilityChecker();

@@ -1,7 +1,5 @@
 package fr.baretto.ollamassist.core.agent;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -27,57 +25,6 @@ import java.util.concurrent.CompletableFuture;
 @Service(Service.Level.PROJECT)
 public final class AgentService {
 
-    private static final String PROMPT_SYSTEM = """
-            You are an IntelliJ IDEA development assistant agent. When the user asks you to perform development tasks,
-            respond with JSON commands that specify exactly what actions to take.
-            
-            Available tools:
-            - createJavaClass: Create Java classes with proper package structure
-            - createFile: Create any type of file with custom content
-            - analyzeCode: Analyze existing code in the project
-            - executeGitCommand: Execute Git operations (commit, push, pull, status, etc.)
-            - buildProject: Build, test, or package the project
-            
-            RESPONSE FORMAT: You must respond with JSON in this exact format:
-            ```json
-            {
-              "actions": [
-                {
-                  "tool": "createFile",
-                  "parameters": {
-                    "filePath": "relative/path/to/file.java",
-                    "content": "file content here"
-                  }
-                }
-              ],
-              "message": "Description en français de ce qui a été fait"
-            }
-            ```
-            
-            Example for creating a HelloWorld class:
-            ```json
-            {
-              "actions": [
-                {
-                  "tool": "createJavaClass",
-                  "parameters": {
-                    "className": "HelloWorld",
-                    "filePath": "src/main/java/HelloWorld.java",
-                    "classContent": "public class HelloWorld {\\n    public void sayHello() {\\n        System.out.println(\\"Hello World!\\");\\n    }\\n}"
-                  }
-                }
-              ],
-              "message": "Classe HelloWorld créée avec succès avec une méthode sayHello()"
-            }
-            ```
-            
-            IMPORTANT:
-            - Always use relative file paths from project root
-            - Always include proper Java package declarations when creating Java files
-            - Always respond in French for the message, but write code in English
-            - Always return valid JSON - no additional text before or after
-            """;
-
     private final Project project;
     private final IntelliJDevelopmentAgent developmentAgent;
     private final OllamaService ollamaService;
@@ -85,11 +32,15 @@ public final class AgentService {
     private final AgentInterface agentInterface;
     private final boolean useNativeTools;
     private final AgentModeSettings agentSettings;
+    private final AgentRequestRouter requestRouter;
+    private final AgentJsonParser jsonParser;
 
     public AgentService(Project project) {
         this.project = project;
         this.agentSettings = AgentModeSettings.getInstance();
         this.developmentAgent = new IntelliJDevelopmentAgent(project);
+        this.requestRouter = new AgentRequestRouter();
+        this.jsonParser = new AgentJsonParser(developmentAgent);
 
         // Utiliser le service Ollama existant qui a RAG/web/context
         this.ollamaService = project.getService(OllamaService.class);
@@ -192,7 +143,7 @@ public final class AgentService {
 
         try {
             // Détecter si c'est une action de développement ou une question
-            if (isActionRequest(userRequest)) {
+            if (requestRouter.isActionRequest(userRequest)) {
                 log.info("️ ACTION detected - using development agent (streaming)");
                 executeActionRequestWithStreaming(userRequest);
             } else {
@@ -218,7 +169,7 @@ public final class AgentService {
                 log.info("UNIFIED AGENT: Processing user request: {}", userRequest);
 
                 // Détecter si c'est une action de développement ou une question
-                if (isActionRequest(userRequest)) {
+                if (requestRouter.isActionRequest(userRequest)) {
                     log.info("️ ACTION detected - using development agent");
                     return executeActionRequest(userRequest);
                 } else {
@@ -231,34 +182,6 @@ public final class AgentService {
                 return "Erreur lors de l'exécution: " + e.getMessage();
             }
         });
-    }
-
-    /**
-     * Détecte si la requête est une action de développement
-     */
-    private boolean isActionRequest(String userRequest) {
-        String lower = userRequest.toLowerCase();
-
-        log.debug("Analyzing request: '{}'", userRequest);
-
-        // Exclure les phrases de clarification ou de reformulation UNIQUEMENT si explicitement mentionnées
-        if (lower.startsWith("reformule") || lower.startsWith("clarifi") || lower.startsWith("explique") ||
-                lower.contains("qu'est-ce que") || lower.contains("comment ça") ||
-                lower.contains("je veux dire") || lower.contains("en fait")) {
-            log.debug("Request classified as reformulation: '{}'", userRequest);
-            return false;
-        }
-
-        // Simplifier la détection : si contient un verbe de création + classe/fichier
-        boolean isAction = (lower.contains("crée") || lower.contains("créer") || lower.contains("créé") || lower.contains("create")) &&
-                (lower.contains("classe") || lower.contains("class") || lower.contains("fichier") || lower.contains("file"));
-
-        // Ajouter d'autres actions simples
-        isAction = isAction || lower.contains("commit") || lower.contains("push") || lower.contains("build") ||
-                lower.contains("compile") || lower.contains("test") || lower.contains("refactor");
-
-        log.debug("Request classified as action: {}", isAction);
-        return isAction;
     }
 
     /**
@@ -290,9 +213,9 @@ public final class AgentService {
                 // MODE FALLBACK: Parser le JSON et exécuter manuellement
                 log.info("FALLBACK MODE: Using JSON parsing");
                 ;
-                String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
+                String fullRequest = AgentJsonParser.PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
                 String jsonResult = agentInterface.executeRequest(fullRequest);
-                return parseAndExecuteActions(jsonResult);
+                return jsonParser.parseAndExecuteActions(jsonResult);
             }
         } catch (Exception e) {
             log.error("Error executing action request", e);
@@ -398,7 +321,7 @@ public final class AgentService {
                 log.info("FALLBACK MODE: Using JSON parsing with streaming");
 
                 StringBuilder fullResponse = new StringBuilder();
-                String fullRequest = PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
+                String fullRequest = AgentJsonParser.PROMPT_SYSTEM + "\n\nUser request: " + userRequest;
 
                 ollamaService.getAssistant().chat(fullRequest)
                         .onPartialResponse(token -> {
@@ -413,7 +336,7 @@ public final class AgentService {
                             log.info("️ Agent JSON response streaming completed");
 
                             // Parser et exécuter les actions du JSON
-                            String executionResult = parseAndExecuteActions(jsonResult);
+                            String executionResult = jsonParser.parseAndExecuteActions(jsonResult);
 
                             // Notifier la fin avec le résultat d'exécution
                             project.getMessageBus()
@@ -689,130 +612,6 @@ public final class AgentService {
      */
     public IntelliJDevelopmentAgent getDevelopmentAgent() {
         return developmentAgent;
-    }
-
-    /**
-     * Parse le JSON retourné par Ollama et exécute les actions correspondantes
-     */
-    private String parseAndExecuteActions(String jsonResponse) {
-        try {
-            log.debug("Parsing JSON response from agent");
-
-            // Extraire le JSON si c'est dans des ```json
-            String cleanJson = extractJsonFromResponse(jsonResponse);
-            log.debug("Extracted clean JSON, length: {}", cleanJson.length());
-
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(cleanJson);
-
-            StringBuilder resultBuilder = new StringBuilder();
-            JsonNode actionsNode = root.get("actions");
-            JsonNode messageNode = root.get("message");
-
-            if (actionsNode != null && actionsNode.isArray()) {
-                for (JsonNode actionNode : actionsNode) {
-                    String tool = actionNode.get("tool").asText();
-                    JsonNode parametersNode = actionNode.get("parameters");
-
-                    log.debug("Executing tool: {} with {} parameter(s)", tool, parametersNode.size());
-
-                    String toolResult = executeToolAction(tool, parametersNode);
-                    resultBuilder.append(toolResult).append("\n");
-                }
-            }
-
-            // Ajouter le message de l'agent
-            if (messageNode != null) {
-                resultBuilder.append("\n").append(messageNode.asText());
-            }
-
-            return resultBuilder.toString();
-
-        } catch (Exception e) {
-            log.error("JSON parsing error", e);
-            return "Erreur lors de l'exécution: " + e.getMessage() + "\n\nRéponse brute: " + jsonResponse;
-        }
-    }
-
-    /**
-     * Extrait le JSON de la réponse (retire les ```json si présents)
-     */
-    private String extractJsonFromResponse(String response) {
-        String trimmed = response.trim();
-
-        // Chercher ```json même si pas au début
-        if (trimmed.contains("```json")) {
-            int startIndex = trimmed.indexOf("```json") + 7;
-            int endIndex = trimmed.indexOf("```", startIndex);
-            if (endIndex > startIndex) {
-                return trimmed.substring(startIndex, endIndex).trim();
-            }
-        }
-
-        // Chercher ``` simple même si pas au début
-        if (trimmed.contains("```")) {
-            int startIndex = trimmed.indexOf("```") + 3;
-            int endIndex = trimmed.indexOf("```", startIndex);
-            if (endIndex > startIndex) {
-                return trimmed.substring(startIndex, endIndex).trim();
-            }
-        }
-
-        // Chercher le premier { et le dernier } (JSON brut)
-        int firstBrace = trimmed.indexOf('{');
-        int lastBrace = trimmed.lastIndexOf('}');
-        if (firstBrace >= 0 && lastBrace > firstBrace) {
-            return trimmed.substring(firstBrace, lastBrace + 1);
-        }
-
-        return trimmed;
-    }
-
-    /**
-     * Exécute une action tool spécifique
-     */
-    private String executeToolAction(String tool, JsonNode parameters) {
-        log.debug("Executing tool action: {}", tool);
-
-        try {
-            switch (tool) {
-                case "createJavaClass":
-                    return developmentAgent.createJavaClass(
-                            parameters.get("className").asText(),
-                            parameters.get("filePath").asText(),
-                            parameters.get("classContent").asText()
-                    );
-
-                case "createFile":
-                    return developmentAgent.createFile(
-                            parameters.get("filePath").asText(),
-                            parameters.get("content").asText()
-                    );
-
-                case "analyzeCode":
-                    return developmentAgent.analyzeCode(
-                            parameters.get("request").asText(),
-                            parameters.has("scope") ? parameters.get("scope").asText() : "project"
-                    );
-
-                case "executeGitCommand":
-                    return developmentAgent.executeGitCommand(
-                            parameters.get("operation").asText(),
-                            parameters.has("parameters") ? parameters.get("parameters").asText() : ""
-                    );
-
-                case "buildProject":
-                    return developmentAgent.buildProject(
-                            parameters.get("operation").asText()
-                    );
-
-                default:
-                    return "Tool inconnu: " + tool;
-            }
-        } catch (Exception e) {
-            log.error("Erreur lors de l'exécution du tool {}: {}", tool, e.getMessage(), e);
-            return "Erreur lors de l'exécution du tool " + tool + ": " + e.getMessage();
-        }
     }
 
     /**
