@@ -151,9 +151,11 @@ public class BuildOperationExecutorTest {
         // When: Execute task
         TaskResult result = executor.execute(unsupportedTask);
 
-        // Then: Should return failure
+        // Then: Should return failure with validation error (security check)
         assertFalse(result.isSuccess(), "Should fail for unsupported operation");
-        assertTrue(result.getErrorMessage().contains("non supportée"), "Error should mention unsupported operation");
+        assertTrue(result.getErrorMessage().contains("invalide") ||
+                   result.getErrorMessage().contains("not allowed"),
+                   "Error should mention invalid/not allowed operation");
     }
 
     @Test
