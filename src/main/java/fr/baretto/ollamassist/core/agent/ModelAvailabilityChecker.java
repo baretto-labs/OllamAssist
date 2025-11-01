@@ -68,11 +68,27 @@ public class ModelAvailabilityChecker {
                     .toList();
             log.debug("Available models: {}", availableModelNames);
 
+            // FIX: Accept both exact match and tag-based match (e.g., 'gpt-oss' matches 'gpt-oss:20b')
             boolean isAvailable = availableModels.stream()
-                    .anyMatch(model -> model.getName().equals(modelName));
+                    .anyMatch(model -> {
+                        String availableName = model.getName();
+                        // Exact match: gpt-oss:20b == gpt-oss:20b
+                        if (availableName.equals(modelName)) {
+                            return true;
+                        }
+                        // Tag match: gpt-oss matches gpt-oss:20b or gpt-oss:latest
+                        if (availableName.startsWith(modelName + ":")) {
+                            return true;
+                        }
+                        // Base name match: gpt-oss:20b matches gpt-oss
+                        if (modelName.contains(":") && availableName.equals(modelName.split(":")[0])) {
+                            return true;
+                        }
+                        return false;
+                    });
 
             if (isAvailable) {
-                log.info("Model '{}' is available", modelName);
+                log.info("Model '{}' is available (found in available models: {})", modelName, availableModelNames);
                 return ModelAvailabilityResult.available(modelName);
             } else {
                 log.warn("Model '{}' is NOT available. Available models: {}", modelName, availableModelNames);
