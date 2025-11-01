@@ -5,10 +5,16 @@ import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
+import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.core.agent.AgentService;
+import fr.baretto.ollamassist.core.agent.AgentTaskNotifier;
+import fr.baretto.ollamassist.core.agent.task.Task;
+import fr.baretto.ollamassist.core.agent.task.TaskResult;
 import fr.baretto.ollamassist.setting.agent.AgentModeSettings;
+
+import java.util.List;
 
 import javax.swing.*;
 import java.awt.*;
@@ -27,6 +33,8 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
     private final JButton toggleButton;
     private final TaskProgressIndicator progressIndicator;
     private Timer refreshTimer;
+    private MessageBusConnection messageBusConnection;
+    private volatile boolean isAgentProcessing = false;
 
     public AgentStatusPanel(Project project) {
         super(new BorderLayout());
@@ -41,6 +49,7 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
 
         setupUI();
         setupRefreshTimer();
+        setupAgentEventListeners();
         updateStatus();
     }
 
@@ -105,6 +114,78 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
         // Refresh every 2 seconds to keep status up to date
         refreshTimer = new Timer(2000, e -> updateStatus());
         refreshTimer.start();
+    }
+
+    /**
+     * FIX: Subscribe to agent events for real-time status updates
+     */
+    private void setupAgentEventListeners() {
+        messageBusConnection = project.getMessageBus().connect();
+        messageBusConnection.subscribe(AgentTaskNotifier.TOPIC, new AgentTaskNotifier() {
+            @Override
+            public void taskStarted(Task task) {
+                // Not displayed here
+            }
+
+            @Override
+            public void taskCompleted(Task task, TaskResult result) {
+                // Not displayed here
+            }
+
+            @Override
+            public void taskProgress(Task task, String progressMessage) {
+                // Not displayed here
+            }
+
+            @Override
+            public void taskCancelled(Task task) {
+                // Not displayed here
+            }
+
+            @Override
+            public void agentProcessingStarted(String userRequest) {
+                isAgentProcessing = true;
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setText("Agent Mode: En cours...");
+                    statusLabel.setForeground(JBColor.BLUE);
+                    statusLabel.setIcon(AllIcons.Process.ProgressResumeHover);
+                    progressIndicator.setVisible(true);
+                    progressIndicator.updateProgress(0, "Processing: " + userRequest);
+                });
+            }
+
+            @Override
+            public void agentProcessingCompleted(String userRequest, String response) {
+                isAgentProcessing = false;
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setText("Agent Mode: Actif");
+                    statusLabel.setForeground(new JBColor(new Color(0, 128, 0), new Color(0, 255, 0)));
+                    statusLabel.setIcon(AllIcons.Actions.Lightning);
+                    finishTaskProgress(true, "Completed");
+                });
+            }
+
+            @Override
+            public void agentProcessingFailed(String userRequest, String errorMessage) {
+                isAgentProcessing = false;
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setText("Agent Mode: Erreur");
+                    statusLabel.setForeground(JBColor.RED);
+                    statusLabel.setIcon(AllIcons.General.Error);
+                    finishTaskProgress(false, "Failed: " + errorMessage);
+                });
+            }
+
+            @Override
+            public void agentStreamingToken(String token) {
+                // Not displayed here
+            }
+
+            @Override
+            public void agentProposalRequested(String userRequest, List<Task> proposedTasks, ActionProposalCard.ActionValidator validator) {
+                // Not displayed here
+            }
+        });
     }
 
     private void updateStatus() {
@@ -269,6 +350,9 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
         }
         if (progressIndicator != null) {
             progressIndicator.dispose();
+        }
+        if (messageBusConnection != null) {
+            messageBusConnection.disconnect();
         }
     }
 }

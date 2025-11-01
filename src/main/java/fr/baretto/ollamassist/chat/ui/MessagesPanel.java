@@ -133,7 +133,17 @@ public class MessagesPanel extends JBPanel<MessagesPanel> {
 
             @Override
             public void taskProgress(Task task, String progressMessage) {
-                // Pas besoin d'afficher pour l'instant
+                // FIX: Display ReAct reflection messages (Think-Act-Observe)
+                SwingUtilities.invokeLater(() -> {
+                    if (currentStreamingMessage != null) {
+                        // Append progress to current streaming message as italic text
+                        currentStreamingMessage.append("\n*" + progressMessage + "*");
+                        scrollToBottom();
+                    } else {
+                        // If no streaming message, create a temporary progress indicator
+                        log.debug("ReAct progress (no streaming message): {}", progressMessage);
+                    }
+                });
             }
 
             @Override
