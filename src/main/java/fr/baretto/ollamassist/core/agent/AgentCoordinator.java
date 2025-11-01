@@ -59,46 +59,50 @@ public final class AgentCoordinator implements Disposable {
 
     /**
      * Exécute une requête utilisateur en mode agent avec LangChain4J
+     * FIXED P0-1: Non-blocking async execution to prevent UI freeze
      */
     public CompletableFuture<TaskResult> executeUserRequest(String userRequest) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                log.info("Processing user request with LangChain4J agent: {}", userRequest);
+        log.info("Processing user request with LangChain4J agent: {}", userRequest);
 
-                // Changer l'état à PROCESSING
-                setState(AgentState.PROCESSING);
+        // Changer l'état à PROCESSING
+        setState(AgentState.PROCESSING);
 
-                // Notifier le démarrage de l'exécution
-                project.getMessageBus()
-                        .syncPublisher(AgentTaskNotifier.TOPIC)
-                        .agentProcessingStarted(userRequest);
+        // Notifier le démarrage de l'exécution
+        project.getMessageBus()
+                .syncPublisher(AgentTaskNotifier.TOPIC)
+                .agentProcessingStarted(userRequest);
 
-                // Exécuter via l'agent LangChain4J avec tools
-                log.debug("Calling agentService to execute user request");
-                String agentResponse = agentService.executeUserRequest(userRequest).get();
-                log.debug("AgentService completed request execution");
+        // Exécuter via l'agent LangChain4J avec tools (ASYNC - NO BLOCKING)
+        log.debug("Calling agentService to execute user request");
 
-                // Notifier la completion
-                project.getMessageBus()
-                        .syncPublisher(AgentTaskNotifier.TOPIC)
-                        .agentProcessingCompleted(userRequest, agentResponse);
+        return agentService.executeUserRequest(userRequest)
+                .thenApply(agentResponse -> {
+                    // Success callback - runs when agent completes
+                    log.debug("AgentService completed request execution");
 
-                log.info("Agent execution completed successfully");
-                return TaskResult.success(agentResponse);
+                    // Notifier la completion
+                    project.getMessageBus()
+                            .syncPublisher(AgentTaskNotifier.TOPIC)
+                            .agentProcessingCompleted(userRequest, agentResponse);
 
-            } catch (Exception e) {
-                log.error("Error executing user request with agent", e);
+                    log.info("Agent execution completed successfully");
+                    setState(AgentState.IDLE);
 
-                // Notifier l'erreur
-                project.getMessageBus()
-                        .syncPublisher(AgentTaskNotifier.TOPIC)
-                        .agentProcessingFailed(userRequest, e.getMessage());
+                    return TaskResult.success(agentResponse);
+                })
+                .exceptionally(e -> {
+                    // Error callback - runs on exception
+                    log.error("Error executing user request with agent", e);
 
-                return TaskResult.failure("Erreur lors de l'exécution de l'agent: " + e.getMessage());
-            } finally {
-                setState(AgentState.IDLE);
-            }
-        });
+                    // Notifier l'erreur
+                    project.getMessageBus()
+                            .syncPublisher(AgentTaskNotifier.TOPIC)
+                            .agentProcessingFailed(userRequest, e.getMessage());
+
+                    setState(AgentState.IDLE);
+
+                    return TaskResult.failure("Erreur lors de l'exécution de l'agent: " + e.getMessage());
+                });
     }
 
     /**

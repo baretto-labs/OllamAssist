@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Moteur d'exécution des tâches agent
@@ -20,6 +21,12 @@ public class ExecutionEngine {
     private final Project project;
     private final Map<Task.TaskType, TaskExecutor> executors;
     private final AgentNotificationService notificationService;
+
+    // FIXED P1-4: Statistics collection with thread-safe atomic counters
+    private final AtomicLong totalExecutions = new AtomicLong(0);
+    private final AtomicLong successfulExecutions = new AtomicLong(0);
+    private final AtomicLong failedExecutions = new AtomicLong(0);
+    private final AtomicLong totalExecutionTimeMs = new AtomicLong(0);
 
     public ExecutionEngine(Project project) {
         this.project = project;
@@ -59,14 +66,20 @@ public class ExecutionEngine {
             // Calculer le temps d'exécution
             Duration executionTime = Duration.between(startTime, LocalDateTime.now());
 
+            // FIXED P1-4: Update statistics counters
+            totalExecutions.incrementAndGet();
+            totalExecutionTimeMs.addAndGet(executionTime.toMillis());
+
             if (result.isSuccess()) {
                 task.markCompleted();
+                successfulExecutions.incrementAndGet();
                 log.info("Task completed successfully: {} in {}ms", task.getId(), executionTime.toMillis());
 
                 // Notifier le succès
                 notificationService.notifyTaskSuccess(task, result);
             } else {
                 task.markFailed(result.getErrorMessage());
+                failedExecutions.incrementAndGet();
                 log.error("Task failed: {} - {}", task.getId(), result.getErrorMessage());
 
                 // Notifier l'échec
@@ -89,6 +102,12 @@ public class ExecutionEngine {
             log.error("Task execution error: {}", task.getId(), e);
 
             Duration executionTime = Duration.between(startTime, LocalDateTime.now());
+
+            // FIXED P1-4: Update statistics counters for exceptions
+            totalExecutions.incrementAndGet();
+            failedExecutions.incrementAndGet();
+            totalExecutionTimeMs.addAndGet(executionTime.toMillis());
+
             TaskResult errorResult = TaskResult.builder()
                     .success(false)
                     .errorMessage(error)
@@ -162,14 +181,17 @@ public class ExecutionEngine {
 
     /**
      * Obtient les statistiques d'exécution
+     * FIXED P1-4: Return actual collected statistics
      */
     public ExecutionStats getStats() {
-        // TODO: Implémenter la collecte de statistiques
+        long total = totalExecutions.get();
+        long avgTimeMs = total > 0 ? totalExecutionTimeMs.get() / total : 0;
+
         return ExecutionStats.builder()
-                .totalExecutions(0)
-                .successfulExecutions(0)
-                .failedExecutions(0)
-                .averageExecutionTime(Duration.ZERO)
+                .totalExecutions(total)
+                .successfulExecutions(successfulExecutions.get())
+                .failedExecutions(failedExecutions.get())
+                .averageExecutionTime(Duration.ofMillis(avgTimeMs))
                 .build();
     }
 

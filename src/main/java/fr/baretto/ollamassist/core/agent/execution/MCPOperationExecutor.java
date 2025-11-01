@@ -8,6 +8,8 @@ import fr.baretto.ollamassist.core.mcp.protocol.MCPResponse;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Exécuteur pour les opérations MCP
@@ -41,12 +43,25 @@ public class MCPOperationExecutor implements ExecutionEngine.TaskExecutor {
                 params = Map.of();
             }
 
-            // Exécuter la capacité MCP
+            // Exécuter la capacité MCP avec timeout (FIXED P0-2: NO INFINITE BLOCKING)
             MCPResponse response;
-            if (serverId != null) {
-                response = capabilityProvider.executeCapability(serverId, capability, params).join();
-            } else {
-                response = capabilityProvider.executeCapability(capability, params).join();
+            try {
+                if (serverId != null) {
+                    response = capabilityProvider.executeCapability(serverId, capability, params)
+                            .orTimeout(30, TimeUnit.SECONDS)
+                            .join();
+                } else {
+                    response = capabilityProvider.executeCapability(capability, params)
+                            .orTimeout(30, TimeUnit.SECONDS)
+                            .join();
+                }
+            } catch (Exception e) {
+                // Handle timeout and other exceptions
+                if (e.getCause() instanceof TimeoutException) {
+                    log.error("MCP operation timeout after 30 seconds: capability={}, serverId={}", capability, serverId);
+                    return TaskResult.failure("Timeout MCP après 30 secondes: " + capability);
+                }
+                throw e; // Re-throw other exceptions to be caught by outer catch
             }
 
             if (response.isSuccess()) {

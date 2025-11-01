@@ -10,16 +10,19 @@ import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.core.agent.task.Task;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
  * Card component for displaying action proposals with validation buttons
  * Modern UI component for agent mode with user validation
  */
+@Slf4j
 @Getter
 public class ActionProposalCard extends JPanel {
 
@@ -119,6 +122,10 @@ public class ActionProposalCard extends JPanel {
         approveButton = createActionButton("Apply", AllIcons.Actions.Commit, JBColor.GREEN);
         rejectButton = createActionButton("Reject", AllIcons.Actions.Cancel, JBColor.RED);
         modifyButton = createActionButton("Modify", AllIcons.Actions.Edit, JBColor.BLUE);
+
+        // FIXED P1-1: Disable Modify button (not yet implemented)
+        modifyButton.setEnabled(false);
+        modifyButton.setToolTipText("Fonctionnalité à venir");
     }
 
     private void layoutComponents() {
@@ -355,8 +362,10 @@ public class ActionProposalCard extends JPanel {
         try {
             action.run();
         } catch (Exception e) {
-            // Log error but keep buttons disabled to prevent retry
-            throw e;
+            // FIXED P1-2: Log error without re-throwing to prevent UI crash
+            log.error("Error executing action in ActionProposalCard: proposalId={}, actionType={}",
+                    proposalData.getId(), proposalData.getActionType(), e);
+            // Keep buttons disabled to prevent retry
         }
         // DO NOT call finishAction() - buttons should stay disabled after action execution
     }
@@ -387,7 +396,7 @@ public class ActionProposalCard extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 approveButton.setEnabled(true);
                 rejectButton.setEnabled(true);
-                modifyButton.setEnabled(true);
+                // modifyButton.setEnabled(true); // FIXED P1-1: Keep disabled (not implemented)
             });
         }
     }
@@ -474,11 +483,19 @@ public class ActionProposalCard extends JPanel {
         private final ActionType actionType;
         private final String previewContent;
         private final Task relatedTask;
-        @lombok.Builder.Default
-        private ProposalStatus status = ProposalStatus.PENDING_APPROVAL;
 
-        public void setStatus(ProposalStatus status) {
-            this.status = status;
+        // FIXED P0-3: Thread-safe status using AtomicReference to prevent race conditions
+        @lombok.Getter(lombok.AccessLevel.NONE)
+        @lombok.Builder.Default
+        private final AtomicReference<ProposalStatus> status =
+                new AtomicReference<>(ProposalStatus.PENDING_APPROVAL);
+
+        public ProposalStatus getStatus() {
+            return status.get();
+        }
+
+        public void setStatus(ProposalStatus newStatus) {
+            status.set(newStatus);
         }
     }
 }
