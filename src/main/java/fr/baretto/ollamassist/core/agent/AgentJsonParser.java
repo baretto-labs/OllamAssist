@@ -41,7 +41,7 @@ public class AgentJsonParser {
             }
             ```
 
-            Example for creating a HelloWorld class:
+            Example 1 - Creating a HelloWorld class in default package:
             ```json
             {
               "actions": [
@@ -54,13 +54,32 @@ public class AgentJsonParser {
                   }
                 }
               ],
-              "message": "Classe HelloWorld créée avec succès avec une méthode sayHello()"
+              "message": "Classe HelloWorld créée avec succès dans src/main/java/"
             }
             ```
 
-            IMPORTANT:
-            - Always use relative file paths from project root
-            - Always include proper Java package declarations when creating Java files
+            Example 2 - Creating a class in a package (IMPORTANT: use proper structure):
+            ```json
+            {
+              "actions": [
+                {
+                  "tool": "createJavaClass",
+                  "parameters": {
+                    "className": "UserService",
+                    "filePath": "src/main/java/com/example/service/UserService.java",
+                    "classContent": "package com.example.service;\\n\\npublic class UserService {\\n    public void createUser() {\\n        // TODO\\n    }\\n}"
+                  }
+                }
+              ],
+              "message": "Classe UserService créée dans le package com.example.service"
+            }
+            ```
+
+            IMPORTANT JAVA PROJECT STRUCTURE:
+            - Java classes MUST be placed in: src/main/java/[package_path]/ClassName.java
+            - If class has "package com.example.service;", path MUST be: src/main/java/com/example/service/ClassName.java
+            - Never create Java files at project root (e.g., "Test.java" is WRONG)
+            - Always include proper Java package declarations in classContent
             - Always respond in French for the message, but write code in English
             - Always return valid JSON - no additional text before or after
             """;

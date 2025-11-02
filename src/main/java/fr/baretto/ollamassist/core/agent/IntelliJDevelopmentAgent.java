@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Agent de développement IntelliJ utilisant LangChain4J avec vrais tools
@@ -40,6 +42,41 @@ public class IntelliJDevelopmentAgent {
         this.validationInterceptor = new ValidationInterceptor(project);
     }
 
+    /**
+     * FIX: Auto-correct Java file path based on package declaration
+     * Prevents files from being created at project root instead of src/main/java/package/
+     */
+    private String correctJavaFilePath(String className, String filePath, String classContent) {
+        // Extract package from class content
+        Pattern packagePattern = Pattern.compile("package\\s+([a-zA-Z0-9_.]+)\\s*;");
+        Matcher matcher = packagePattern.matcher(classContent);
+
+        String packageName = null;
+        if (matcher.find()) {
+            packageName = matcher.group(1);
+            log.debug("Extracted package: {}", packageName);
+        }
+
+        // If path doesn't start with src/, auto-correct it
+        if (!filePath.startsWith("src/")) {
+            if (packageName != null) {
+                // Build proper Java path: src/main/java/com/example/ClassName.java
+                String packagePath = packageName.replace('.', '/');
+                String correctedPath = "src/main/java/" + packagePath + "/" + className + ".java";
+                log.warn("Auto-correcting Java file path: '{}' -> '{}'", filePath, correctedPath);
+                return correctedPath;
+            } else {
+                // No package, default to src/main/java/
+                String correctedPath = "src/main/java/" + className + ".java";
+                log.warn("Auto-correcting Java file path (no package): '{}' -> '{}'", filePath, correctedPath);
+                return correctedPath;
+            }
+        }
+
+        // Path already correct
+        return filePath;
+    }
+
     @Tool("Create a new Java class file with the specified content")
     public String createJavaClass(
             @P("The name of the class to create") String className,
@@ -49,7 +86,10 @@ public class IntelliJDevelopmentAgent {
         log.error("TOOL CALLED: createJavaClass");
         log.error("Parameters: className='{}', filePath='{}', contentLength={}",
                 className, filePath, classContent != null ? classContent.length() : 0);
-        log.info("Creating Java class: {} at path: {}", className, filePath);
+
+        // FIX: Auto-correct path if agent provided wrong location
+        String correctedPath = correctJavaFilePath(className, filePath, classContent);
+        log.info("Creating Java class: {} at path: {}", className, correctedPath);
 
         try {
             // Créer une tâche FILE_OPERATION pour utiliser l'ExecutionEngine existant
@@ -58,14 +98,14 @@ public class IntelliJDevelopmentAgent {
                     .description("Create Java class: " + className)
                     .type(Task.TaskType.FILE_OPERATION)
                     .priority(Task.TaskPriority.NORMAL)
-                    .parameters(createFileOperationParams(filePath, classContent))
+                    .parameters(createFileOperationParams(correctedPath, classContent))
                     .createdAt(LocalDateTime.now())
                     .build();
 
             TaskResult result = executionEngine.executeTask(createFileTask);
 
             if (result.isSuccess()) {
-                String successMessage = String.format("Successfully created Java class '%s' at '%s'", className, filePath);
+                String successMessage = String.format("Successfully created Java class '%s' at '%s'", className, correctedPath);
                 log.info(successMessage);
 
                 // AUTOMATIC VALIDATION: Check compilation after creating Java class
