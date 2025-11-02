@@ -159,7 +159,22 @@ tasks {
     test {
         useJUnitPlatform {
             includeEngines("junit-jupiter")
+            // Exclude integration tests from default test task
+            // Integration tests require Ollama running and should be run separately
+            excludeTags("integration")
         }
+    }
+
+    // Integration tests require Ollama to be running
+    // Run with: ./gradlew integrationTest
+    val integrationTest by registering(Test::class) {
+        description = "Runs integration tests (requires Ollama)."
+        group = "verification"
+        useJUnitPlatform {
+            includeEngines("junit-jupiter")
+            includeTags("integration")
+        }
+        shouldRunAfter(test)
     }
 
     val benchmark by registering(Test::class) {
