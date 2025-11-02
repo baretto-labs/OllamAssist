@@ -282,10 +282,19 @@ public class TaskProgressIndicator extends JPanel {
 
     /**
      * Affiche un message de statut temporaire
+     * FIX: Stop indeterminate animation to prevent "thinking" icon spinning forever
      */
     public void showTemporaryStatus(String message, int durationMs) {
         String originalStatus = statusLabel.getText();
         String originalDetails = detailsLabel.getText();
+
+        // FIX: Stop update timer to prevent continuous animation
+        updateTimer.stop();
+
+        // FIX: Stop indeterminate progress bar animation
+        progressBar.setIndeterminate(false);
+        progressBar.setValue(100);
+        progressBar.setString("Completed");
 
         statusLabel.setText(message);
         detailsLabel.setText("Temporary status message");
@@ -307,6 +316,29 @@ public class TaskProgressIndicator extends JPanel {
             progressBar.setValue(percentage);
             progressBar.setString(percentage + "% - " + message);
             detailsLabel.setText(message);
+        });
+    }
+
+    /**
+     * Stop all progress animations and timers
+     * FIX: Public method to ensure animation stops completely
+     */
+    public void stopProgress() {
+        SwingUtilities.invokeLater(() -> {
+            // Stop update timer
+            if (updateTimer != null && updateTimer.isRunning()) {
+                updateTimer.stop();
+            }
+
+            // Stop indeterminate animation
+            progressBar.setIndeterminate(false);
+            progressBar.setValue(0);
+            progressBar.setString("Ready");
+
+            // Reset labels
+            statusLabel.setText("Waiting for task...");
+            detailsLabel.setText(" ");
+            cancelButton.setEnabled(false);
         });
     }
 

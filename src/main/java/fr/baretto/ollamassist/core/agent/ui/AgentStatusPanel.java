@@ -305,9 +305,13 @@ public class AgentStatusPanel extends JBPanel<AgentStatusPanel> {
 
     /**
      * Termine l'affichage de progression
+     * FIX: Ensure progress animation stops completely
      */
     public void finishTaskProgress(boolean success, String message) {
         SwingUtilities.invokeLater(() -> {
+            // FIX: Stop all animations first
+            progressIndicator.stopProgress();
+
             if (success) {
                 progressIndicator.showTemporaryStatus(message, 3000);
             } else {
