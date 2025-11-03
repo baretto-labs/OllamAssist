@@ -398,11 +398,11 @@ public class ReActLoopController {
                 - buildProject: {operation}
                 - analyzeCode: {request, scope}
 
-                IMPORTANT: After createJavaClass or createFile, compilation is AUTOMATICALLY checked.
-                You will receive compilation results in the next iteration.
-                If compilation fails, FIX the errors immediately.
+                IMPORTANT: After createJavaClass or createFile, compilation is AUTOMATICALLY validated.
+                If validation succeeds, the task is COMPLETE - set "continue_cycle": false and provide "final_answer".
+                If validation fails, you will see errors - FIX them immediately.
 
-                Set "continue_cycle": false and provide "final_answer" when task is complete.
+                ALWAYS set "continue_cycle": false and provide "final_answer" when your action succeeds.
                 """;
     }
 
@@ -416,7 +416,7 @@ public class ReActLoopController {
         prompt.append("PREVIOUS OBSERVATION:\n");
 
         if (lastObs != null) {
-            prompt.append(lastObs.isSuccess() ? "" : "");
+            prompt.append(lastObs.isSuccess() ? "✅ SUCCESS: " : "❌ FAILURE: ");
             prompt.append(lastObs.getResult()).append("\n");
 
             if (lastObs.hasErrors()) {
@@ -424,6 +424,18 @@ public class ReActLoopController {
                 for (String error : lastObs.getErrors()) {
                     prompt.append("  - ").append(error).append("\n");
                 }
+                prompt.append("\nYou MUST fix these errors. Continue with an action.\n");
+            } else if (lastObs.isSuccess()) {
+                prompt.append("\n✅ Task completed successfully! The request '").append(context.getOriginalRequest());
+                prompt.append("' is DONE.\n");
+                prompt.append("You MUST now respond with:\n");
+                prompt.append("{\n");
+                prompt.append("  \"thinking\": \"The task has been completed successfully\",\n");
+                prompt.append("  \"final_answer\": \"").append(lastObs.getResult()).append("\",\n");
+                prompt.append("  \"continue_cycle\": false\n");
+                prompt.append("}\n\n");
+                prompt.append("DO NOT propose any more actions. Just provide the final_answer.\n");
+                return prompt.toString();
             }
         }
 
