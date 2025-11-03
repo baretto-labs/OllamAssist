@@ -297,14 +297,16 @@ public final class AgentService {
                     try {
                         ReActResult result = controller.executeWithLoop(userRequest).get();
 
-                        String finalMessage = result.isSuccess()
-                                ? result.getFinalMessage()
-                                : result.getUserMessage();
-
-                        // Notifier la fin du processing
-                        project.getMessageBus()
-                                .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
-                                .agentProcessingCompleted(userRequest, finalMessage);
+                        // FIX: Notify success OR failure based on result
+                        if (result.isSuccess()) {
+                            project.getMessageBus()
+                                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                    .agentProcessingCompleted(userRequest, result.getFinalMessage());
+                        } else {
+                            project.getMessageBus()
+                                    .syncPublisher(fr.baretto.ollamassist.core.agent.AgentTaskNotifier.TOPIC)
+                                    .agentProcessingFailed(userRequest, result.getUserMessage());
+                        }
 
                     } catch (Exception e) {
                         log.error("Error in ReAct execution", e);

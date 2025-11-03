@@ -87,16 +87,22 @@ public class ReActLoopController {
             context.incrementIteration();
             log.info("ReAct iteration {}/{}", iteration + 1, MAX_ITERATIONS);
 
-            // Publish progress notification
+            // Publish progress notification with more context
             publishProgress(context, iteration, "Think",
-                String.format("Itération %d/%d - Think (Timeout dans %ds)",
+                String.format("💭 Itération %d/%d - Analyse de la requête (Timeout dans %ds)",
                     iteration + 1, MAX_ITERATIONS, remainingSec));
 
             // 1. THINK: Ask model to reason
             ThinkingResult thinking = askModelToThink(context);
             if (thinking == null) {
-                publishProgress(context, iteration, "Error", "Échec de la réflexion du modèle");
+                publishProgress(context, iteration, "Error", "❌ Échec de la réflexion du modèle");
                 return ReActResult.error(context, "Failed to get thinking from model");
+            }
+
+            // FIX: Show thinking reasoning to user
+            if (thinking.reasoning() != null && !thinking.reasoning().isBlank()) {
+                publishProgress(context, iteration, "Thinking",
+                    "💡 Raisonnement: " + thinking.reasoning());
             }
 
             context.addThinking(new ReActContext.ThinkingStep(
@@ -105,21 +111,37 @@ public class ReActLoopController {
                     thinking.finalAnswer()
             ));
 
-            // 2. Check if model has final answer
+            // 2. Check if model has final answer OR wants to stop
             if (thinking.hasFinalAnswer()) {
                 log.info("Model provided final answer");
+                publishProgress(context, iteration, "Complete",
+                    "✅ Tâche terminée: " + thinking.finalAnswer());
                 return ReActResult.success(context, thinking.finalAnswer());
+            }
+
+            // FIX: Check if model wants to stop even without final answer
+            if (thinking.shouldStopCycle()) {
+                log.info("Model requested to stop cycle");
+                String message = context.getLastObservation() != null
+                    ? context.getLastObservation().getResult()
+                    : "Tâche terminée";
+                publishProgress(context, iteration, "Complete", "✅ " + message);
+                return ReActResult.success(context, message);
             }
 
             // 3. ACT: Execute the proposed action
             if (!thinking.hasAction()) {
                 log.warn("No action proposed by model");
-                publishProgress(context, iteration, "Error", "Aucune action proposée");
+                publishProgress(context, iteration, "Error", "❌ Aucune action proposée par le modèle");
                 return ReActResult.error(context, "Model did not propose any action");
             }
 
+            // Show action description
+            String actionDesc = thinking.actionDescription() != null
+                ? thinking.actionDescription()
+                : thinking.toolName();
             publishProgress(context, iteration, "Act",
-                String.format("Exécution: %s", thinking.toolName()));
+                String.format("⚙️ Exécution: %s", actionDesc));
 
             ActionResult actionResult = executeAction(thinking, context);
             context.addAction(new ReActContext.ActionStep(
@@ -130,7 +152,8 @@ public class ReActLoopController {
 
             // 4. OBSERVE: Verify the result (with automatic validation)
             publishProgress(context, iteration, "Observe",
-                String.format("Vérification: %s", thinking.toolName()));
+                String.format("🔍 Vérification du résultat de '%s'",
+                    thinking.toolName().toLowerCase()));
 
             ObservationResult observation = observeResult(actionResult, thinking.toolName(), context);
             context.addObservation(new ReActContext.ObservationStep(
@@ -415,11 +438,16 @@ public class ReActLoopController {
 
             if (structured != null && structured.hasAction()) {
                 StructuredAgentResponse.AgentAction action = structured.getAction();
-                return ThinkingResult.action(
+
+                // FIX: Check if model wants to stop cycle
+                boolean shouldStop = structured.shouldStopCycle();
+
+                return ThinkingResult.actionWithStop(
                         structured.getThinking(),
                         action.getTool(),
                         action.getParameters(),
-                        action.getReasoning()
+                        action.getReasoning(),
+                        shouldStop
                 );
             }
 
@@ -524,14 +552,19 @@ public class ReActLoopController {
             boolean hasAction,
             String toolName,
             Map<String, Object> parameters,
-            String actionDescription
+            String actionDescription,
+            boolean shouldStopCycle
     ) {
         static ThinkingResult finalAnswer(String reasoning, String answer) {
-            return new ThinkingResult(reasoning, true, answer, false, null, null, null);
+            return new ThinkingResult(reasoning, true, answer, false, null, null, null, false);
         }
 
         static ThinkingResult action(String reasoning, String tool, Map<String, Object> params, String description) {
-            return new ThinkingResult(reasoning, false, null, true, tool, params, description);
+            return new ThinkingResult(reasoning, false, null, true, tool, params, description, false);
+        }
+
+        static ThinkingResult actionWithStop(String reasoning, String tool, Map<String, Object> params, String description, boolean stop) {
+            return new ThinkingResult(reasoning, false, null, true, tool, params, description, stop);
         }
     }
 

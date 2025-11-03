@@ -48,6 +48,14 @@ public class StructuredAgentResponse {
     }
 
     /**
+     * Vérifie si le cycle ReAct doit s'arrêter
+     * (le modèle a mis continue_cycle à false)
+     */
+    public boolean shouldStopCycle() {
+        return !continueCycle;
+    }
+
+    /**
      * Vérifie si on a une réponse finale (même partielle)
      */
     public boolean hasFinalAnswer() {
