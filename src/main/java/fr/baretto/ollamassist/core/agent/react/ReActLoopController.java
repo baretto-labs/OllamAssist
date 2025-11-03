@@ -290,7 +290,7 @@ public class ReActLoopController {
             if (validation.isSuccess()) {
                 context.markValidationCompleted();
                 return ObservationResult.success(
-                        actionResult.message() + "\nCode validated - compilation successful"
+                        actionResult.message() + "\n✅ Code validated - compilation successful"
                 );
             } else {
                 // Compilation failed - return errors for fixing
@@ -301,7 +301,10 @@ public class ReActLoopController {
             }
         }
 
-        // No validation needed
+        // FIX: No validation needed - mark as completed anyway
+        // This allows the cycle to terminate for actions that don't require compilation
+        context.markValidationCompleted();
+        log.debug("No validation required for {}, marking as completed", toolName);
         return ObservationResult.success(actionResult.message());
     }
 
@@ -315,14 +318,23 @@ public class ReActLoopController {
         // 3. No errors or warnings
 
         boolean observationSuccess = observation.success();
+        boolean requiresVal = requiresValidation(context);
         boolean validationComplete = context.isCompletedValidation() ||
-                !requiresValidation(context);
+                !requiresVal;
         boolean noErrors = !observation.hasErrors();
 
-        log.debug("Termination check: success={}, validation={}, noErrors={}",
-                observationSuccess, validationComplete, noErrors);
+        log.info("🎯 Termination check: success={}, requiresValidation={}, validationCompleted={}, validationComplete={}, noErrors={}",
+                observationSuccess, requiresVal, context.isCompletedValidation(), validationComplete, noErrors);
 
-        return observationSuccess && validationComplete && noErrors;
+        boolean shouldTerminate = observationSuccess && validationComplete && noErrors;
+
+        if (shouldTerminate) {
+            log.info("✅ All conditions met - terminating ReAct cycle");
+        } else {
+            log.info("⏭️ Continuing to next iteration - conditions not met");
+        }
+
+        return shouldTerminate;
     }
 
     /**
