@@ -263,6 +263,7 @@ public class ReActLoopController {
 
     /**
      * Observes the result of an action with automatic validation
+     * FIX: Tools already do validation, don't duplicate it here
      */
     private ObservationResult observeResult(ActionResult actionResult, String toolName, ReActContext context) {
         log.debug("️ Observing result of: {}", toolName);
@@ -274,38 +275,25 @@ public class ReActLoopController {
             );
         }
 
-        // Create a TaskResult from ActionResult for validation
-        fr.baretto.ollamassist.core.agent.task.TaskResult taskResult =
-                fr.baretto.ollamassist.core.agent.task.TaskResult.success(actionResult.message());
+        // FIX: IntelliJDevelopmentAgent already performs validation in the tool methods
+        // Don't duplicate validation here - it causes timeouts and false failures
+        // The tool's return message already indicates success/failure of validation
 
-        // AUTOMATIC VALIDATION: Check if action requires compilation check
-        if (validationInterceptor.requiresCompilationCheck(toolName, taskResult)) {
-            log.info("Auto-validating compilation after {}", toolName);
+        String resultMessage = actionResult.message();
 
-            ValidationResult validation = validationInterceptor.autoValidate(
-                    toolName,
-                    taskResult
-            );
-
-            if (validation.isSuccess()) {
-                context.markValidationCompleted();
-                return ObservationResult.success(
-                        actionResult.message() + "\n✅ Code validated - compilation successful"
-                );
-            } else {
-                // Compilation failed - return errors for fixing
-                return ObservationResult.failure(
-                        "Action succeeded but compilation failed",
-                        validation.getErrors()
-                );
-            }
+        // Check if message indicates compilation errors (validation already done by tool)
+        if (resultMessage != null && resultMessage.contains("Compilation errors detected")) {
+            // Tool already validated and found errors
+            log.warn("Tool validation found compilation errors");
+            // Extract errors from message if possible
+            java.util.List<String> errors = java.util.List.of(resultMessage);
+            return ObservationResult.failure("Compilation errors detected", errors);
         }
 
-        // FIX: No validation needed - mark as completed anyway
-        // This allows the cycle to terminate for actions that don't require compilation
+        // Success - mark validation as completed
         context.markValidationCompleted();
-        log.debug("No validation required for {}, marking as completed", toolName);
-        return ObservationResult.success(actionResult.message());
+        log.info("✅ Action '{}' completed successfully, validation marked complete", toolName);
+        return ObservationResult.success(resultMessage);
     }
 
     /**
