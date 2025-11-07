@@ -10,187 +10,154 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 OllamAssist is a JetBrains IntelliJ IDEA plugin that integrates with Ollama to provide AI-powered development assistance. It's written in Java with a Gradle Kotlin DSL build system and leverages LangChain4J for AI model integration.
 
-## Build System and Commands
+## Quick Reference
 
 ### Prerequisites
 - Java 21 (JDK 21)
 - Ollama installed and running locally
 
 ### Core Commands
-
-**Build the plugin:**
 ```bash
-./gradlew build
+./gradlew build          # Build the plugin
+./gradlew test           # Run tests
+./gradlew benchmark      # Run benchmarks
+./gradlew check          # Run all checks
 ```
 
-**Run tests:**
-```bash
-./gradlew test
-```
+### Testing Strategy - **CRITICAL**
+**IMPORTANT: Test-First Development (TDD)**
+- **Always write tests first** before implementing features
+- RED-GREEN-REFACTOR cycle mandatory
+- **Never reduce test quality** - fix implementation instead
+- **Target coverage: >80%**
+- Unit tests: `src/test/java/` (JUnit Jupiter + AssertJ + Mockito)
 
-**Run benchmarks:**
-```bash
-./gradlew benchmark
-```
-
-**Build plugin distribution:**
-```bash
-./gradlew buildPlugin
-```
-
-**Clean build artifacts:**
-```bash
-./gradlew clean
-```
-
-**Run all checks (includes tests, benchmarks):**
-```bash
-./gradlew check
-```
-
-**SonarCloud analysis (requires SONAR_TOKEN):**
-```bash
-./gradlew sonar
-```
-
-### Testing Strategy
-
-**IMPORTANT: Test-First Development Approach**
-- **Always write tests first** before implementing new features (Test-Driven Development - TDD)
-- When adding new functionality, start by writing failing tests that describe the expected behavior
-- Implement the minimal code needed to make tests pass
-- Refactor while keeping tests green
-- Never reduce test quality or remove assertions to make tests pass - fix the implementation instead
-
-**Test Organization:**
-- Unit tests: Located in `src/test/java/`
-- Benchmark tests: Located in `src/benchmark/java/`
-- JUnit Jupiter engine for unit tests
-- AssertJ for assertions
-- Mockito for mocking
-
-**Test Quality Standards:**
-- Maintain high test coverage and comprehensive assertions
-- Test both positive and negative scenarios
-- Include edge cases and error handling
-- Write descriptive test method names that explain the behavior being tested
-
-## Architecture Overview
+## Current Architecture
 
 ### Core Components
+**Plugin:** `OllamAssistStartup`, `OllamaWindowFactory`
+**AI/Chat:** `OllamaService`, `Assistant`, `LightModelAssistant`
+**RAG:** `LuceneEmbeddingStore`, `DocumentIndexingPipeline`, `WorkspaceContextRetriever`
+**Code Completion:** `InlineCompletionAction` (Shift+Space), `SuggestionManager`
+**Git:** `CommitMessageGenerator`, `DiffGenerator`, `MyersDiff`
+**Refactoring:** `RefactorAction`, `ApplyRefactoringAction`
+**UI:** `MessagesPanel`, `PresentationPanel`, `PromptPanel`
+**Services:** `PrerequisiteService`, `OllamAssistSettings`, `IndexRegistry`
 
-**Plugin Entry Points:**
-- `OllamAssistStartup` - Plugin initialization and startup activities
-- `OllamaWindowFactory` - Creates the main tool window UI
+### Dependencies
+- LangChain4J (1.8.0), LangChain4J Easy RAG (1.8.0-beta15), LangChain4J Agentic (1.8.0)
+- Apache Lucene, DJL
+- IntelliJ IDEA Community 2024.3, Git4Idea
+- RSyntaxTextArea, Jackson, Jsoup
 
-**AI/Chat System:**
-- `OllamaService` - Handles communication with Ollama backend
-- `Assistant` - Main AI conversation coordinator
-- `LightModelAssistant` - Lightweight model for completions
+## Agent System Architecture (New Development)
 
-**RAG (Retrieval-Augmented Generation):**
-- `LuceneEmbeddingStore` - Vector storage using Apache Lucene
-- `DocumentIndexingPipeline` - Processes workspace files for indexing
-- `WorkspaceContextRetriever` - Retrieves relevant context from indexed files
-- `FilesUtil` - File processing utilities for RAG
+### Overview
+Evolution from RAG chat to **autonomous agent system** using **LangChain4J Agents**.
 
-**Code Completion:**
-- `InlineCompletionAction` - Triggered via Shift+Space
-- `SuggestionManager` - Manages completion suggestions
-- `InlayRenderer` - Renders inline suggestions in editor
+### Stack Technique
 
-**Git Integration:**
-- `CommitMessageGenerator` - AI-generated commit messages
-- `DiffGenerator` - Generates diffs for context
-- `MyersDiff` - Myers diff algorithm implementation
+**LangChain4J Components (Maximum utilization):**
+- **SupervisorAgent** - Autonomous orchestrator
+- **@Agent** - Interface-based agents
+- **AgenticScope** - Shared state
+- **HumanInTheLoop** - User validation
+- **@Tool** - Method-level tools with auto-discovery
+- **Structured Outputs** - JSON Schema for plan generation
+- **ChatModelListener** - Observability hooks
+- **Workflows** - Sequential, parallel, loop, conditional
 
-**Refactoring:**
-- `RefactorAction` - Code refactoring suggestions
-- `ApplyRefactoringAction` - Applies suggested refactorings
-- `RefactoringInlayRenderer` - Displays refactoring suggestions
+**OllamAssist Custom (Observability):**
+- **SourceReference** - File/line/URL tracking with navigation
+- **ExecutionTrace/StepTrace** - Execution history with reasoning
+- **ExecutionMetrics** - Token usage, cost, performance
+- **ToolResult** - Results with SourceReference[] for traceability
+- **OllamAssistAgenticScope** - Wrapper combining AgenticScope + traces
 
-**UI Components:**
-- `MessagesPanel` - Chat conversation display
-- `PresentationPanel` - Main plugin UI
-- `PromptPanel` - User input area
-- `SyntaxHighlighterPanel` - Code syntax highlighting
+### Architecture Principles
+1. **SupervisorAgent Pattern** - LLM decides which agents to invoke
+2. **Maximum LangChain4J** - Use native components
+3. **Observability First** - Complete traceability
+4. **Human-in-the-Loop** - User validation (HumanInTheLoop)
+5. **Incremental Delivery** - Each phase independently deliverable
 
-### Key Services
+### Agents (@Agent interfaces)
+- **RagSearchAgent:** Search codebase (searchCode, searchDocumentation, searchSimilarCode)
+- **GitAgent:** Git operations (gitStatus, gitDiff, gitCommit, gitLog)
+- **RefactoringAgent:** Code improvements (analyzeCode, suggestRefactoring, applyRefactoring)
+- **CodeAnalysisAgent:** Quality analysis (analyzeComplexity, analyzeDependencies, detectCodeSmells)
 
-**Application Services:**
-- `PrerequisiteService` - Checks system prerequisites
-- `OllamAssistSettings` - Plugin settings management
-- `IndexRegistry` - Manages document indices
-
-**Project Services:**
-- `DocumentIngestFactory` - Creates document processors
-- `SelectionGutterIcon` - Code selection UI
-- `OverlayPromptPanelFactory` - Creates overlay prompts
-
-### Configuration and Settings
-
-**Settings Panel:**
-- Accessible via File → Settings → OllamAssist
-- Configure Ollama model selection
-- RAG and indexing settings
-- Model-specific Ollama instance configuration
-
-**Plugin Actions:**
-- **Shift+Space**: Trigger AI autocompletion
-- **Project View → OllamAssist → Add to Context**: Add files to chat context
-- **Editor → OllamAssist → Refactor**: Get refactoring suggestions
-- **VCS → Write Commit Message**: Generate commit messages
-
-### Dependencies and Libraries
-
-**Core AI Libraries:**
-- LangChain4J (`dev.langchain4j`) - AI model integration
-- LangChain4J Easy RAG - Document retrieval and processing
-
-**Search and Indexing:**
-- Apache Lucene - Vector storage and search
-- DJL (Deep Java Library) - Tokenization
-
-**IntelliJ Platform:**
-- IntelliJ IDEA Community 2024.3
-- Git4Idea plugin dependency
-
-**Utilities:**
-- RSyntaxTextArea - Syntax highlighting
-- Jackson - JSON processing
-- Jsoup - HTML parsing
-- Plexus Utils - File utilities
-
-### Project Structure
-
+### Project Structure (Agent System)
 ```
 src/main/java/fr/baretto/ollamassist/
-├── chat/                    # Chat and conversation logic
-│   ├── rag/                # RAG implementation
-│   ├── ui/                 # Chat UI components
-│   └── service/            # Chat services
-├── completion/             # Code completion features
-├── component/              # Reusable UI components  
-├── git/                    # Git integration
-├── setting/                # Settings and configuration
-├── prerequiste/            # System requirements checking
-├── events/                 # Event system and notifications
-└── actions/refactor/       # Refactoring functionality
+├── agent/
+│   ├── model/              # Plan, PlanStep, AgentType, ExecutionState
+│   ├── observability/      # ExecutionTrace, StepTrace, SourceReference, Metrics
+│   ├── tool/               # AgentTool, ToolResult, ToolParameter
+│   └── integration/        # OllamAssistAgenticScope
+├── chat/ui/                # AgentModeToggle, PlanDisplayPanel, ExecutionTracePanel
+└── setting/                # AgentSettings
 ```
 
-### File Indexing and RAG
+**Note:** Specialized agents are @Agent **interfaces**, not classes. Tools are separate classes implementing `AgentTool`.
 
-The plugin indexes workspace files for context-aware responses:
+## Implementation Plan
 
-- **Indexed File Types**: Determined by `ShouldBeIndexed` filter
-- **Storage**: Lucene-based vector store
-- **Retrieval**: Semantic search for relevant code context
-- **Web Search**: Optional DuckDuckGo integration for external context
+**Current Status:** Phase 2 (Modèle de domaine) starting
 
-### Development Notes
+**Documentation:** `docs/architecture/agent-system/` contains detailed docs:
+- `implementation-plan.md` - 10 phases, 35-45 days
+- `phase2-final-plan.md` - Detailed Phase 2 TDD plan
+- `orchestrator.md` - SupervisorAgent architecture
+- `specialized-agents.md` - Agent tools and implementations
+- `observability.md` - Trace and metrics system
+- `diagrams.md` - 10 Mermaid diagrams
+- `langchain4j-patterns.md` - LangChain4J patterns research
+- `langchain4j-agents-integration.md` - Integration analysis
+
+**Phases:**
+1. 🟢 Fondations - Architecture documentation (COMPLETED)
+2. 🟡 Modèle de domaine - Base classes with tests (STARTING)
+3. 🔴 Orchestrateur MVP - Basic orchestrator
+4. 🔴 Agent RAG - First specialized agent
+5. 🔴 UI mode agent - Complete UI
+6. 🔴 Configuration - Settings
+7. 🔴 Agent Git - Git operations
+8. 🔴 Agent Refactoring - Code improvements
+9. 🔴 Agent Code Analysis - Quality analysis
+10. 🔴 Tests d'intégration - E2E tests
+
+## Key Architectural Decisions
+
+1. **Tools (@Tool)** - Flexible, auto-discovered, easy to extend
+2. **Structured Outputs** - Type-safe, eliminates parsing errors
+3. **Sequential Execution** - Simpler reasoning, easier debugging
+4. **Shared ChatMemory** - Maintains context when switching modes
+5. **Multi-Level HumanInTheLoop** - Safety, transparency, control
+
+## Integration Points
+
+**OllamaService Enhancement:**
+```java
+@Service(Service.Level.PROJECT)
+public final class OllamaService {
+    private Assistant assistant;              // Existing chat mode
+    private SupervisorAgent supervisorAgent;  // New agent mode
+    private AgentMode currentMode = CHAT;
+}
+```
+
+**Reused Components:**
+- `OllamaStreamingChatModel` / `OllamaChatModel` - LLM calls
+- `LuceneEmbeddingStore` - RAG agent
+- `OllamAssistSettings` - Configuration
+- IntelliJ `MessageBus` - Notifications
+- `DiffGenerator` - Git agent
+
+## Development Notes
 
 - Plugin targets IntelliJ Platform 243+ (2024.3+)
-- Uses Kotlin Gradle DSL for build configuration  
 - Java 21 source and target compatibility
 - Lombok for boilerplate reduction
-- Configuration cache and build cache enabled for performance
+- TDD approach: Write tests first, then implementation
+- Plan tracking: This file + `docs/architecture/agent-system/`
