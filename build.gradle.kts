@@ -76,6 +76,16 @@ dependencies {
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
         exclude(group = "org.apache.lucene")
         exclude(group = "org.slf4j")
+        // Exclude heavy Apache Tika parsers not needed for indexing code files
+        exclude(group = "org.apache.tika", module = "tika-parser-microsoft-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-miscoffice-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-pdf-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-image-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-video-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-audio-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-ocr-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-news-module")
+        exclude(group = "org.apache.tika", module = "tika-parser-webarchive-module")
     }
     implementation("dev.langchain4j:langchain4j-reactor:$langchain4jEasyRag") {
         exclude(group = "org.apache.lucene")
@@ -127,7 +137,9 @@ intellijPlatform {
         token.set(System.getenv("PUBLISH_TOKEN"))
     }
 
-    buildSearchableOptions.set(true)
+    // Disable buildSearchableOptions in development for faster builds
+    // It will be enabled automatically in CI or when PUBLISH_TOKEN is set
+    buildSearchableOptions.set(System.getenv("CI") != null || System.getenv("PUBLISH_TOKEN") != null)
 }
 
 tasks {
