@@ -58,6 +58,8 @@
     <change-notes><![CDATA[
         <h2>V1.8.1</h2>
         <UL>
+            <LI>feat: split configuration panel.</LI>
+            <LI>feat: add file creation capability to OllamAssist.</LI>
             <LI>chore: optimize build using gradle build cache and removing useless dependencies.</LI>
         </UL>
         <h2>V1.8.0</h2>
@@ -191,6 +193,20 @@
                     factoryClass="fr.baretto.ollamassist.chat.ui.OllamaWindowFactory"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.prerequiste.PrerequisiteService"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamaSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.RAGSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.ActionsSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.UISettings"/>
+
+        <!-- Notification system -->
+        <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationStorage"
+                            serviceImplementation="fr.baretto.ollamassist.notification.storage.PersistentNotificationStorage"/>
+        <applicationService serviceInterface="fr.baretto.ollamassist.notification.provider.NotificationProvider"
+                            serviceImplementation="fr.baretto.ollamassist.notification.provider.HardcodedNotificationProvider"/>
+        <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationDisplayer"
+                            serviceImplementation="fr.baretto.ollamassist.notification.ui.DialogNotificationDisplayer"/>
+        <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationManager"
+                            serviceImplementation="fr.baretto.ollamassist.notification.service.NotificationManagerImpl"/>
 
         <applicationService serviceImplementation="fr.baretto.ollamassist.chat.rag.IndexRegistry"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.rag.DocumentIngestFactory"/>
@@ -203,7 +219,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.SelectionGutterIcon"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
 
-
+        <projectService serviceImplementation="fr.baretto.ollamassist.chat.tools.FileCreator"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>
 

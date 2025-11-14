@@ -10,6 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.util.function.Consumer;
 
 public class MessagesPanel extends JPanel {
     private final JPanel container = new JPanel(new GridBagLayout());
@@ -107,9 +108,25 @@ public class MessagesPanel extends JPanel {
         }
     }
 
+    public void stopMessageSilently() {
+        if (latestOllamaMessage != null) {
+            latestOllamaMessage.stopSilently();
+        }
+    }
+
     public void finalizeMessage(ChatResponse chatResponse) {
         latestOllamaMessage.finalizeResponse(chatResponse);
         latestOllamaMessage = null;
+    }
+
+    public void addApprovalRequest(String title, String filePath, String content, Consumer<Boolean> onDecision) {
+        SwingUtilities.invokeLater(() -> {
+            ApprovalMessage approvalMessage = new ApprovalMessage(title, filePath, content, onDecision);
+            container.add(approvalMessage, createGbc(container.getComponentCount()));
+            scrollToBottom();
+            container.revalidate();
+            container.repaint();
+        });
     }
 
     private GridBagConstraints createGbc(int gridy) {

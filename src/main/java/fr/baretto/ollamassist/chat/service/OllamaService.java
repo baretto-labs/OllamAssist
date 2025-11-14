@@ -16,16 +16,17 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.*;
+import fr.baretto.ollamassist.chat.tools.FileCreator;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
-
-import java.util.HashMap;
-import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Service(Service.Level.PROJECT)
@@ -84,28 +85,26 @@ public final class OllamaService implements Disposable, ModelListener {
                     .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
-            
+
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
                 customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
                 builder.customHeaders(customHeaders);
             }
-            
+
             OllamaStreamingChatModel model = builder.build();
 
-
-            AiServices<Assistant> assistantAiServices = AiServices.builder(Assistant.class)
+            return AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
-                    .chatMemory(chatMemory);
-
-            return assistantAiServices
+                    .chatMemory(chatMemory)
+                    .tools(new FileCreator(project))
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever
                                     .builder()
                                     .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
                                     .dynamicMaxResults(query -> 2)
-                                    .dynamicMinScore(query -> 0.85)
+                                    .dynamicMinScore(query -> 0.80)
                                     .embeddingStore(embeddingStore)
                                     .build(),
                             project))

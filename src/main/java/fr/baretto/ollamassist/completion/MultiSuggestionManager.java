@@ -70,7 +70,7 @@ public class MultiSuggestionManager {
         disposeCurrentInlay();
         
         if (suggestionList.isEmpty()) {
-            log.warn("⚠️ No suggestions to display - suggestionList is empty");
+            log.warn("No suggestions to display - suggestionList is empty");
             return;
         }
         

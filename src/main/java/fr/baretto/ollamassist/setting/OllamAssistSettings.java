@@ -12,6 +12,11 @@ import java.time.Duration;
 
 import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
 
+/**
+ * Legacy settings class for backward compatibility.
+ * @deprecated Use {@link OllamaSettings}, {@link RAGSettings}, {@link ActionsSettings}, or {@link UISettings} instead.
+ */
+@Deprecated
 @State(
         name = "OllamAssist",
         storages = {@Storage("OllamAssist.xml")}
@@ -39,125 +44,132 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         myState = state;
     }
 
+    // Ollama settings - delegating to OllamaSettings
     public String getChatOllamaUrl() {
-        return myState.chatOllamaUrl;
+        return OllamaSettings.getInstance().getChatOllamaUrl();
     }
 
     public void setChatOllamaUrl(String url) {
-        myState.chatOllamaUrl = url;
+        OllamaSettings.getInstance().setChatOllamaUrl(url);
     }
 
     public String getCompletionOllamaUrl() {
-        return myState.completionOllamaUrl;
+        return OllamaSettings.getInstance().getCompletionOllamaUrl();
     }
 
     public void setCompletionOllamaUrl(String url) {
-        myState.completionOllamaUrl = url;
+        OllamaSettings.getInstance().setCompletionOllamaUrl(url);
     }
 
     public String getEmbeddingOllamaUrl() {
-        return myState.embeddingOllamaUrl;
+        return OllamaSettings.getInstance().getEmbeddingOllamaUrl();
     }
 
     public void setEmbeddingOllamaUrl(String url) {
-        myState.embeddingOllamaUrl = url;
+        OllamaSettings.getInstance().setEmbeddingOllamaUrl(url);
     }
 
-
     public String getChatModelName() {
-        return myState.chatModelName;
+        return OllamaSettings.getInstance().getChatModelName();
     }
 
     public void setChatModelName(String modelName) {
-        myState.chatModelName = modelName;
+        OllamaSettings.getInstance().setChatModelName(modelName);
     }
 
     public String getCompletionModelName() {
-        return myState.completionModelName;
+        return OllamaSettings.getInstance().getCompletionModelName();
     }
 
     public void setCompletionModelName(String modelName) {
-        myState.completionModelName = modelName;
+        OllamaSettings.getInstance().setCompletionModelName(modelName);
     }
 
     public String getEmbeddingModelName() {
-        return myState.embeddingModelName;
+        return OllamaSettings.getInstance().getEmbeddingModelName();
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
-        myState.embeddingModelName = embeddingModelName;
-    }
-
-    public void setIndexationSize(int numberOfDocuments) {
-        myState.indexationSize = numberOfDocuments;
-    }
-
-    public int getIndexationSize() {
-        return myState.indexationSize;
+        OllamaSettings.getInstance().setEmbeddingModelName(embeddingModelName);
     }
 
     public Duration getTimeoutDuration() {
-        try {
-            return Duration.ofSeconds(Long.parseLong(myState.timeout));
-        } catch (NumberFormatException e) {
-            return Duration.ofSeconds(300);
-        }
+        return OllamaSettings.getInstance().getTimeoutDuration();
     }
 
     public String getTimeout() {
-        return myState.timeout;
+        return OllamaSettings.getInstance().getTimeout();
     }
 
     public void setTimeout(String timeout) {
-        myState.timeout = timeout;
-    }
-
-    public String getSources() {
-        return myState.sources;
-    }
-
-    public void setSources(String sources) {
-        myState.sources = sources;
-    }
-
-    public void setWebSearchEnabled(boolean webSearchEnabled) {
-        myState.webSearchEnabled = webSearchEnabled;
-    }
-
-    public void setRAGEnabled(boolean ragEnabled) {
-        myState.ragEnabled = ragEnabled;
-    }
-
-    public void setUIState(boolean isCollapsed) {
-        myState.uistate = isCollapsed;
-    }
-
-    public boolean webSearchEnabled() {
-        return myState.webSearchEnabled;
-    }
-
-    public boolean ragEnabled() {
-        return myState.ragEnabled;
-    }
-
-    public boolean getUIState() {
-        return myState.uistate;
+        OllamaSettings.getInstance().setTimeout(timeout);
     }
 
     public String getUsername() {
-        return myState.username;
+        return OllamaSettings.getInstance().getUsername();
     }
 
     public void setUsername(String username) {
-        myState.username = username;
+        OllamaSettings.getInstance().setUsername(username);
     }
 
     public String getPassword() {
-        return myState.password;
+        return OllamaSettings.getInstance().getPassword();
     }
 
     public void setPassword(String password) {
-        myState.password = password;
+        OllamaSettings.getInstance().setPassword(password);
+    }
+
+    // RAG settings - delegating to RAGSettings
+    public void setIndexationSize(int numberOfDocuments) {
+        RAGSettings.getInstance().setIndexationSize(numberOfDocuments);
+    }
+
+    public int getIndexationSize() {
+        return RAGSettings.getInstance().getIndexationSize();
+    }
+
+    public String getSources() {
+        return RAGSettings.getInstance().getSources();
+    }
+
+    public void setSources(String sources) {
+        RAGSettings.getInstance().setSources(sources);
+    }
+
+    public void setWebSearchEnabled(boolean webSearchEnabled) {
+        RAGSettings.getInstance().setWebSearchEnabled(webSearchEnabled);
+    }
+
+    public boolean webSearchEnabled() {
+        return RAGSettings.getInstance().isWebSearchEnabled();
+    }
+
+    public void setRAGEnabled(boolean ragEnabled) {
+        RAGSettings.getInstance().setRAGEnabled(ragEnabled);
+    }
+
+    public boolean ragEnabled() {
+        return RAGSettings.getInstance().isRAGEnabled();
+    }
+
+    // Actions settings - delegating to ActionsSettings
+    public boolean isAutoApproveFileCreation() {
+        return ActionsSettings.getInstance().isAutoApproveFileCreation();
+    }
+
+    public void setAutoApproveFileCreation(boolean autoApprove) {
+        ActionsSettings.getInstance().setAutoApproveFileCreation(autoApprove);
+    }
+
+    // UI settings - delegating to UISettings
+    public void setUIState(boolean isCollapsed) {
+        UISettings.getInstance().setContextPanelCollapsed(isCollapsed);
+    }
+
+    public boolean getUIState() {
+        return UISettings.getInstance().getContextPanelCollapsed();
     }
 
     @Getter
@@ -178,6 +190,9 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
         // Persiste configuration for UI component, currently used only for the chat context
         public boolean uistate = false;
+
+        // Auto-approve file creation without user confirmation
+        public boolean autoApproveFileCreation = false;
     }
 
 }

@@ -205,7 +205,7 @@ public class EnhancedCompletionService {
                 log.info("✨ Processed suggestion: '{}'", processedSuggestion);
                 
                 if (processedSuggestion.trim().isEmpty()) {
-                    log.warn("⚠️ Processed suggestion is empty, falling back to basic");
+                    log.warn("Processed suggestion is empty, falling back to basic");
                     generateBasicSuggestion(editor, indicator);
                     return;
                 }

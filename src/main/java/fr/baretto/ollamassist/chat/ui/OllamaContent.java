@@ -13,11 +13,16 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.chat.tools.DetectedToolCall;
+import fr.baretto.ollamassist.chat.tools.FileCreator;
+import fr.baretto.ollamassist.chat.tools.ToolCallDetector;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
+import fr.baretto.ollamassist.events.FileApprovalNotifier;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
+import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Builder;
@@ -44,7 +49,7 @@ public class OllamaContent {
     private final WorkspaceFileSelector filesSelector;
     private final MessagesPanel outputPanel = new MessagesPanel();
     private boolean isAvailable = false;
-    private ChatThread currentChatThread;
+    private volatile ChatThread currentChatThread;
 
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
@@ -79,8 +84,10 @@ public class OllamaContent {
 
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
-            if (currentChatThread != null) {
-                currentChatThread.stop();
+            synchronized (this) {
+                if (currentChatThread != null) {
+                    currentChatThread.stop();
+                }
             }
             outputPanel.cancelMessage();
             outputPanel.addUserMessage(message);
@@ -95,18 +102,38 @@ public class OllamaContent {
                         .chat(message);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
-                    currentChatThread = ChatThread.builder()
-                            .tokenStream(stream)
-                            .onNext(this::publish)
-                            .onError(this::logException)
-                            .onCompleteResponse(this::done)
-                            .build()
-                            .start();
+                    synchronized (this) {
+                        currentChatThread = ChatThread.builder()
+                                .tokenStream(stream)
+                                .onNext(this::publish)
+                                .onError(this::logException)
+                                .onCompleteResponse(this::done)
+                                .contextRef(context)
+                                .build()
+                                .start();
+                    }
                 });
             });
 
         });
 
+        connection.subscribe(FileApprovalNotifier.TOPIC, (FileApprovalNotifier) request -> {
+            outputPanel.addApprovalRequest(
+                request.getTitle(),
+                request.getFilePath(),
+                request.getContent(),
+                approved -> request.getResponseFuture().complete(approved)
+            );
+        });
+
+        connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
+            log.info("Stopping LLM streaming silently due to file action completion");
+            if (currentChatThread != null) {
+                currentChatThread.stop();
+                outputPanel.stopMessageSilently(); // Stop without "interrupted" message
+            }
+            promptInput.toggleGenerationState(false);
+        });
 
     }
 
@@ -322,6 +349,9 @@ public class OllamaContent {
         private final Consumer<String> onNext;
         private final Consumer<Throwable> onError;
         private final Consumer<ChatResponse> onCompleteResponse;
+        private final ToolCallDetector toolCallDetector = new ToolCallDetector();
+        private final StringBuilder responseBuilder = new StringBuilder();
+        private final Context contextRef;
 
         public ChatThread start() {
             new Thread(this::run).start();
@@ -330,15 +360,100 @@ public class OllamaContent {
 
         private void run() {
             if (onNext != null) {
-                tokenStream.onPartialResponse(stoppable(onNext));
+                tokenStream.onPartialResponse(stoppable(token -> {
+                    synchronized (responseBuilder) {
+                        responseBuilder.append(token);
+                    }
+                    onNext.accept(token);
+                }));
             }
             if (onError != null) {
                 tokenStream.onError(stoppable(onError));
             }
             if (onCompleteResponse != null) {
-                tokenStream.onCompleteResponse(stoppable(onCompleteResponse));
+                tokenStream.onCompleteResponse(stoppable(response -> {
+                    // Check if this is a native tool call
+                    boolean hasNativeToolCall = response.aiMessage() != null
+                            && response.aiMessage().hasToolExecutionRequests();
+
+                    log.info("Response completed. Has native tool call: {}", hasNativeToolCall);
+
+                    if (!hasNativeToolCall) {
+                        // No native tool call - check for text-based tool calls
+                        String fullResponse;
+                        synchronized (responseBuilder) {
+                            fullResponse = responseBuilder.toString();
+                        }
+                        log.debug("Full response text for tool detection (length={}): {}",
+                                fullResponse.length(),
+                                fullResponse.length() > 500 ? fullResponse.substring(0, 500) + "..." : fullResponse);
+
+                        var detectedCall = toolCallDetector.detect(fullResponse);
+
+                        if (detectedCall.isPresent()) {
+                            log.info("Tool call detected via text parsing: {}", detectedCall.get().getToolName());
+                            handleDetectedToolCall(detectedCall.get());
+                            return; // Don't call onCompleteResponse
+                        } else {
+                            log.info("No tool call detected in response text");
+                        }
+                    }
+
+                    // Normal response or native tool call
+                    onCompleteResponse.accept(response);
+                }));
             }
             tokenStream.start();
+        }
+
+        private void handleDetectedToolCall(DetectedToolCall detectedCall) {
+            if ("CreateFile".equals(detectedCall.getToolName())) {
+                String path = detectedCall.getArguments().get("path");
+                String content = detectedCall.getArguments().get("content");
+
+                if (path != null && content != null) {
+                    log.info("Requesting approval for detected CreateFile call: {}", path);
+
+                    // Request user approval with warning indicator
+                    java.util.concurrent.CompletableFuture<Boolean> approvalFuture = new java.util.concurrent.CompletableFuture<>();
+
+                    FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
+                            .title("⚠️ Tool Call Detected (via text parsing)")
+                            .filePath(path)
+                            .content(content)
+                            .responseFuture(approvalFuture)
+                            .build();
+
+                    contextRef.project().getMessageBus()
+                            .syncPublisher(FileApprovalNotifier.TOPIC)
+                            .requestApproval(request);
+
+                    // Wait for approval
+                    ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                        try {
+                            boolean approved = approvalFuture.get(5, java.util.concurrent.TimeUnit.MINUTES);
+
+                            if (approved) {
+                                log.info("User approved detected tool call");
+                                FileCreator fileCreator = new FileCreator(contextRef.project());
+                                String result = fileCreator.createFile(path, content);
+                                log.info("File creation result: {}", result);
+                            } else {
+                                log.info("User rejected detected tool call");
+                            }
+
+                            // Stop streaming
+                            contextRef.project().getMessageBus()
+                                    .syncPublisher(StopStreamingNotifier.TOPIC)
+                                    .stopStreaming();
+
+                        } catch (Exception e) {
+                            log.error("Error handling detected tool call", e);
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                }
+            }
         }
 
         public void stop() {

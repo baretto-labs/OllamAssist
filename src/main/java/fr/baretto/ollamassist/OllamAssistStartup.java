@@ -12,6 +12,7 @@ import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
+import fr.baretto.ollamassist.notification.core.NotificationManager;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import kotlin.coroutines.Continuation;
@@ -86,6 +87,11 @@ public class OllamAssistStartup implements ProjectActivity {
                                 .getMessageBus()
                                 .syncPublisher(ModelAvailableNotifier.TOPIC)
                                 .onModelAvailable();
+
+                        // Display pending notifications after successful initialization
+                        NotificationManager notificationManager = ApplicationManager.getApplication()
+                                .getService(NotificationManager.class);
+                        notificationManager.displayPendingNotifications(project);
                     }
                 }.queue();
                 EditorListener.attachListeners();

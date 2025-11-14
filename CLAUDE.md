@@ -2,195 +2,275 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Communication Language
+## Communication Guidelines
 
-**IMPORTANT**: Always communicate with the user in French, but write and comment code in English.
+- Respond to chat questions in French
+- All code, comments, documentation, and commit messages must be in English
+- Do not use emojis in responses
 
 ## Project Overview
 
-OllamAssist is a JetBrains IntelliJ IDEA plugin that integrates with Ollama to provide AI-powered development assistance. It's written in Java with a Gradle Kotlin DSL build system and leverages LangChain4J for AI model integration.
+OllamAssist is a JetBrains IDE plugin that integrates Ollama-powered AI capabilities directly into the development workflow. The plugin provides:
+- In-IDE chat with Ollama models
+- RAG (Retrieval-Augmented Generation) with workspace context
+- Smart code autocompletion
+- AI-powered commit message generation
+- Code refactoring suggestions
 
-## Build System and Commands
+## Build and Development Commands
 
-### Prerequisites
-- Java 21 (JDK 21)
-- Ollama installed and running locally
-
-### Core Commands
-
-**Build the plugin:**
+### Building the Plugin
 ```bash
 ./gradlew build
 ```
+This runs tests, benchmark tests, and builds the plugin distribution.
 
-**Run tests:**
+### Running Tests
 ```bash
+# Run unit tests only
 ./gradlew test
-```
 
-**Run benchmarks:**
-```bash
+# Run benchmark tests
 ./gradlew benchmark
-```
 
-**Build plugin distribution:**
-```bash
-./gradlew buildPlugin
-```
-
-**Clean build artifacts:**
-```bash
-./gradlew clean
-```
-
-**Run all checks (includes tests, benchmarks):**
-```bash
+# Run all tests
 ./gradlew check
 ```
 
-**SonarCloud analysis (requires SONAR_TOKEN):**
+### Running the Plugin in Development
+```bash
+./gradlew runIde
+```
+This launches a sandboxed IntelliJ IDEA instance with the plugin installed.
+
+### Building Plugin Distribution
+```bash
+./gradlew buildPlugin
+```
+Output is in `build/distributions/`.
+
+### Code Quality
 ```bash
 ./gradlew sonar
 ```
-
-### Testing Strategy
-
-**IMPORTANT: Test-First Development Approach**
-- **Always write tests first** before implementing new features (Test-Driven Development - TDD)
-- When adding new functionality, start by writing failing tests that describe the expected behavior
-- Implement the minimal code needed to make tests pass
-- Refactor while keeping tests green
-- Never reduce test quality or remove assertions to make tests pass - fix the implementation instead
-
-**Test Organization:**
-- Unit tests: Located in `src/test/java/`
-- Benchmark tests: Located in `src/benchmark/java/`
-- JUnit Jupiter engine for unit tests
-- AssertJ for assertions
-- Mockito for mocking
-
-**Test Quality Standards:**
-- Maintain high test coverage and comprehensive assertions
-- Test both positive and negative scenarios
-- Include edge cases and error handling
-- Write descriptive test method names that explain the behavior being tested
+Requires `SONAR_TOKEN` environment variable.
 
 ## Architecture Overview
 
 ### Core Components
 
-**Plugin Entry Points:**
-- `OllamAssistStartup` - Plugin initialization and startup activities
-- `OllamaWindowFactory` - Creates the main tool window UI
+**IntelliJ Platform Integration:**
+- `OllamAssistStartup` - Project startup activity that performs async prerequisite checks
+- `OllamaWindowFactory` - Registers the chat tool window on the right panel
+- Services use `@Service(Service.Level.PROJECT)` or `@Service(Service.Level.APPLICATION)`
+- Plugin configuration in `src/main/resources/META-INF/plugin.xml`
 
-**AI/Chat System:**
-- `OllamaService` - Handles communication with Ollama backend
-- `Assistant` - Main AI conversation coordinator
-- `LightModelAssistant` - Lightweight model for completions
+**Service Architecture:**
+- **Application Services:** `OllamAssistSettings`, `PrerequisiteService`, `IndexRegistry` (singleton across all projects)
+- **Project Services:** `OllamaService`, `DocumentIndexingPipeline`, `LuceneEmbeddingStore`, `WorkspaceContextRetriever` (per-project instances)
 
-**RAG (Retrieval-Augmented Generation):**
-- `LuceneEmbeddingStore` - Vector storage using Apache Lucene
-- `DocumentIndexingPipeline` - Processes workspace files for indexing
-- `WorkspaceContextRetriever` - Retrieves relevant context from indexed files
-- `FilesUtil` - File processing utilities for RAG
+### RAG Implementation
 
-**Code Completion:**
-- `InlineCompletionAction` - Triggered via Shift+Space
-- `SuggestionManager` - Manages completion suggestions
-- `InlayRenderer` - Renders inline suggestions in editor
+The plugin implements a custom RAG system for workspace-aware AI responses:
 
-**Git Integration:**
-- `CommitMessageGenerator` - AI-generated commit messages
-- `DiffGenerator` - Generates diffs for context
-- `MyersDiff` - Myers diff algorithm implementation
+**Document Indexing Pipeline (`DocumentIndexingPipeline`):**
+- Batch processor with async queue (batch size: 10, sync: 100)
+- Scheduled executor runs every 30 seconds
+- Thread-safe with `ReentrantLock` and `Phaser` synchronization
+- Retry mechanism (max 3 retries per file)
+- Use `flush()` for immediate indexing
 
-**Refactoring:**
-- `RefactorAction` - Code refactoring suggestions
-- `ApplyRefactoringAction` - Applies suggested refactorings
-- `RefactoringInlayRenderer` - Displays refactoring suggestions
+**Embedding Store (`LuceneEmbeddingStore`):**
+- Custom Apache Lucene-backed store
+- Storage location: `{project}/.ollamassist/database/knowledge_index/`
+- Thread-safe with read-write locks
+- Stores vector embeddings, text content, and metadata
 
-**UI Components:**
-- `MessagesPanel` - Chat conversation display
-- `PresentationPanel` - Main plugin UI
-- `PromptPanel` - User input area
+**Context Retrieval (`ContextRetriever`):**
+- Composite retriever that parallelizes three sources:
+  1. **EmbeddingStoreContentRetriever** - Semantic search (top-2, min score 0.85)
+  2. **WorkspaceContextRetriever** - Current file context (5000-char window)
+  3. **DuckDuckGoContentRetriever** - Web search (if enabled)
+- Global timeout: 2 seconds
+- Uses `CompletableFuture` for parallel execution
+
+**File Monitoring (`ProjectFileListener`):**
+- Monitors file creation, modification, deletion via `VirtualFileListener`
+- Debounces changes with 1-minute window
+- Updates embedding store automatically
+- Respects `.gitignore` patterns
+
+### Ollama Integration
+
+**OllamaService (Project Service):**
+- Creates `OllamaStreamingChatModel` from LangChain4j library
+- Model parameters: temperature=0.7, topK=50, topP=0.85, timeout=300s
+- Supports separate Ollama URLs for chat/completion/embedding models
+- Optional Basic Auth via `AuthenticationHelper`
+- Chat memory: `MessageWindowChatMemory` (max 25 messages)
+
+**Assistant Interface:**
+- Built using LangChain4j's `AiServices` framework
+- System prompt enforces "Tree of Thoughts" reasoning
+- Streaming responses via `TokenStream`
+- Integrates with custom `ContextRetriever`
+
+### Event System
+
+The plugin uses IntelliJ's `MessageBus` for loose coupling:
+
+| Event | When Published | Purpose |
+|-------|----------------|---------|
+| `ModelAvailableNotifier` | Models initialized | Shows UI when ready |
+| `NewUserMessageNotifier` | User sends chat message | Triggers AI response |
+| `ConversationNotifier` | Settings change | Clears chat history |
+| `ChatModelModifiedNotifier` | Model changed | Reloads assistant |
+| `StoreNotifier` | Files indexed | Updates embedding store |
+| `PrerequisteAvailableNotifier` | Ollama checked | Shows prerequisite status |
+
+### Chat System
+
+**Message Flow:**
+1. User input in `PromptPanel`
+2. `AskToChatAction` publishes `NewUserMessageNotifier`
+3. `OllamaContent` subscribes and creates `ChatThread`
+4. `ChatThread` streams tokens from `Assistant.chat()`
+5. Tokens render in real-time in `MessagesPanel`
+6. Code blocks highlighted with `RSyntaxTextArea`
+
+**Key Classes:**
+- `ChatThread` - Manages streaming lifecycle
+- `OllamaMessage` / `UserMessage` - Message UI components
 - `SyntaxHighlighterPanel` - Code syntax highlighting
+- `Context` - Conversation state holder
 
-### Key Services
+### Code Completion System
 
-**Application Services:**
-- `PrerequisiteService` - Checks system prerequisites
-- `OllamAssistSettings` - Plugin settings management
-- `IndexRegistry` - Manages document indices
+**Completion Pipeline (Shift+Space):**
+1. `InlineCompletionAction` triggered
+2. `EnhancedCompletionService` with:
+   - `CompletionDebouncer` (300ms delay)
+   - `SuggestionCache` (LRU cache)
+   - `EnhancedContextProvider` (extracts code context)
+3. `LightModelAssistant` generates completions
+4. `MultiSuggestionManager` handles multiple options
+5. `InlayRenderer` displays inline suggestions
 
-**Project Services:**
-- `DocumentIngestFactory` - Creates document processors
-- `SelectionGutterIcon` - Code selection UI
-- `OverlayPromptPanelFactory` - Creates overlay prompts
+**Navigation:**
+- Enter: Accept suggestion
+- Tab: Next suggestion
+- Shift+Tab: Previous suggestion
 
-### Configuration and Settings
+### Settings System
 
-**Settings Panel:**
-- Accessible via File → Settings → OllamAssist
-- Configure Ollama model selection
-- RAG and indexing settings
-- Model-specific Ollama instance configuration
+**OllamAssistSettings (PersistentStateComponent):**
+- Stored in `OllamAssist.xml` in IDE config directory
+- Configuration includes:
+  - Separate Ollama URLs for chat/completion/embedding models
+  - Model names for each task
+  - Timeout duration
+  - RAG/web search toggles
+  - Authentication credentials
 
-**Plugin Actions:**
-- **Shift+Space**: Trigger AI autocompletion
-- **Project View → OllamAssist → Add to Context**: Add files to chat context
-- **Editor → OllamAssist → Refactor**: Get refactoring suggestions
-- **VCS → Write Commit Message**: Generate commit messages
+**ConfigurationPanel:**
+- Settings UI with model dropdowns (auto-populated from Ollama)
+- Change notifications trigger reindexing and assistant reload
 
-### Dependencies and Libraries
+## Important Patterns
 
-**Core AI Libraries:**
-- LangChain4J (`dev.langchain4j`) - AI model integration
-- LangChain4J Easy RAG - Document retrieval and processing
-
-**Search and Indexing:**
-- Apache Lucene - Vector storage and search
-- DJL (Deep Java Library) - Tokenization
-
-**IntelliJ Platform:**
-- IntelliJ IDEA Community 2024.3
-- Git4Idea plugin dependency
-
-**Utilities:**
-- RSyntaxTextArea - Syntax highlighting
-- Jackson - JSON processing
-- Jsoup - HTML parsing
-- Plexus Utils - File utilities
-
-### Project Structure
-
-```
-src/main/java/fr/baretto/ollamassist/
-├── chat/                    # Chat and conversation logic
-│   ├── rag/                # RAG implementation
-│   ├── ui/                 # Chat UI components
-│   └── service/            # Chat services
-├── completion/             # Code completion features
-├── component/              # Reusable UI components  
-├── git/                    # Git integration
-├── setting/                # Settings and configuration
-├── prerequiste/            # System requirements checking
-├── events/                 # Event system and notifications
-└── actions/refactor/       # Refactoring functionality
+### Async Processing
+Heavy use of `CompletableFuture` and background tasks prevents UI blocking. Always use:
+```java
+ApplicationManager.getApplication().executeOnPooledThread(() -> {
+    // Background work
+});
 ```
 
-### File Indexing and RAG
+### Thread Safety
+- Use `ReentrantLock` for critical sections
+- `AtomicReference` for single-value updates
+- IntelliJ's read/write actions for PSI access
 
-The plugin indexes workspace files for context-aware responses:
+### Service Access
+```java
+// Application service
+OllamAssistSettings settings = ApplicationManager.getApplication()
+    .getService(OllamAssistSettings.class);
 
-- **Indexed File Types**: Determined by `ShouldBeIndexed` filter
-- **Storage**: Lucene-based vector store
-- **Retrieval**: Semantic search for relevant code context
-- **Web Search**: Optional DuckDuckGo integration for external context
+// Project service
+OllamaService service = project.getService(OllamaService.class);
+```
 
-### Development Notes
+### Publishing Events
+```java
+project.getMessageBus()
+    .syncPublisher(NewUserMessageNotifier.NEW_MESSAGE_TOPIC)
+    .newMessage(message);
+```
 
-- Plugin targets IntelliJ Platform 243+ (2024.3+)
-- Uses Kotlin Gradle DSL for build configuration  
-- Java 21 source and target compatibility
-- Lombok for boilerplate reduction
-- Configuration cache and build cache enabled for performance
+## Dependencies
+
+Key libraries (see `build.gradle.kts` for versions):
+- **LangChain4j** (`langchain4j-core`, `langchain4j-ollama`, `langchain4j-easy-rag`) - AI service orchestration
+- **Apache Lucene** (via LangChain4j) - Embedding storage
+- **DJL** (`ai.djl:api`, `ai.djl.huggingface:tokenizers`) - Deep learning and tokenization
+- **RSyntaxTextArea** - Code syntax highlighting
+- **Jackson** - JSON serialization
+- **IntelliJ Platform SDK 2024.3** - IDE framework
+
+**Important:** Lucene and SLF4J are explicitly excluded from LangChain4j dependencies to avoid conflicts with IntelliJ's bundled versions.
+
+## Testing
+
+- Unit tests in `src/test/java/`
+- Benchmark tests in `src/benchmark/java/`
+- Use JUnit Jupiter (v5) for new tests
+- Mockito for mocking
+- AssertJ for fluent assertions
+
+### Running a Single Test
+```bash
+./gradlew test --tests "ClassName.testMethodName"
+```
+
+## File Locations
+
+- **Plugin sources:** `src/main/java/fr/baretto/ollamassist/`
+- **Resources:** `src/main/resources/`
+- **Plugin descriptor:** `src/main/resources/META-INF/plugin.xml`
+- **RAG index:** `{project}/.ollamassist/database/knowledge_index/`
+- **Settings:** `OllamAssist.xml` in IDE config directory
+
+## Common Development Scenarios
+
+### Adding a New Action
+1. Create action class extending `AnAction` in `fr.baretto.ollamassist.actions`
+2. Register in `plugin.xml` under `<actions>`
+3. Implement `actionPerformed(AnActionEvent e)`
+4. Get project: `e.getProject()`
+
+### Modifying RAG Behavior
+- **Indexing logic:** `DocumentIndexingPipeline` and `ProjectFileListener`
+- **Retrieval logic:** `ContextRetriever` and `WorkspaceContextRetriever`
+- **Embedding store:** `LuceneEmbeddingStore`
+- **File filtering:** `ShouldBeIndexed` and `FilesUtil`
+
+### Adding New Settings
+1. Add field to `OllamAssistSettings`
+2. Add UI component to `ConfigurationPanel`
+3. Use `SettingsBindingHelper` for automatic binding
+4. Publish notification if setting affects runtime behavior
+
+### Customizing Chat Prompts
+- System prompt in `Assistant` interface (created by `OllamaService`)
+- User prompt transformation in `PromptPanel`
+- Context augmentation in `ContextRetriever`
+
+## Known Constraints
+
+- Minimum IntelliJ Platform version: 2024.3 (build 243)
+- Java version: 21
+- Kotlin version: 2.1.20
+- Requires running Ollama instance (checked at startup)
+- RAG indexing respects file size limits from settings
+- Completion requests debounced to 300ms to reduce API load
