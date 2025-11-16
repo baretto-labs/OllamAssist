@@ -24,7 +24,7 @@ import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
-import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import fr.baretto.ollamassist.setting.UISettings;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -117,14 +117,13 @@ public class OllamaContent {
 
         });
 
-        connection.subscribe(FileApprovalNotifier.TOPIC, (FileApprovalNotifier) request -> {
+        connection.subscribe(FileApprovalNotifier.TOPIC, (FileApprovalNotifier) request ->
             outputPanel.addApprovalRequest(
                 request.getTitle(),
                 request.getFilePath(),
                 request.getContent(),
                 approved -> request.getResponseFuture().complete(approved)
-            );
-        });
+            ));
 
         connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
             log.info("Stopping LLM streaming silently due to file action completion");
@@ -267,7 +266,7 @@ public class OllamaContent {
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(contentContainer, BorderLayout.CENTER);
 
-        boolean[] isCollapsed = {OllamAssistSettings.getInstance().getUIState()};
+        boolean[] isCollapsed = {UISettings.getInstance().getContextPanelCollapsed()};
 
         contentContainer.setVisible(!isCollapsed[0]);
         toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
@@ -276,7 +275,7 @@ public class OllamaContent {
             isCollapsed[0] = !isCollapsed[0];
             contentContainer.setVisible(!isCollapsed[0]);
             toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
-            OllamAssistSettings.getInstance().setUIState(isCollapsed[0]);
+            UISettings.getInstance().setContextPanelCollapsed(isCollapsed[0]);
         });
 
         return panel;
@@ -359,51 +358,83 @@ public class OllamaContent {
         }
 
         private void run() {
+            setupTokenStreamHandlers();
+            tokenStream.start();
+        }
+
+        private void setupTokenStreamHandlers() {
+            setupPartialResponseHandler();
+            setupErrorHandler();
+            setupCompleteResponseHandler();
+        }
+
+        private void setupPartialResponseHandler() {
             if (onNext != null) {
-                tokenStream.onPartialResponse(stoppable(token -> {
-                    synchronized (responseBuilder) {
-                        responseBuilder.append(token);
-                    }
-                    onNext.accept(token);
-                }));
+                tokenStream.onPartialResponse(stoppable(this::handlePartialResponse));
             }
+        }
+
+        private void handlePartialResponse(String token) {
+            synchronized (responseBuilder) {
+                responseBuilder.append(token);
+            }
+            onNext.accept(token);
+        }
+
+        private void setupErrorHandler() {
             if (onError != null) {
                 tokenStream.onError(stoppable(onError));
             }
+        }
+
+        private void setupCompleteResponseHandler() {
             if (onCompleteResponse != null) {
-                tokenStream.onCompleteResponse(stoppable(response -> {
-                    // Check if this is a native tool call
-                    boolean hasNativeToolCall = response.aiMessage() != null
-                            && response.aiMessage().hasToolExecutionRequests();
-
-                    log.info("Response completed. Has native tool call: {}", hasNativeToolCall);
-
-                    if (!hasNativeToolCall) {
-                        // No native tool call - check for text-based tool calls
-                        String fullResponse;
-                        synchronized (responseBuilder) {
-                            fullResponse = responseBuilder.toString();
-                        }
-                        log.debug("Full response text for tool detection (length={}): {}",
-                                fullResponse.length(),
-                                fullResponse.length() > 500 ? fullResponse.substring(0, 500) + "..." : fullResponse);
-
-                        var detectedCall = toolCallDetector.detect(fullResponse);
-
-                        if (detectedCall.isPresent()) {
-                            log.info("Tool call detected via text parsing: {}", detectedCall.get().getToolName());
-                            handleDetectedToolCall(detectedCall.get());
-                            return; // Don't call onCompleteResponse
-                        } else {
-                            log.info("No tool call detected in response text");
-                        }
-                    }
-
-                    // Normal response or native tool call
-                    onCompleteResponse.accept(response);
-                }));
+                tokenStream.onCompleteResponse(stoppable(this::handleCompleteResponse));
             }
-            tokenStream.start();
+        }
+
+        private void handleCompleteResponse(ChatResponse response) {
+            if (hasNativeToolCall(response)) {
+                log.info("Response completed with native tool call");
+                onCompleteResponse.accept(response);
+                return;
+            }
+
+            handleTextBasedToolCall(response);
+        }
+
+        private boolean hasNativeToolCall(ChatResponse response) {
+            return response.aiMessage() != null
+                    && response.aiMessage().hasToolExecutionRequests();
+        }
+
+        private void handleTextBasedToolCall(ChatResponse response) {
+            String fullResponse = getFullResponse();
+            logResponseForToolDetection(fullResponse);
+
+            var detectedCall = toolCallDetector.detect(fullResponse);
+
+            if (detectedCall.isPresent()) {
+                log.info("Tool call detected via text parsing: {}", detectedCall.get().getToolName());
+                handleDetectedToolCall(detectedCall.get());
+            } else {
+                log.info("No tool call detected in response text");
+                onCompleteResponse.accept(response);
+            }
+        }
+
+        private String getFullResponse() {
+            synchronized (responseBuilder) {
+                return responseBuilder.toString();
+            }
+        }
+
+        private void logResponseForToolDetection(String fullResponse) {
+            String truncatedResponse = fullResponse.length() > 500
+                    ? fullResponse.substring(0, 500) + "..."
+                    : fullResponse;
+            log.debug("Full response text for tool detection (length={}): {}",
+                    fullResponse.length(), truncatedResponse);
         }
 
         private void handleDetectedToolCall(DetectedToolCall detectedCall) {

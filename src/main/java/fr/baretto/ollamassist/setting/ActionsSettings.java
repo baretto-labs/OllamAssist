@@ -48,6 +48,6 @@ public class ActionsSettings implements PersistentStateComponent<ActionsSettings
     @Getter
     public static class State {
         // Auto-approve file creation without user confirmation
-        public boolean autoApproveFileCreation = false;
+        private boolean autoApproveFileCreation = false;
     }
 }

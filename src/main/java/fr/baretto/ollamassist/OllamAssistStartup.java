@@ -15,6 +15,7 @@ import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.notification.core.NotificationManager;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import fr.baretto.ollamassist.setting.SettingsMigrationService;
 import kotlin.coroutines.Continuation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,8 +24,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class OllamAssistStartup implements ProjectActivity {
 
+    private static final String OLLAMA_NOT_RUNNING = "Ollama Not Running";
+    public static final String OLLAM_ASSIST = "OllamAssist";
+
     @Override
     public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super kotlin.Unit> continuation) {
+        // Migrate settings from old OllamAssistSettings to new split settings
+        SettingsMigrationService.getInstance().migrateIfNeeded();
+
         final PrerequisiteService prerequisiteService = ApplicationManager.getApplication().getService(PrerequisiteService.class);
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
 
@@ -42,7 +49,7 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isChatModelAvailableAsync(settings.getChatOllamaUrl(), settings.getChatModelName())
                         .thenAccept(chatModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification("OllamAssist", "Ollama Not Running", "Ollama is not running at " + settings.getChatOllamaUrl() + ". Chat features will be disabled.", NotificationType.WARNING), project);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getChatOllamaUrl() + ". Chat features will be disabled.", NotificationType.WARNING), project);
                 chatModelAvailableFuture.complete(false);
             }
         });
@@ -52,7 +59,7 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName())
                         .thenAccept(completionModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification("OllamAssist", "Ollama Not Running", "Ollama is not running at " + settings.getCompletionOllamaUrl() + ". Completion features will be disabled.", NotificationType.WARNING), project);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getCompletionOllamaUrl() + ". Completion features will be disabled.", NotificationType.WARNING), project);
                 completionModelAvailableFuture.complete(false);
             }
         });
@@ -62,7 +69,7 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName())
                         .thenAccept(embeddingModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification("OllamAssist", "Ollama Not Running", "Ollama is not running at " + settings.getEmbeddingOllamaUrl() + ". Embedding features will be disabled.", NotificationType.WARNING), project);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getEmbeddingOllamaUrl() + ". Embedding features will be disabled.", NotificationType.WARNING), project);
                 embeddingModelAvailableFuture.complete(false);
             }
         });

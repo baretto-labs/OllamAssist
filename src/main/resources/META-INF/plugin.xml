@@ -197,6 +197,7 @@
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.RAGSettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.ActionsSettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.UISettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.SettingsMigrationService"/>
 
         <!-- Notification system -->
         <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationStorage"

@@ -28,6 +28,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class PrerequisitesPanel extends SimpleToolWindowPanel {
 
+    public static final String MODEL_AVAILABLE = "Model available";
+    public static final String INSTALL_WITH = "Install with:";
     private final PrerequisiteService prerequisiteService = ApplicationManager.getApplication().getService(PrerequisiteService.class);
     private final JBLabel ollamaLabel = new JBLabel();
     private final JBLabel chatModelLabel = new JBLabel();
@@ -48,7 +50,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private final JPanel autocompleteModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel embeddingModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel loadingLabel = new LoadingPanel("OllamAssist starting ... ");
-    private final Project project;
+    private final transient Project project;
 
     public PrerequisitesPanel(Project project) {
         super(true, true);
@@ -78,7 +80,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
-        JBLabel title = new JBLabel("Prerequisites Check:");
+        JBLabel title = new JBLabel("Prerequisites check:");
         title.setFont(UIUtil.getLabelFont().deriveFont(Font.BOLD, 14f));
         contentPanel.add(title, gbc);
 
@@ -105,7 +107,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         contentPanel.add(chatModelLabel, gbc);
 
         gbc.gridy++;
-        chatModelHelpPanel.add(new JBLabel("Install with:"));
+        chatModelHelpPanel.add(new JBLabel(INSTALL_WITH));
         JPanel chatCommandPanel = createCommandPanel(chatModelCommandField, copyChatCommandButton, chatModelName);
         chatModelHelpPanel.add(chatCommandPanel);
         contentPanel.add(chatModelHelpPanel, gbc);
@@ -120,7 +122,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         contentPanel.add(autocompleteModelLabel, gbc);
 
         gbc.gridy++;
-        autocompleteModelHelpPanel.add(new JBLabel("Install with:"));
+        autocompleteModelHelpPanel.add(new JBLabel(INSTALL_WITH));
         JPanel autocompleteCommandPanel = createCommandPanel(autocompleteModelCommandField, copyAutocompleteCommandButton, autocompleteModelName);
         autocompleteModelHelpPanel.add(autocompleteCommandPanel);
         contentPanel.add(autocompleteModelHelpPanel, gbc);
@@ -135,7 +137,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         contentPanel.add(embeddingModelLabel, gbc);
 
         gbc.gridy++;
-        embeddingModelHelpPanel.add(new JBLabel("Install with:"));
+        embeddingModelHelpPanel.add(new JBLabel(INSTALL_WITH));
         JPanel embeddingCommandPanel = createCommandPanel(embeddingModelCommandField, copyEmbeddingCommandButton, embeddingModelName);
         embeddingModelHelpPanel.add(embeddingCommandPanel);
         contentPanel.add(embeddingModelHelpPanel, gbc);
@@ -166,7 +168,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         field.setEditable(false);
         field.setText("ollama pull " + modelName);
 
-        JScrollPane scrollPane = new JScrollPane(field);
+        JScrollPane scrollPane = new JBScrollPane(field);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(null);
@@ -240,20 +242,32 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private void checkPrerequisitesAsync() {
         OllamAssistSettings settings = OllamAssistSettings.getInstance();
 
+        // Check if model names are configured
+        boolean chatModelConfigured = isModelNameValid(settings.getChatModelName());
+        boolean autocompleteModelConfigured = isModelNameValid(settings.getCompletionModelName());
+        boolean embeddingModelConfigured = isModelNameValid(settings.getEmbeddingModelName());
+
         CompletableFuture<Boolean> ollamaRunningFuture = prerequisiteService.isOllamaRunningAsync(settings.getChatOllamaUrl());
-        CompletableFuture<Boolean> chatModelFuture = prerequisiteService.isChatModelAvailableAsync(settings.getChatOllamaUrl(), settings.getChatModelName());
-        CompletableFuture<Boolean> autocompleteModelFuture = prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName());
-        CompletableFuture<Boolean> embeddingModelFuture = prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName());
+        CompletableFuture<Boolean> chatModelFuture = chatModelConfigured
+            ? prerequisiteService.isChatModelAvailableAsync(settings.getChatOllamaUrl(), settings.getChatModelName())
+            : CompletableFuture.completedFuture(false);
+        CompletableFuture<Boolean> autocompleteModelFuture = autocompleteModelConfigured
+            ? prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName())
+            : CompletableFuture.completedFuture(false);
+        CompletableFuture<Boolean> embeddingModelFuture = embeddingModelConfigured
+            ? prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName())
+            : CompletableFuture.completedFuture(false);
 
         CompletableFuture.allOf(ollamaRunningFuture, chatModelFuture, autocompleteModelFuture, embeddingModelFuture)
                 .thenAccept(v -> {
                     boolean ollamaReady = ollamaRunningFuture.join();
-                    boolean chatModelReady = chatModelFuture.join();
-                    boolean autocompleteModelReady = autocompleteModelFuture.join();
-                    boolean embeddingModelReady = embeddingModelFuture.join();
+                    boolean chatModelReady = chatModelConfigured && chatModelFuture.join();
+                    boolean autocompleteModelReady = autocompleteModelConfigured && autocompleteModelFuture.join();
+                    boolean embeddingModelReady = embeddingModelConfigured && embeddingModelFuture.join();
 
                     ApplicationManager.getApplication().invokeLater(() ->
-                            updateUI(ollamaReady, chatModelReady, autocompleteModelReady, embeddingModelReady));
+                            updateUI(ollamaReady, chatModelReady, autocompleteModelReady, embeddingModelReady,
+                                    chatModelConfigured, autocompleteModelConfigured, embeddingModelConfigured));
 
                     if (ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady) {
                         project.getService(OllamaService.class).init();
@@ -267,17 +281,31 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                 });
     }
 
+    private boolean isModelNameValid(String modelName) {
+        return modelName != null && !modelName.trim().isEmpty();
+    }
 
-    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady, boolean embeddingModelReady) {
+
+    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady, boolean embeddingModelReady,
+                          boolean chatModelConfigured, boolean autocompleteModelConfigured, boolean embeddingModelConfigured) {
         updateLabel(ollamaLabel, ollamaReady, ollamaReady ? "Ollama running" : "Ollama unavailable");
-        updateLabel(chatModelLabel, chatModelReady, chatModelReady ? "Model available" : "Model not found");
-        updateLabel(autocompleteModelLabel, autocompleteModelReady, autocompleteModelReady ? "Model available" : "Model not found");
-        updateLabel(embeddingModelLabel, embeddingModelReady, embeddingModelReady ? "Model available" : "Model not found");
+
+        String chatMessage = chatModelReady ? MODEL_AVAILABLE :
+                            (!chatModelConfigured ? "Model not configured in settings" : "Model not found");
+        updateLabel(chatModelLabel, chatModelReady, chatMessage);
+
+        String autocompleteMessage = autocompleteModelReady ? MODEL_AVAILABLE :
+                                    (!autocompleteModelConfigured ? "Model not configured in settings" : "Model not found");
+        updateLabel(autocompleteModelLabel, autocompleteModelReady, autocompleteMessage);
+
+        String embeddingMessage = embeddingModelReady ? MODEL_AVAILABLE :
+                                 (!embeddingModelConfigured ? "Model not configured in settings" : "Model not found");
+        updateLabel(embeddingModelLabel, embeddingModelReady, embeddingMessage);
 
         ollamaHelpPanel.setVisible(!ollamaReady);
-        chatModelHelpPanel.setVisible(!chatModelReady);
-        autocompleteModelHelpPanel.setVisible(!autocompleteModelReady);
-        embeddingModelHelpPanel.setVisible(!embeddingModelReady);
+        chatModelHelpPanel.setVisible(chatModelConfigured && !chatModelReady);
+        autocompleteModelHelpPanel.setVisible(autocompleteModelConfigured && !autocompleteModelReady);
+        embeddingModelHelpPanel.setVisible(embeddingModelConfigured && !embeddingModelReady);
 
         boolean allReady = ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady;
         restartPanel.setVisible(!allReady);

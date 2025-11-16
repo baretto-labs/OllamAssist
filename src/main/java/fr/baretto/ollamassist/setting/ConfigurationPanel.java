@@ -18,9 +18,9 @@ import java.util.function.Consumer;
 
 public class ConfigurationPanel extends JPanel {
 
-    private final OllamaConfigPanel ollamaPanel;
-    private final RAGConfigPanel ragPanel;
-    private final ActionsConfigPanel actionsPanel;
+    private final transient OllamaConfigPanel ollamaPanel;
+    private final transient RAGConfigPanel ragPanel;
+    private final transient ActionsConfigPanel actionsPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 

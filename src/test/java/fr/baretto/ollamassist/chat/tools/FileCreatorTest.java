@@ -19,7 +19,6 @@ import org.mockito.MockedStatic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -91,7 +90,9 @@ class FileCreatorTest {
         String result = fileCreator.createFile(outsidePath, content);
 
         // Then
-        assertTrue(result.startsWith("Error: File path must be within the project directory"));
+        assertTrue(result.contains("Error"), "Expected error message but got: " + result);
+        assertTrue(result.contains("File path must be within the project directory"),
+                   "Expected error about file path but got: " + result);
     }
 
     @Test
@@ -120,7 +121,7 @@ class FileCreatorTest {
     }
 
     @Test
-    void testCreateFile_withAutoApproval_createsFileDirectly() throws IOException {
+    void testCreateFile_withAutoApproval_createsFileDirectly() {
         // Given
         String filePath = "test.txt";
         String content = "Hello World";
@@ -137,7 +138,6 @@ class FileCreatorTest {
             when(mockLFS.findFileByPath(anyString())).thenReturn(null);
 
             VirtualFile mockParentDir = mock(VirtualFile.class);
-            VirtualFile mockNewFile = mock(VirtualFile.class);
             when(mockLFS.findFileByPath(tempDir.toString())).thenReturn(mockParentDir);
 
             mockedWriteAction.when(() -> WriteAction.computeAndWait(any())).thenAnswer(invocation -> {
@@ -169,7 +169,7 @@ class FileCreatorTest {
     }
 
     @Test
-    void testCreateFile_withManualApproval_approved_createsFile() throws IOException {
+    void testCreateFile_withManualApproval_approved_createsFile(){
         // Given
         String filePath = "manual.txt";
         String content = "Manual approval content";
@@ -264,7 +264,7 @@ class FileCreatorTest {
     }
 
     @Test
-    void testCreateFile_withNullContent_createsEmptyFile() throws IOException {
+    void testCreateFile_withNullContent_createsEmptyFile() {
         // Given
         String filePath = "empty.txt";
         String content = null;

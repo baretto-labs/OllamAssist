@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 public class FileCreator {
@@ -42,74 +44,121 @@ public class FileCreator {
             """)
     public String createFile(String filePath, String content) {
         log.info("FileCreator.createFile called with path: {}", filePath);
+
         try {
-            if (filePath == null || filePath.isBlank()) {
-                return "Error: File path cannot be empty";
-            }
-            if (content == null) {
-                content = "";
-            }
-
-            String projectBasePath = project.getBasePath();
-            if (projectBasePath == null) {
-                log.error("Project base path is null");
-                return "Error: Project base path is not available";
+            String normalizedContent = normalizeContent(content);
+            String validationError = validateFileCreationRequest(filePath);
+            if (validationError != null) {
+                return validationError;
             }
 
-            Path absolutePath = Paths.get(projectBasePath, filePath).normalize();
+            Path absolutePath = resolveAndValidatePath(filePath);
 
-            if (!absolutePath.startsWith(projectBasePath)) {
-                return "Error: File path must be within the project directory";
+            String fileExistsError = checkFileNotExists(absolutePath, filePath);
+            if (fileExistsError != null) {
+                return fileExistsError;
             }
 
-            VirtualFile existingFile = LocalFileSystem.getInstance().findFileByPath(absolutePath.toString());
-            if (existingFile != null && existingFile.exists()) {
-                return "Error: File already exists at path: " + filePath;
-            }
-
-            boolean autoApprove = ActionsSettings.getInstance().isAutoApproveFileCreation();
-
-            if (autoApprove) {
-                // Auto-approval mode: create file directly
-                log.info("Auto-approval enabled, creating file directly");
-                String result = executeFileCreation(absolutePath, content, filePath);
-
-                // Show in chat that file was auto-created
-                showAutoCreatedFileInChat(filePath, content);
-
-                // Stop LLM streaming to avoid over-explanation
-                stopLLMStreaming();
-
-                return result;
-            } else {
-                // Manual approval mode: request user confirmation
-                CompletableFuture<Boolean> approvalFuture = new CompletableFuture<>();
-                requestApproval(filePath, content, approvalFuture);
-
-                boolean approved;
-                try {
-                    approved = approvalFuture.get(5, TimeUnit.MINUTES);
-                } catch (Exception e) {
-                    log.warn("File creation approval timeout or interrupted for: {}", filePath, e);
-                    stopLLMStreaming();
-                    return "Error: File creation approval timeout or cancelled";
-                }
-
-                if (!approved) {
-                    log.info("File creation rejected by user");
-                    stopLLMStreaming();
-                    return "File creation cancelled by user";
-                }
-
-                String result = executeFileCreation(absolutePath, content, filePath);
-                stopLLMStreaming();
-                return result;
-            }
+            return handleFileCreationWithApproval(filePath, normalizedContent, absolutePath);
 
         } catch (Exception e) {
             log.error("Error creating file: {}", filePath, e);
             stopLLMStreaming();
             return "Error creating file: " + e.getMessage();
+        }
+    }
+
+    private String normalizeContent(String content) {
+        return content == null ? "" : content;
+    }
+
+    private String validateFileCreationRequest(String filePath) {
+        if (filePath == null || filePath.isBlank()) {
+            return "Error: File path cannot be empty";
+        }
+
+        String projectBasePath = project.getBasePath();
+        if (projectBasePath == null) {
+            log.error("Project base path is null");
+            return "Error: Project base path is not available";
+        }
+
+        return null;
+    }
+
+    private Path resolveAndValidatePath(String filePath) {
+        String projectBasePath = project.getBasePath();
+        if (projectBasePath == null) {
+            throw new IllegalStateException("Project base path is not available");
+        }
+
+        Path absolutePath = Paths.get(projectBasePath, filePath).normalize();
+
+        if (!absolutePath.startsWith(projectBasePath)) {
+            throw new IllegalArgumentException("File path must be within the project directory");
+        }
+
+        return absolutePath;
+    }
+
+    private String checkFileNotExists(Path absolutePath, String filePath) {
+        VirtualFile existingFile = LocalFileSystem.getInstance().findFileByPath(absolutePath.toString());
+        if (existingFile != null && existingFile.exists()) {
+            return "Error: File already exists at path: " + filePath;
+        }
+        return null;
+    }
+
+    private String handleFileCreationWithApproval(String filePath, String content, Path absolutePath) {
+        boolean autoApprove = ActionsSettings.getInstance().isAutoApproveFileCreation();
+
+        if (autoApprove) {
+            return handleAutoApprovalMode(filePath, content, absolutePath);
+        } else {
+            return handleManualApprovalMode(filePath, content, absolutePath);
+        }
+    }
+
+    private String handleAutoApprovalMode(String filePath, String content, Path absolutePath) {
+        log.info("Auto-approval enabled, creating file directly");
+        String result = executeFileCreation(absolutePath, content, filePath);
+        showAutoCreatedFileInChat(filePath, content);
+        stopLLMStreaming();
+        return result;
+    }
+
+    private String handleManualApprovalMode(String filePath, String content, Path absolutePath) {
+        CompletableFuture<Boolean> approvalFuture = new CompletableFuture<>();
+        requestApproval(filePath, content, approvalFuture);
+
+        boolean approved = waitForApproval(approvalFuture, filePath);
+        if (!approved) {
+            log.info("File creation rejected by user");
+            stopLLMStreaming();
+            return "File creation cancelled by user";
+        }
+
+        String result = executeFileCreation(absolutePath, content, filePath);
+        stopLLMStreaming();
+        return result;
+    }
+
+    private boolean waitForApproval(CompletableFuture<Boolean> approvalFuture, String filePath) {
+        try {
+            return approvalFuture.get(5, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("File creation approval interrupted for: {}", filePath, e);
+            stopLLMStreaming();
+            throw new IllegalStateException("File creation approval interrupted", e);
+        } catch (ExecutionException e) {
+            log.warn("File creation approval execution error for: {}", filePath, e);
+            stopLLMStreaming();
+            throw new IllegalStateException("File creation approval execution error", e);
+        } catch (TimeoutException e) {
+            log.warn("File creation approval timeout for: {}", filePath, e);
+            stopLLMStreaming();
+            throw new IllegalStateException("File creation approval timeout", e);
         }
     }
 
@@ -169,7 +218,7 @@ public class FileCreator {
                     Notifications.Bus.notify(
                         new Notification(
                             "OllamAssist",
-                            "File Created",
+                            "File created",
                             "Successfully created: " + filePath,
                             NotificationType.INFORMATION
                         ),

@@ -14,14 +14,13 @@ import java.util.function.Consumer;
 
 public class ApprovalMessage extends JPanel {
 
-    private final Consumer<Boolean> onDecision;
+    private final transient Consumer<Boolean> onDecision;
     private final JPanel buttonPanel;
 
     public ApprovalMessage(String title, String filePath, String content, Consumer<Boolean> onDecision) {
         this.onDecision = onDecision;
         setLayout(new BorderLayout());
 
-        // Check if this is an auto-created file (title starts with ✅)
         boolean isAutoCreated = title.startsWith("✅");
 
         if (isAutoCreated) {
@@ -91,13 +90,13 @@ public class ApprovalMessage extends JPanel {
             // Only show buttons if not auto-created
             JButton approveButton = new JButton("Approve");
             approveButton.setBackground(new JBColor(new Color(144, 238, 144), new Color(50, 100, 50)));
-            approveButton.setForeground(Color.BLACK);
+            approveButton.setForeground(JBColor.BLACK);
             approveButton.setFocusPainted(false);
             approveButton.addActionListener(e -> handleDecision(true));
 
             JButton rejectButton = new JButton("Reject");
             rejectButton.setBackground(new JBColor(new Color(255, 160, 160), new Color(100, 50, 50)));
-            rejectButton.setForeground(Color.BLACK);
+            rejectButton.setForeground(JBColor.BLACK);
             rejectButton.setFocusPainted(false);
             rejectButton.addActionListener(e -> handleDecision(false));
 
