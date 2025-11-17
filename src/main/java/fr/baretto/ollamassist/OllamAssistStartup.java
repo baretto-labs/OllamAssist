@@ -26,6 +26,10 @@ public class OllamAssistStartup implements ProjectActivity {
 
     private static final String OLLAMA_NOT_RUNNING = "Ollama Not Running";
     public static final String OLLAM_ASSIST = "OllamAssist";
+    private static final String OLLAMA_NOT_RUNNING_MESSAGE_TEMPLATE = "Ollama is not running at %s. %s features will be disabled.";
+    private static final String CHAT_FEATURE = "Chat";
+    private static final String COMPLETION_FEATURE = "Completion";
+    private static final String EMBEDDING_FEATURE = "Embedding";
 
     @Override
     public @Nullable Object execute(@NotNull Project project, @NotNull Continuation<? super kotlin.Unit> continuation) {
@@ -49,7 +53,8 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isChatModelAvailableAsync(settings.getChatOllamaUrl(), settings.getChatModelName())
                         .thenAccept(chatModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getChatOllamaUrl() + ". Chat features will be disabled.", NotificationType.WARNING), project);
+                String message = String.format(OLLAMA_NOT_RUNNING_MESSAGE_TEMPLATE, settings.getChatOllamaUrl(), CHAT_FEATURE);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, message, NotificationType.WARNING), project);
                 chatModelAvailableFuture.complete(false);
             }
         });
@@ -59,7 +64,8 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName())
                         .thenAccept(completionModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getCompletionOllamaUrl() + ". Completion features will be disabled.", NotificationType.WARNING), project);
+                String message = String.format(OLLAMA_NOT_RUNNING_MESSAGE_TEMPLATE, settings.getCompletionOllamaUrl(), COMPLETION_FEATURE);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, message, NotificationType.WARNING), project);
                 completionModelAvailableFuture.complete(false);
             }
         });
@@ -69,7 +75,8 @@ public class OllamAssistStartup implements ProjectActivity {
                 prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName())
                         .thenAccept(embeddingModelAvailableFuture::complete);
             } else {
-                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, "Ollama is not running at " + settings.getEmbeddingOllamaUrl() + ". Embedding features will be disabled.", NotificationType.WARNING), project);
+                String message = String.format(OLLAMA_NOT_RUNNING_MESSAGE_TEMPLATE, settings.getEmbeddingOllamaUrl(), EMBEDDING_FEATURE);
+                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, OLLAMA_NOT_RUNNING, message, NotificationType.WARNING), project);
                 embeddingModelAvailableFuture.complete(false);
             }
         });
