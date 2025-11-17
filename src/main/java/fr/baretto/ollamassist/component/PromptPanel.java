@@ -21,7 +21,9 @@ import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
+import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import fr.baretto.ollamassist.setting.OllamaSettings;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,6 +45,10 @@ public class PromptPanel extends JPanel implements Disposable {
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
     private static final String ENABLE_RAG = "Enable RAG search";
+    private static final String WEB_SEARCH_ENABLED = "Web search enabled with DuckDuckGO";
+    private static final String RAG_SEARCH_ENABLED = "RAG search enabled";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private transient Project project;
     private transient ActionListener listener;
 
@@ -67,6 +73,7 @@ public class PromptPanel extends JPanel implements Disposable {
         this.project = project;
         setupUI();
         setActions();
+        subscribeToModelChanges();
     }
 
     private void setActions() {
@@ -96,6 +103,22 @@ public class PromptPanel extends JPanel implements Disposable {
         insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
 
         sendButton.addActionListener(e -> triggerAction());
+    }
+
+    private void subscribeToModelChanges() {
+        ApplicationManager.getApplication().getMessageBus()
+                .connect(this)
+                .subscribe(ModelListener.TOPIC, this::updateModelSelector);
+    }
+
+    private void updateModelSelector() {
+        // Update the ModelSelector display with the new model name from settings
+        SwingUtilities.invokeLater(() -> {
+            String newModelName = OllamaSettings.getInstance().getChatModelName();
+            if (modelSelector != null && newModelName != null && !newModelName.isEmpty()) {
+                modelSelector.setSelectedModel(newModelName);
+            }
+        });
     }
 
     private void setupUI() {
@@ -200,7 +223,7 @@ public class PromptPanel extends JPanel implements Disposable {
                 .setRAGEnabled(ragEnabled);
         if (ragEnabled) {
             button.setIcon(IconUtils.RAG_SEARCH_ENABLED);
-            button.setToolTipText("RAG search enabled");
+            button.setToolTipText(RAG_SEARCH_ENABLED);
             project.getMessageBus()
                     .syncPublisher(StoreNotifier.TOPIC)
                     .clearDatabaseAndRunIndexation();
@@ -233,7 +256,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private void updateWebSearchButtonState(JToggleButton button) {
         if (webSearchEnabled) {
             button.setIcon(IconUtils.WEB_SEARCH_ENABLED);
-            button.setToolTipText("Web search enabled with DuckDuckGO");
+            button.setToolTipText(WEB_SEARCH_ENABLED);
         } else {
             button.setIcon(IconUtils.WEB_SEARCH_DISABLED);
             button.setToolTipText(ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO);
@@ -252,7 +275,7 @@ public class PromptPanel extends JPanel implements Disposable {
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
             

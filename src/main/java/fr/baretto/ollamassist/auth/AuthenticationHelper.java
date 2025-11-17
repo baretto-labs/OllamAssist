@@ -11,6 +11,8 @@ import java.util.Base64;
 @UtilityClass
 public class AuthenticationHelper {
 
+    private static final String CREDENTIALS_FORMAT = "%s:%s";
+
     /**
      * Creates a basic authentication header value if username and password are provided.
      * 
@@ -26,7 +28,7 @@ public class AuthenticationHelper {
             return null;
         }
         
-        String credentials = username.trim() + ":" + password.trim();
+        String credentials = String.format(CREDENTIALS_FORMAT, username.trim(), password.trim());
         return Base64.getEncoder().encodeToString(credentials.getBytes());
     }
     

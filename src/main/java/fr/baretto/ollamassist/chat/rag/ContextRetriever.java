@@ -134,6 +134,15 @@ public class ContextRetriever implements ContentRetriever {
                     "Context retrieval took longer than 2 seconds and was aborted.",
                     NotificationType.WARNING);
             return Collections.emptyList();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            PluginNotifier.notify(
+                    NOTIFICATION_GROUP_ID,
+                    "Interrupted",
+                    "Context retrieval was interrupted.",
+                    NotificationType.WARNING
+            );
+            return Collections.emptyList();
         } catch (InternalServerException e) {
             String modelName = settings.getEmbeddingModelName();
             String url = settings.getEmbeddingOllamaUrl();

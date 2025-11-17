@@ -15,7 +15,9 @@ import java.util.List;
  * Shows suggestion content plus navigation hints (e.g., "1 of 3 - Tab for next").
  */
 public class MultiSuggestionRenderer implements EditorCustomElementRenderer {
-    
+
+    private static final String NAVIGATION_HINT_FORMAT = "● %d of %d - Tab: next, Shift+Tab: prev, Enter: accept, Esc: dismiss";
+
     private final List<String> suggestionLines;
     private final Editor editor;
     private final int currentIndex;
@@ -124,7 +126,6 @@ public class MultiSuggestionRenderer implements EditorCustomElementRenderer {
             return "";
         }
         
-        return String.format("● %d of %d - Tab: next, Shift+Tab: prev, Enter: accept, Esc: dismiss", 
-                           currentIndex, totalSuggestions);
+        return String.format(NAVIGATION_HINT_FORMAT, currentIndex, totalSuggestions);
     }
 }

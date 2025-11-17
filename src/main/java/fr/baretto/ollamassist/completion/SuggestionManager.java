@@ -12,6 +12,8 @@ import java.util.Arrays;
 
 @Slf4j
 public class SuggestionManager {
+    private static final String ERROR_MESSAGE_FORMAT = "Error inserting suggestion: %s";
+
     private Inlay<?> currentInlay;
     private Inlay<?> loadingInlay;
     @Getter
@@ -68,7 +70,7 @@ public class SuggestionManager {
                     disposeCurrentInlay();
                     currentSuggestion = null;
                 } catch (Exception e) {
-                    log.error("Error inserting suggestion: " + e.getMessage());
+                    log.error(String.format(ERROR_MESSAGE_FORMAT, e.getMessage()));
                 }
             }, "Insert Suggestion", null));
         }

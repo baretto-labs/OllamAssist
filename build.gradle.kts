@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.8.0"
+version = "1.9.0"
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
         defaultRepositories()
     }
 }
-val langchain4jEasyRag = "1.4.0-beta10"
+val langchain4jEasyRag = "1.8.0-beta15"
 val langchain4jVersion = "1.8.0"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
@@ -53,10 +53,8 @@ dependencies {
         bundledPlugins("Git4Idea")
     }
 
-
     implementation("ai.djl:api:$djlVersion")
     implementation("ai.djl.huggingface:tokenizers:$djlVersion")
-
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion"){
         exclude(group = "org.apache.lucene")
@@ -91,6 +89,9 @@ dependencies {
         exclude(group = "org.apache.lucene")
         exclude(group = "org.slf4j")
     }
+
+    implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag")
+    implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag")
     runtimeOnly("org.slf4j:slf4j-jdk14:1.7.36")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")

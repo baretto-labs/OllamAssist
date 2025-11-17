@@ -31,6 +31,11 @@ public class DuckDuckGoContentRetriever {
     private static final String PROTOCOL_HTTP = "http://";
     private static final String PROTOCOL_HTTPS = "https://";
     private static final String FIRST_URL = "FirstURL";
+    private static final String PROTOCOL_PREFIX = "//";
+    private static final String HTTPS_PREFIX = "https:";
+    private static final String QUERY_FORMAT = "q=%s&b=&kl=us-en";
+    private static final String API_QUERY_FORMAT = "?q=%s&format=json&no_html=1&skip_disambig=1";
+    private static final String SEPARATOR = " - ";
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -55,9 +60,11 @@ public class DuckDuckGoContentRetriever {
         List<SearchResult> results;
         try {
             results = htmlSearch(webQuery);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (Exception e) {
             results = apiSearch(webQuery);
-
         }
         return results.stream()
                 .map(r -> {
@@ -66,7 +73,7 @@ public class DuckDuckGoContentRetriever {
                         sb.append(r.title.trim());
                     }
                     if (r.snippet != null && !r.snippet.isBlank()) {
-                        if (!sb.isEmpty()) sb.append(" - ");
+                        if (!sb.isEmpty()) sb.append(SEPARATOR);
                         sb.append(r.snippet.trim());
                     }
                     return Content.from(sb.toString());
@@ -75,7 +82,7 @@ public class DuckDuckGoContentRetriever {
     }
 
     private List<SearchResult> htmlSearch(String query) throws IOException, InterruptedException {
-        String formData = "q=" + URLEncoder.encode(query, StandardCharsets.UTF_8) + "&b=&kl=us-en";
+        String formData = String.format(QUERY_FORMAT, URLEncoder.encode(query, StandardCharsets.UTF_8));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(HTML_SEARCH_URL))
@@ -99,8 +106,7 @@ public class DuckDuckGoContentRetriever {
     }
 
     private List<SearchResult> apiSearch(String query) throws IOException, InterruptedException {
-        String url = API_SEARCH_URL + "?q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
-                + "&format=json&no_html=1&skip_disambig=1";
+        String url = API_SEARCH_URL + String.format(API_QUERY_FORMAT, URLEncoder.encode(query, StandardCharsets.UTF_8));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -210,12 +216,12 @@ public class DuckDuckGoContentRetriever {
     static boolean isValidUrl(String url) {
         if (url == null || url.isEmpty()) return false;
         if (url.contains("duckduckgo.com") && !url.contains("/l/")) return false;
-        return url.startsWith(PROTOCOL_HTTPS) || url.startsWith(PROTOCOL_HTTP) || url.startsWith("//");
+        return url.startsWith(PROTOCOL_HTTPS) || url.startsWith(PROTOCOL_HTTP) || url.startsWith(PROTOCOL_PREFIX);
     }
 
     static String cleanUrl(String url) {
-        if (url.startsWith("//")) {
-            url = "https:" + url;
+        if (url.startsWith(PROTOCOL_PREFIX)) {
+            url = HTTPS_PREFIX + url;
         }
         if (url.startsWith(PROTOCOL_HTTP)) {
             url = url.replace(PROTOCOL_HTTP, PROTOCOL_HTTPS);

@@ -19,6 +19,10 @@ import java.util.function.IntConsumer;
 public class DocumentIndexingPipeline implements AutoCloseable {
 
     private static final int BATCH_SIZE = 10;
+    private static final String PROCESSING_ERROR_FORMAT = "Failed to process document: %s";
+    private static final String REQUEUE_LOG_FORMAT = "Re-queueing document (attempt %d/%d): %s";
+    private static final String PERMANENT_FAILURE_FORMAT = "Permanent failure after %d attempts: %s";
+    private static final String INDEXED_COUNT_FORMAT = "Successfully indexed %d documents";
     private static final int SYNCHRONOUS_BATCH_SIZE = 100;
     private static final int LOG_INTERVAL = 100;
     private static final int MAX_RETRIES = 3;
@@ -131,7 +135,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
             totalIndexedDocuments.incrementAndGet();
             fileRetries.remove(filePath);
         } catch (Exception e) {
-            throw new ProcessingException("Failed to process document: " + filePath, e);
+            throw new ProcessingException(String.format(PROCESSING_ERROR_FORMAT, filePath), e);
         }
     }
 
@@ -148,10 +152,10 @@ public class DocumentIndexingPipeline implements AutoCloseable {
         int retryCount = fileRetries.computeIfAbsent(filePath, k -> new AtomicInteger(0)).incrementAndGet();
 
         if (retryCount <= MAX_RETRIES) {
-            log.warn("Re-queueing document (attempt {}/{}): {}", retryCount, MAX_RETRIES, filePath);
+            log.warn(String.format(REQUEUE_LOG_FORMAT, retryCount, MAX_RETRIES, filePath));
             reQueueDocument(filePath);
         } else {
-            log.error("Permanent failure after {} attempts: {}", MAX_RETRIES, filePath);
+            log.error(String.format(PERMANENT_FAILURE_FORMAT, MAX_RETRIES, filePath));
             pendingDocumentIds.remove(filePath);
             fileRetries.remove(filePath);
         }
@@ -169,7 +173,7 @@ public class DocumentIndexingPipeline implements AutoCloseable {
     private void logProgress() {
         int count = totalIndexedDocuments.get();
         if (count > 0 && count % LOG_INTERVAL == 0) {
-            log.info("Successfully indexed {} documents", count);
+            log.info(String.format(INDEXED_COUNT_FORMAT, count));
         }
     }
 

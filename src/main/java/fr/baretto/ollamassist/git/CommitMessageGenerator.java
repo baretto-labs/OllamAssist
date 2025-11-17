@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Collection;
+import java.util.Collections;
 
 @Slf4j
 public class CommitMessageGenerator extends AnAction {
@@ -36,78 +37,108 @@ public class CommitMessageGenerator extends AnAction {
 
     @Override
     public void actionPerformed(AnActionEvent e) {
-        // If a task is currently running, request cancellation
+        if (handleCancellationRequest(e)) {
+            return;
+        }
+        startCommitMessageGenerationTask(e);
+    }
+
+    private boolean handleCancellationRequest(AnActionEvent e) {
         if (currentIndicator != null) {
             log.debug("Requesting cancellation of current commit message generation task");
             currentIndicator.cancel();
-            currentIndicator = null;
-            e.getPresentation().setIcon(OLLAMASSIST_ICON);
-            return;
+            resetToDefaultState(e);
+            return true;
         }
+        return false;
+    }
 
-        // Start a new commit message generation task
+    private void startCommitMessageGenerationTask(AnActionEvent e) {
         new Task.Backgroundable(getEventProject(e), "Analyzing changes to prepare commit message…", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                currentIndicator = indicator;
-
-                try {
-                    // Change icon to stop button to indicate task can be cancelled
-                    ApplicationManager.getApplication().invokeLater(() ->
-                            e.getPresentation().setIcon(STOP_ICON)
-                    );
-
-                    Project project = e.getProject();
-                    if (project == null) return;
-
-                    // Check if task was cancelled
-                    if (indicator.isCanceled()) {
-                        log.debug("Commit message generation was cancelled before starting");
-                        return;
-                    }
-
-                    CommitMessageI commitPanel = getVcsPanel(e);
-
-                    if (commitPanel != null) {
-                        // Check cancellation again before generating message
-                        if (indicator.isCanceled()) {
-                            log.debug("Commit message generation was cancelled before message generation");
-                            return;
-                        }
-
-                        String commitMessage = generateCommitMessage(project, e);
-
-                        // Only set the message if not cancelled
-                        if (!indicator.isCanceled() && commitMessage != null && !commitMessage.trim().isEmpty()) {
-                            ApplicationManager.getApplication().invokeLater(() ->
-                                    commitPanel.setCommitMessage(commitMessage)
-                            );
-                        }
-                    }
-                } catch (Exception exception) {
-                    if (!indicator.isCanceled()) {
-                        log.error("Exception during commit message generation", exception);
-                    } else {
-                        log.debug("Commit message generation was cancelled");
-                    }
-                } finally {
-                    // Reset icon to normal state and clear current indicator
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        e.getPresentation().setIcon(OLLAMASSIST_ICON);
-                        currentIndicator = null;
-                    });
-                }
+                executeCommitMessageGeneration(e, indicator);
             }
 
             @Override
             public void onCancel() {
-                log.debug("Commit message generation task was cancelled");
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    e.getPresentation().setIcon(OLLAMASSIST_ICON);
-                    currentIndicator = null;
-                });
+                handleTaskCancellation(e);
             }
         }.queue();
+    }
+
+    private void executeCommitMessageGeneration(AnActionEvent e, ProgressIndicator indicator) {
+        currentIndicator = indicator;
+
+        try {
+            updateIconToStopButton(e);
+
+            Project project = e.getProject();
+            if (project == null || isCancelledWithLog(indicator, "before starting")) {
+                return;
+            }
+
+            CommitMessageI commitPanel = getVcsPanel(e);
+            if (commitPanel != null) {
+                generateAndSetCommitMessage(e, indicator, project, commitPanel);
+            }
+        } catch (Exception exception) {
+            handleException(indicator, exception);
+        } finally {
+            resetToDefaultState(e);
+        }
+    }
+
+    private void generateAndSetCommitMessage(AnActionEvent e, ProgressIndicator indicator, Project project, CommitMessageI commitPanel) {
+        if (isCancelledWithLog(indicator, "before message generation")) {
+            return;
+        }
+
+        String commitMessage = generateCommitMessage(project, e);
+
+        if (shouldSetCommitMessage(indicator, commitMessage)) {
+            ApplicationManager.getApplication().invokeLater(() ->
+                    commitPanel.setCommitMessage(commitMessage)
+            );
+        }
+    }
+
+    private boolean isCancelledWithLog(ProgressIndicator indicator, String stage) {
+        if (indicator.isCanceled()) {
+            log.debug("Commit message generation was cancelled {}", stage);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean shouldSetCommitMessage(ProgressIndicator indicator, String commitMessage) {
+        return !indicator.isCanceled() && commitMessage != null && !commitMessage.trim().isEmpty();
+    }
+
+    private void updateIconToStopButton(AnActionEvent e) {
+        ApplicationManager.getApplication().invokeLater(() ->
+                e.getPresentation().setIcon(STOP_ICON)
+        );
+    }
+
+    private void resetToDefaultState(AnActionEvent e) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            e.getPresentation().setIcon(OLLAMASSIST_ICON);
+            currentIndicator = null;
+        });
+    }
+
+    private void handleException(ProgressIndicator indicator, Exception exception) {
+        if (!indicator.isCanceled()) {
+            log.error("Exception during commit message generation", exception);
+        } else {
+            log.debug("Commit message generation was cancelled");
+        }
+    }
+
+    private void handleTaskCancellation(AnActionEvent e) {
+        log.debug("Commit message generation task was cancelled");
+        resetToDefaultState(e);
     }
 
     private CommitMessageI getVcsPanel(AnActionEvent e) {
@@ -189,62 +220,71 @@ public class CommitMessageGenerator extends AnAction {
     /**
      * Attempts to extract changes from an object using reflection
      */
-    @SuppressWarnings("unchecked")
     SelectedChanges tryGetChangesViaReflection(Object source, String sourceName) {
         try {
             Class<?> clazz = source.getClass();
 
-            // Try common method names for getting included/selected changes
-            String[] changeMethods = {"getIncludedChanges", "getSelectedChanges", "getAllChanges"};
-            String[] unversionedMethods = {"getIncludedUnversionedFiles", "getUnversionedFiles"};
+            Collection<Change> changes = extractChanges(clazz, source, sourceName);
+            Collection<FilePath> unversionedFiles = extractUnversionedFiles(clazz, source, sourceName);
 
-            Collection<Change> changes = null;
-            Collection<FilePath> unversionedFiles = null;
-
-            // Try to get changes
-            for (String methodName : changeMethods) {
-                try {
-                    var method = clazz.getMethod(methodName);
-                    Object result = method.invoke(source);
-                    if (result instanceof Collection<?> collection) {
-                        changes = (Collection<Change>) collection;
-                        log.debug("Found changes using {}.{}: {} items", sourceName, methodName, changes.size());
-                        break;
-                    }
-                } catch (Exception ignored) {
-                    // Try next method
-                }
-            }
-
-            // Try to get unversioned files
-            for (String methodName : unversionedMethods) {
-                try {
-                    var method = clazz.getMethod(methodName);
-                    Object result = method.invoke(source);
-                    if (result instanceof Collection<?> collection) {
-                        unversionedFiles = (Collection<FilePath>) collection;
-                        log.debug("Found unversioned files using {}.{}: {} items", sourceName, methodName, unversionedFiles.size());
-                        break;
-                    }
-                } catch (Exception ignored) {
-                    // Try next method
-                }
-            }
-
-            // If we found anything, return it
-            if ((changes != null && !changes.isEmpty()) || (unversionedFiles != null && !unversionedFiles.isEmpty())) {
-                Collection<Change> finalChanges = changes != null ? changes : java.util.Collections.emptyList();
-                Collection<FilePath> finalUnversioned = unversionedFiles != null ? unversionedFiles : java.util.Collections.emptyList();
-
-                log.debug("Successfully extracted selection from {}: {} changes, {} unversioned files",
-                        sourceName, finalChanges.size(), finalUnversioned.size());
-                return new SelectedChanges(finalChanges, finalUnversioned, true);
-            }
+            return createSelectedChangesIfFound(changes, unversionedFiles, sourceName);
 
         } catch (Exception ex) {
             log.debug("Reflection failed for {}", sourceName, ex);
         }
 
+        return SelectedChanges.empty();
+    }
+
+    private Collection<Change> extractChanges(Class<?> clazz, Object source, String sourceName) {
+        String[] changeMethods = {"getIncludedChanges", "getSelectedChanges", "getAllChanges"};
+
+        for (String methodName : changeMethods) {
+            Collection<Change> result = tryInvokeMethod(clazz, source, methodName);
+            if (result != null) {
+                log.debug("Found changes using {}.{}: {} items", sourceName, methodName, result.size());
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private Collection<FilePath> extractUnversionedFiles(Class<?> clazz, Object source, String sourceName) {
+        String[] unversionedMethods = {"getIncludedUnversionedFiles", "getUnversionedFiles"};
+
+        for (String methodName : unversionedMethods) {
+            Collection<FilePath> result = tryInvokeMethod(clazz, source, methodName);
+            if (result != null) {
+                log.debug("Found unversioned files using {}.{}: {} items", sourceName, methodName, result.size());
+                return result;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> Collection<T> tryInvokeMethod(Class<?> clazz, Object source, String methodName) {
+        try {
+            var method = clazz.getMethod(methodName);
+            Object result = method.invoke(source);
+            if (result instanceof Collection<?> collection) {
+                return (Collection<T>) collection;
+            }
+        } catch (Exception ignored) {
+            // Try next method
+        }
+        return null;
+    }
+
+    private SelectedChanges createSelectedChangesIfFound(Collection<Change> changes, Collection<FilePath> unversionedFiles, String sourceName) {
+        if ((changes != null && !changes.isEmpty()) || (unversionedFiles != null && !unversionedFiles.isEmpty())) {
+            Collection<Change> finalChanges = changes != null ? changes : java.util.Collections.emptyList();
+            Collection<FilePath> finalUnversioned = unversionedFiles != null ? unversionedFiles : java.util.Collections.emptyList();
+
+            log.debug("Successfully extracted selection from {}: {} changes, {} unversioned files",
+                    sourceName, finalChanges.size(), finalUnversioned.size());
+            return new SelectedChanges(finalChanges, finalUnversioned, true);
+        }
         return SelectedChanges.empty();
     }
 

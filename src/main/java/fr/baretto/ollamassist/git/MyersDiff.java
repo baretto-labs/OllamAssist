@@ -8,6 +8,11 @@ import java.util.*;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MyersDiff {
 
+    private static final String ERROR_MESSAGE_FORMAT = "Invalid backtrack: prevK=%d not found at d=%d";
+    private static final String INSERT_PREFIX = "+ ";
+    private static final String DELETE_PREFIX = "- ";
+    private static final String EQUAL_PREFIX = "  ";
+
     public static List<Edit> computeDiff(List<String> a, List<String> b) {
         int N = a.size();
         int M = b.size();
@@ -66,7 +71,7 @@ public class MyersDiff {
 
             Integer prevXObj = trace.get(i - 1).get(prevK);
             if (prevXObj == null) {
-                throw new IllegalStateException("Invalid backtrack: prevK=" + prevK + " not found at d=" + (i - 1));
+                throw new IllegalStateException(String.format(ERROR_MESSAGE_FORMAT, prevK, i - 1));
             }
             int prevX = prevXObj;
             int prevY = prevX - prevK;
@@ -135,9 +140,9 @@ public class MyersDiff {
         @Override
         public String toString() {
             return switch (op) {
-                case INSERT -> "+ " + line;
-                case DELETE -> "- " + line;
-                case EQUAL -> "  " + line;
+                case INSERT -> INSERT_PREFIX + line;
+                case DELETE -> DELETE_PREFIX + line;
+                case EQUAL -> EQUAL_PREFIX + line;
             };
         }
     }

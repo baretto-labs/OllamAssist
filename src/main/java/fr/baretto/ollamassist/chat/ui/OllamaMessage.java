@@ -174,4 +174,11 @@ public class OllamaMessage extends JPanel {
             append("The request was interrupted.");
         }
     }
+
+    public void stopSilently() {
+        if (currentHeaderPanel != null) {
+            currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
+            endCodeBlock();
+        }
+    }
 }

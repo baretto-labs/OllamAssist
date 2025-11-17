@@ -24,8 +24,10 @@ public class IndexRegistry {
 
     public static final Charset CHARSET = StandardCharsets.UTF_8;
     private static final String USER_HOME = System.getProperty("user.home");
-    public static final String OLLAMASSIST_DIR = USER_HOME + File.separator + ".ollamassist";
-    private static final String PROJECTS_FILE = OLLAMASSIST_DIR + File.separator + "indexed_projects.txt";
+    private static final String OLLAMASSIST_DIR_FORMAT = "%s%s.ollamassist";
+    private static final String PROJECTS_FILE_FORMAT = "%s%sindexed_projects.txt";
+    public static final String OLLAMASSIST_DIR = String.format(OLLAMASSIST_DIR_FORMAT, USER_HOME, File.separator);
+    private static final String PROJECTS_FILE = String.format(PROJECTS_FILE_FORMAT, OLLAMASSIST_DIR, File.separator);
     private static final String SEPARATOR = ",";
     private final Set<String> currentIndexations = new HashSet<>();
 
@@ -140,7 +142,7 @@ public class IndexRegistry {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(PROJECTS_FILE))) {
             for (Map.Entry<String, ProjectMetadata> entry : projects.entrySet()) {
                 ProjectMetadata metadata = entry.getValue();
-                writer.write(entry.getKey() + SEPARATOR + metadata.getLastIndexedDate() + SEPARATOR + metadata.isCorrupted());
+                writer.write(String.format("%s%s%s%s%s", entry.getKey(), SEPARATOR, metadata.getLastIndexedDate(), SEPARATOR, metadata.isCorrupted()));
                 writer.newLine();
             }
         } catch (IOException e) {

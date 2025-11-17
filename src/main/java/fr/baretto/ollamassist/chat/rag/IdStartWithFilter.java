@@ -33,8 +33,10 @@ public class IdStartWithFilter implements Filter {
         return false;
     }
 
+    private static final String TO_STRING_FORMAT = "IdEqualsFilter{id='%s'}";
+
     @Override
     public String toString() {
-        return "IdEqualsFilter{id='" + id + "'}";
+        return String.format(TO_STRING_FORMAT, id);
     }
 }

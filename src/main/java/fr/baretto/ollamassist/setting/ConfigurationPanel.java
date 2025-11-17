@@ -1,77 +1,45 @@
 package fr.baretto.ollamassist.setting;
 
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.ComboBox;
-import com.intellij.openapi.ui.Messages;
-import com.intellij.ui.components.JBLabel;
-import com.intellij.ui.components.JBPanel;
-import com.intellij.ui.components.JBTextField;
-import com.intellij.ui.components.fields.IntegerField;
-import com.intellij.util.ui.JBUI;
-import dev.langchain4j.model.ollama.OllamaModel;
-import dev.langchain4j.model.ollama.OllamaModels;
-import fr.baretto.ollamassist.auth.AuthenticationHelper;
-import fr.baretto.ollamassist.component.ComponentCustomizer;
-import fr.baretto.ollamassist.events.StoreNotifier;
+import com.intellij.ui.components.JBTabbedPane;
+import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
+import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
+import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.awt.event.FocusEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
-import static fr.baretto.ollamassist.setting.OllamAssistSettings.DEFAULT_URL;
-
 public class ConfigurationPanel extends JPanel {
 
-    private final JBTextField chatOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getChatOllamaUrl());
-    private final JBTextField completionOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getCompletionOllamaUrl());
-    private final JBTextField embeddingOllamaUrl = new JBTextField(OllamAssistSettings.getInstance().getEmbeddingOllamaUrl());
-    private final JBTextField username = new JBTextField(OllamAssistSettings.getInstance().getUsername());
-    private final JBTextField password = new JBTextField(OllamAssistSettings.getInstance().getPassword());
-    private final ComboBox<String> chatModel;
-    private final ComboBox<String> completionModel;
-    private final ComboBox<String> embeddingModel;
-    private final JBTextField timeout = new IntegerField(null, 0, Integer.MAX_VALUE);
-    private final JBTextField sources = new JBTextField();
-    private final IntegerField maxDocuments = new IntegerField(null, 1, 100000);
+    private final transient OllamaConfigPanel ollamaPanel;
+    private final transient RAGConfigPanel ragPanel;
+    private final transient ActionsConfigPanel actionsPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
     public ConfigurationPanel(Project project) {
         this.project = project;
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(JBUI.Borders.empty(10));
+        setLayout(new BorderLayout());
 
-        chatModel = createComboBox();
-        add(createOllamaUrlField("Chat Ollama URL:", chatOllamaUrl, "The URL of the Ollama server for chat.", chatModel, false));
-        add(createLabeledField("Chat model:", chatModel, "The model should be loaded before use."));
+        // Create sub-panels
+        ollamaPanel = new OllamaConfigPanel(project);
+        ragPanel = new RAGConfigPanel(project);
+        actionsPanel = new ActionsConfigPanel();
 
-        completionModel = createComboBox();
-        add(createOllamaUrlField("Completion Ollama URL:", completionOllamaUrl, "The URL of the Ollama server for completion.", completionModel, false));
-        add(createLabeledField("Completion model:", completionModel, "The model should be loaded before use."));
+        // Create tabbed pane
+        JBTabbedPane tabbedPane = new JBTabbedPane();
+        tabbedPane.addTab("Ollama", ollamaPanel);
+        tabbedPane.addTab("RAG", ragPanel);
+        tabbedPane.addTab("Actions", actionsPanel);
 
-        embeddingModel = createComboBox();
-        add(createOllamaUrlField("Embedding Ollama URL:", embeddingOllamaUrl, "The URL of the Ollama server for embedding.", embeddingModel, true));
-        add(createLabeledField("Embedding model:", embeddingModel,
-                "Model loaded by Ollama, used for transformation into Embeddings; it must be loaded before use. " +
-                        "For example: nomic-embed-text. " +
-                        "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
-
-        add(createLabeledField("Username:", username, "Username for basic authentication (optional)."));
-        add(createLabeledField("Password:", password, "Password for basic authentication (optional)."));
-
-        add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
-        add(createLabeledField("Indexed Folders:", sources, "Separated by ';'"));
-        add(createLabeledField("Maximum number of documents indexed at once", maxDocuments,
-                "The maximum number of documents indexed during a batch indexation"));
-        add(createClearEmbeddingButton());
+        add(tabbedPane, BorderLayout.CENTER);
 
         initializeListeners();
     }
@@ -105,262 +73,149 @@ public class ConfigurationPanel extends JPanel {
             }
         };
 
-        chatOllamaUrl.getDocument().addDocumentListener(documentListener);
-        completionOllamaUrl.getDocument().addDocumentListener(documentListener);
-        embeddingOllamaUrl.getDocument().addDocumentListener(documentListener);
-        username.getDocument().addDocumentListener(documentListener);
-        password.getDocument().addDocumentListener(documentListener);
-        timeout.getDocument().addDocumentListener(documentListener);
-        sources.getDocument().addDocumentListener(documentListener);
-        maxDocuments.getDocument().addDocumentListener(documentListener);
-
+        // Ollama panel listeners
+        ollamaPanel.getChatOllamaUrlField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getCompletionOllamaUrlField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getEmbeddingOllamaUrlField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getUsernameField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getPasswordField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getTimeoutField().getDocument().addDocumentListener(documentListener);
 
         ItemListener itemListener = e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 notifyChangeListeners();
             }
         };
-        chatModel.addItemListener(itemListener);
-        completionModel.addItemListener(itemListener);
-        embeddingModel.addItemListener(itemListener);
-    }
+        ollamaPanel.getChatModelComboBox().addItemListener(itemListener);
+        ollamaPanel.getCompletionModelComboBox().addItemListener(itemListener);
+        ollamaPanel.getEmbeddingModelComboBox().addItemListener(itemListener);
 
-    private JPanel createOllamaUrlField(String label, JBTextField ollamaUrl, String message, ComboBox<String> modelComboBox, boolean isEmbedding) {
-        JPanel panel = createLabeledField(label, ollamaUrl, message);
-        ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                new Thread(() -> updateAvailableModels(ollamaUrl, modelComboBox, isEmbedding)).start();
-            }
+        // RAG panel listeners
+        ragPanel.getSourcesField().getDocument().addDocumentListener(documentListener);
+        ragPanel.getMaxDocumentsField().getDocument().addDocumentListener(documentListener);
 
-            @Override
-            public void focusGained(FocusEvent e) {
-                ollamaUrl.setBackground(UIManager.getColor("TextField.background"));
-            }
+        // Actions panel listeners
+        actionsPanel.getAutoApproveFileCreationCheckbox().addItemListener(e -> {
+            // Apply immediately without waiting for "Apply" button
+            ActionsSettings.getInstance().setAutoApproveFileCreation(actionsPanel.isAutoApproveFileCreation());
+            notifyChangeListeners();
         });
-        return panel;
     }
 
-    private ComboBox<String> createComboBox() {
-        ComboBox<String> comboBox = new ComboBox<>();
-        comboBox.setEditable(false);
-        comboBox.setPreferredSize(new Dimension(200, 30));
-        comboBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        return comboBox;
-    }
+    // Delegation methods to sub-panels for backward compatibility with SettingsBindingHelper
 
-    private JPanel createLabeledField(String label, JComponent component, String message) {
-        JPanel panel = new JBPanel<>();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(JBUI.Borders.empty(5, 0));
-
-        JBLabel fieldLabel = new JBLabel(label);
-        fieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(fieldLabel);
-
-        panel.add(Box.createVerticalStrut(5));
-
-        component.setPreferredSize(new Dimension(200, 30));
-        component.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        component.setAlignmentX(Component.LEFT_ALIGNMENT);
-        component.setAlignmentY(Component.CENTER_ALIGNMENT);
-        panel.add(component);
-
-        if (message != null) {
-            JTextArea infoText = new JTextArea(message);
-            infoText.setEditable(false);
-            infoText.setLineWrap(true);
-            infoText.setWrapStyleWord(true);
-            infoText.setBackground(panel.getBackground());
-            infoText.setFont(infoText.getFont().deriveFont(Font.ITALIC));
-            infoText.setForeground(UIManager.getColor("Label.disabledForeground"));
-            infoText.setBorder(BorderFactory.createEmptyBorder());
-            infoText.setFocusable(false);
-            infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
-            infoText.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-
-            panel.add(Box.createVerticalStrut(3));
-            panel.add(infoText);
-        }
-
-        return panel;
-    }
-
-    private JPanel createClearEmbeddingButton() {
-        JPanel panel = new JBPanel<>();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(JBUI.Borders.empty(10, 0));
-        JButton clearButton = new JButton("Clear Embedding Store");
-        ComponentCustomizer.applyHoverEffect(clearButton);
-        clearButton.setPreferredSize(new Dimension(200, 30));
-        clearButton.setMaximumSize(new Dimension(200, 30));
-        clearButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        clearButton.addActionListener(e -> {
-            int result = Messages.showYesNoDialog(
-                    "Are you sure you want to clear the embedding store? This action cannot be undone.",
-                    "Clear Embedding Store",
-                    Messages.getWarningIcon()
-            );
-            if (result == Messages.YES) {
-                triggerClearLocalStorage();
-            }
-        });
-
-        JBLabel infoLabel = new JBLabel("Use this button to clean the embedding store in case of database corruption.");
-        infoLabel.setFont(infoLabel.getFont().deriveFont(Font.ITALIC));
-        infoLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-        infoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        panel.add(clearButton);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(infoLabel);
-
-        return panel;
-    }
-
-    public void triggerClearLocalStorage() {
-        project.getMessageBus()
-                .syncPublisher(StoreNotifier.TOPIC)
-                .clear();
-    }
-
+    // Ollama settings
     public String getChatOllamaUrl() {
-        return chatOllamaUrl.getText().trim();
+        return ollamaPanel.getChatOllamaUrl();
     }
 
     public void setChatOllamaUrl(String url) {
-        chatOllamaUrl.setText(url.trim());
-        updateAvailableModels(chatOllamaUrl, chatModel, false);
+        ollamaPanel.setChatOllamaUrl(url);
     }
 
     public String getCompletionOllamaUrl() {
-        return completionOllamaUrl.getText().trim();
+        return ollamaPanel.getCompletionOllamaUrl();
     }
 
     public void setCompletionOllamaUrl(String url) {
-        completionOllamaUrl.setText(url.trim());
-        updateAvailableModels(completionOllamaUrl, completionModel, false);
+        ollamaPanel.setCompletionOllamaUrl(url);
     }
 
     public String getEmbeddingOllamaUrl() {
-        return embeddingOllamaUrl.getText().trim();
+        return ollamaPanel.getEmbeddingOllamaUrl();
     }
 
     public void setEmbeddingOllamaUrl(String url) {
-        embeddingOllamaUrl.setText(url.trim());
-        updateAvailableModels(embeddingOllamaUrl, embeddingModel, true);
+        ollamaPanel.setEmbeddingOllamaUrl(url);
     }
 
     public String getUsername() {
-        return username.getText().trim();
+        return ollamaPanel.getUsername();
     }
 
-    public void setUsername(String usernameValue) {
-        username.setText(usernameValue.trim());
+    public void setUsername(String username) {
+        ollamaPanel.setUsername(username);
     }
 
     public String getPassword() {
-        return password.getText().trim();
+        return ollamaPanel.getPassword();
     }
 
-    public void setPassword(String passwordValue) {
-        password.setText(passwordValue.trim());
-    }
-
-    public int getMaxDocuments() {
-        return maxDocuments.getValue();
-    }
-
-    public void setMaxDocuments(int maxDocumentsValue) {
-        maxDocuments.setValue(maxDocumentsValue);
+    public void setPassword(String password) {
+        ollamaPanel.setPassword(password);
     }
 
     public String getChatModel() {
-        return (String) chatModel.getSelectedItem();
-    }
-
-    public String getCompletionModel() {
-        return (String) completionModel.getSelectedItem();
-    }
-
-    public String getEmbeddingModel() {
-        return (String) embeddingModel.getSelectedItem();
-    }
-
-    public String getSources() {
-        return sources.getText().trim();
-    }
-
-    public void setSources(String sources) {
-        this.sources.setText(sources.trim());
-    }
-
-    public String getTimeout() {
-        return timeout.getText().trim();
-    }
-
-    public void setTimeout(String timeout) {
-        this.timeout.setText(timeout.trim());
+        return ollamaPanel.getChatModel();
     }
 
     public void setChatModelName(String chatModelName) {
-        chatModel.setSelectedItem(chatModelName.trim());
+        ollamaPanel.setChatModelName(chatModelName);
+    }
+
+    public String getCompletionModel() {
+        return ollamaPanel.getCompletionModel();
     }
 
     public void setCompletionModelName(String completionModelName) {
-        completionModel.setSelectedItem(completionModelName.trim());
+        ollamaPanel.setCompletionModelName(completionModelName);
+    }
+
+    public String getEmbeddingModel() {
+        return ollamaPanel.getEmbeddingModel();
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
-        embeddingModel.setSelectedItem(embeddingModelName.trim());
+        ollamaPanel.setEmbeddingModelName(embeddingModelName);
     }
 
-    private List<OllamaModel> fetchAvailableModels(JBTextField ollamaUrl) {
-        try {
-            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
-                    .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText());
-            
-            // Add authentication if configured
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
-                builder.customHeaders(customHeaders);
-            }
-            
-            return builder.build()
-                    .availableModels()
-                    .content();
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
+    public String getTimeout() {
+        return ollamaPanel.getTimeout();
     }
 
-    private void updateAvailableModels(JBTextField ollamaUrl, ComboBox<String> comboBox, boolean isEmbedding) {
-        List<String> availableModels = fetchAvailableModels(ollamaUrl).stream()
-                .map(OllamaModel::getName)
-                .toList();
-
-        if (isEmbedding) {
-            List<String> availableModelsForEmbedding = new ArrayList<>(availableModels);
-            availableModelsForEmbedding.add(DEFAULT_EMBEDDING_MODEL);
-            updateComboBox(comboBox, availableModelsForEmbedding, (String) comboBox.getSelectedItem());
-        } else {
-            updateComboBox(comboBox, availableModels, (String) comboBox.getSelectedItem());
-        }
+    public void setTimeout(String timeout) {
+        ollamaPanel.setTimeout(timeout);
     }
 
+    // RAG settings
+    public String getSources() {
+        return ragPanel.getSources();
+    }
 
-    private void updateComboBox(ComboBox<String> comboBox, List<String> items, String selectedValue) {
-        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        items.forEach(model::addElement);
-        model.setSelectedItem(selectedValue);
-        comboBox.setModel(model);
+    public void setSources(String sources) {
+        ragPanel.setSources(sources);
+    }
+
+    public int getMaxDocuments() {
+        return ragPanel.getMaxDocuments();
+    }
+
+    public void setMaxDocuments(int maxDocuments) {
+        ragPanel.setMaxDocuments(maxDocuments);
+    }
+
+    public void triggerClearLocalStorage() {
+        ragPanel.triggerClearLocalStorage();
     }
 
     public void triggerCleanAllDatabase() {
-        project.getMessageBus()
-                .syncPublisher(StoreNotifier.TOPIC)
-                .clearDatabaseAndRunIndexation();
+        ragPanel.triggerCleanAllDatabase();
+    }
+
+    // Actions settings
+    public boolean isAutoApproveFileCreation() {
+        return actionsPanel.isAutoApproveFileCreation();
+    }
+
+    public void setAutoApproveFileCreation(boolean value) {
+        actionsPanel.setAutoApproveFileCreation(value);
+    }
+
+    public boolean isToolsEnabled() {
+        return actionsPanel.isToolsEnabled();
+    }
+
+    public void setToolsEnabled(boolean value) {
+        actionsPanel.setToolsEnabled(value);
     }
 }

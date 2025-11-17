@@ -16,21 +16,26 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.*;
+import fr.baretto.ollamassist.chat.tools.FileCreator;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
+import fr.baretto.ollamassist.setting.ActionsSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
-
-import java.util.HashMap;
-import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Service(Service.Level.PROJECT)
 @Slf4j
 public final class OllamaService implements Disposable, ModelListener {
+
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
     private final Project project;
     private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(25);
@@ -84,28 +89,35 @@ public final class OllamaService implements Disposable, ModelListener {
                     .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
-            
+
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
-            
+
             OllamaStreamingChatModel model = builder.build();
 
-
-            AiServices<Assistant> assistantAiServices = AiServices.builder(Assistant.class)
+            var aiServicesBuilder = AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
                     .chatMemory(chatMemory);
 
-            return assistantAiServices
+            // Only add tools if enabled in settings
+            if (ActionsSettings.getInstance().isToolsEnabled()) {
+                log.info("Tools are enabled - adding FileCreator tool");
+                aiServicesBuilder.tools(new FileCreator(project));
+            } else {
+                log.info("Tools are disabled in settings");
+            }
+
+            return aiServicesBuilder
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever
                                     .builder()
                                     .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
                                     .dynamicMaxResults(query -> 2)
-                                    .dynamicMinScore(query -> 0.85)
+                                    .dynamicMinScore(query -> 0.80)
                                     .embeddingStore(embeddingStore)
                                     .build(),
                             project))

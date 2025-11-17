@@ -26,6 +26,8 @@ public class SettingsBindingHelper {
             "ragEnabled",
             "uistate"
     );
+    private static final String GETTER_PREFIX = "get";
+    private static final String SETTER_PREFIX = "set";
 
     /**
      * Load settings from State to ConfigurationPanel (or any object with matching setters).
@@ -169,7 +171,7 @@ public class SettingsBindingHelper {
         if (fieldName.equals("indexationSize")) {
             return "setMaxDocuments"; // Special case: field name != panel method name
         }
-        return "set" + capitalize(fieldName);
+        return SETTER_PREFIX + capitalize(fieldName);
     }
 
     /**
@@ -189,7 +191,7 @@ public class SettingsBindingHelper {
         if (fieldName.equals("embeddingModelName")) {
             return "getEmbeddingModel"; // Special case
         }
-        return "get" + capitalize(fieldName);
+        return GETTER_PREFIX + capitalize(fieldName);
     }
 
     /**
