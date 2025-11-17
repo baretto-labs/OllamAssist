@@ -24,6 +24,8 @@ import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MOD
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DocumentIngestFactory {
 
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
     public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store) {
         EmbeddingModel embeddingModel;
@@ -55,7 +57,7 @@ public class DocumentIngestFactory {
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
             
@@ -98,11 +100,13 @@ public class DocumentIngestFactory {
             this.lowPriority = lowPriority;
         }
 
+        private static final String THREAD_NAME_FORMAT = "%s-%d";
+
         @Override
         public Thread newThread(Runnable runnable) {
             Thread thread = new Thread(runnable);
 
-            thread.setName(threadNamePrefix + "-" + threadCounter.getAndIncrement());
+            thread.setName(String.format(THREAD_NAME_FORMAT, threadNamePrefix, threadCounter.getAndIncrement()));
 
             // Optionnel : low priority in order to limit the CPU
             if (lowPriority) {

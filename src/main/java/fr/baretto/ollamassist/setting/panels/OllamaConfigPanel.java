@@ -23,6 +23,11 @@ import static fr.baretto.ollamassist.setting.OllamaSettings.DEFAULT_URL;
 
 public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
+    private static final String LATEST_TAG = ":latest";
+    private static final String COLON = ":";
+
     private final JBTextField chatOllamaUrl = new JBTextField(OllamaSettings.getInstance().getChatOllamaUrl());
     private final JBTextField completionOllamaUrl = new JBTextField(OllamaSettings.getInstance().getCompletionOllamaUrl());
     private final JBTextField embeddingOllamaUrl = new JBTextField(OllamaSettings.getInstance().getEmbeddingOllamaUrl());
@@ -126,7 +131,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
 
@@ -232,8 +237,8 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
             // If not found and name doesn't have a tag, try with :latest
             if (chatModel.getSelectedItem() == null || !chatModel.getSelectedItem().equals(trimmedName)) {
-                if (!trimmedName.contains(":")) {
-                    chatModel.setSelectedItem(trimmedName + ":latest");
+                if (!trimmedName.contains(COLON)) {
+                    chatModel.setSelectedItem(trimmedName + LATEST_TAG);
                 }
             }
         }
@@ -248,8 +253,8 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
             // If not found and name doesn't have a tag, try with :latest
             if (completionModel.getSelectedItem() == null || !completionModel.getSelectedItem().equals(trimmedName)) {
-                if (!trimmedName.contains(":")) {
-                    completionModel.setSelectedItem(trimmedName + ":latest");
+                if (!trimmedName.contains(COLON)) {
+                    completionModel.setSelectedItem(trimmedName + LATEST_TAG);
                 }
             }
         }
@@ -264,8 +269,8 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
             // If not found and name doesn't have a tag, try with :latest
             if (embeddingModel.getSelectedItem() == null || !embeddingModel.getSelectedItem().equals(trimmedName)) {
-                if (!trimmedName.contains(":")) {
-                    embeddingModel.setSelectedItem(trimmedName + ":latest");
+                if (!trimmedName.contains(COLON)) {
+                    embeddingModel.setSelectedItem(trimmedName + LATEST_TAG);
                 }
             }
         }

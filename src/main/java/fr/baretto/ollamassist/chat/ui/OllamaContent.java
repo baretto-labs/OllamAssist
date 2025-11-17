@@ -42,6 +42,12 @@ import java.util.function.Consumer;
 @Slf4j
 public class OllamaContent {
 
+    private static final String CONTEXT_TITLE_PREFIX = "Context";
+    private static final String CONTEXT_COLLAPSED_PREFIX = "► ";
+    private static final String CONTEXT_EXPANDED_PREFIX = "▼ ";
+    private static final String TOKENS_LABEL_FORMAT = "Tokens: %d";
+    private static final String TOKENS_UNKNOWN = "Tokens: ?";
+
     private final Context context;
     @Getter
     private final JPanel contentPanel = new JPanel();
@@ -269,12 +275,12 @@ public class OllamaContent {
         boolean[] isCollapsed = {OllamAssistUISettings.getInstance().getContextPanelCollapsed()};
 
         contentContainer.setVisible(!isCollapsed[0]);
-        toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
+        toggleButton.setText(String.format("%s%s", isCollapsed[0] ? CONTEXT_COLLAPSED_PREFIX : CONTEXT_EXPANDED_PREFIX, CONTEXT_TITLE_PREFIX));
 
         toggleButton.addActionListener(e -> {
             isCollapsed[0] = !isCollapsed[0];
             contentContainer.setVisible(!isCollapsed[0]);
-            toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
+            toggleButton.setText(String.format("%s%s", isCollapsed[0] ? CONTEXT_COLLAPSED_PREFIX : CONTEXT_EXPANDED_PREFIX, CONTEXT_TITLE_PREFIX));
             OllamAssistUISettings.getInstance().setContextPanelCollapsed(isCollapsed[0]);
         });
 
@@ -291,9 +297,9 @@ public class OllamaContent {
             protected void done() {
                 try {
                     long tokenCount = get();
-                    tokenLabel.setText("Tokens: " + tokenCount);
+                    tokenLabel.setText(String.format(TOKENS_LABEL_FORMAT, tokenCount));
                 } catch (Exception e) {
-                    tokenLabel.setText("Tokens: ?");
+                    tokenLabel.setText(TOKENS_UNKNOWN);
                     Thread.currentThread().interrupt();
                 }
             }
@@ -326,7 +332,7 @@ public class OllamaContent {
     }
 
     private void logException(Throwable throwable) {
-        log.error("Exception: " + throwable);
+        log.error("Exception occurred", throwable);
         done(ChatResponse.builder().finishReason(FinishReason.OTHER).aiMessage(AiMessage.from(throwable.getMessage())).build());
     }
 

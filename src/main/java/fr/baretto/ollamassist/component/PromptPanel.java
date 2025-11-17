@@ -45,6 +45,10 @@ public class PromptPanel extends JPanel implements Disposable {
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
     private static final String ENABLE_RAG = "Enable RAG search";
+    private static final String WEB_SEARCH_ENABLED = "Web search enabled with DuckDuckGO";
+    private static final String RAG_SEARCH_ENABLED = "RAG search enabled";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private transient Project project;
     private transient ActionListener listener;
 
@@ -220,7 +224,7 @@ public class PromptPanel extends JPanel implements Disposable {
                 .setRAGEnabled(ragEnabled);
         if (ragEnabled) {
             button.setIcon(IconUtils.RAG_SEARCH_ENABLED);
-            button.setToolTipText("RAG search enabled");
+            button.setToolTipText(RAG_SEARCH_ENABLED);
             project.getMessageBus()
                     .syncPublisher(StoreNotifier.TOPIC)
                     .clearDatabaseAndRunIndexation();
@@ -253,7 +257,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private void updateWebSearchButtonState(JToggleButton button) {
         if (webSearchEnabled) {
             button.setIcon(IconUtils.WEB_SEARCH_ENABLED);
-            button.setToolTipText("Web search enabled with DuckDuckGO");
+            button.setToolTipText(WEB_SEARCH_ENABLED);
         } else {
             button.setIcon(IconUtils.WEB_SEARCH_DISABLED);
             button.setToolTipText(ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO);
@@ -272,7 +276,7 @@ public class PromptPanel extends JPanel implements Disposable {
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
             

@@ -34,6 +34,9 @@ import java.util.Map;
 @Slf4j
 public final class OllamaService implements Disposable, ModelListener {
 
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BASIC_AUTH_FORMAT = "Basic %s";
+
     private final Project project;
     private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(25);
     private LuceneEmbeddingStore<TextSegment> embeddingStore;
@@ -90,7 +93,7 @@ public final class OllamaService implements Disposable, ModelListener {
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
 

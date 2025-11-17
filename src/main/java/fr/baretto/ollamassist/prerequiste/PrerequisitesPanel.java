@@ -30,6 +30,12 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
 
     public static final String MODEL_AVAILABLE = "Model available";
     public static final String INSTALL_WITH = "Install with:";
+    private static final String CHAT_MODEL_LABEL_FORMAT = "%s (Chat):";
+    private static final String AUTOCOMPLETE_MODEL_LABEL_FORMAT = "%s (Autocomplete):";
+    private static final String EMBEDDING_MODEL_LABEL_FORMAT = "%s (Embedding):";
+    private static final String OLLAMA_PULL_FORMAT = "ollama pull %s";
+    private static final String FILE_PREFIX = "File: ";
+    private static final String TRUNCATION_SUFFIX = "\n... (truncated)";
     private final PrerequisiteService prerequisiteService = ApplicationManager.getApplication().getService(PrerequisiteService.class);
     private final JBLabel ollamaLabel = new JBLabel();
     private final JBLabel chatModelLabel = new JBLabel();
@@ -100,7 +106,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         String chatModelName = OllamAssistSettings.getInstance().getChatModelName();
         gbc.gridy++;
         gbc.insets.top = 15;
-        contentPanel.add(new JBLabel(chatModelName + " (Chat):"), gbc);
+        contentPanel.add(new JBLabel(String.format(CHAT_MODEL_LABEL_FORMAT, chatModelName)), gbc);
 
         gbc.gridy++;
         gbc.insets.top = 2;
@@ -115,7 +121,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         String autocompleteModelName = OllamAssistSettings.getInstance().getCompletionModelName();
         gbc.gridy++;
         gbc.insets.top = 15;
-        contentPanel.add(new JBLabel(autocompleteModelName + " (Autocomplete):"), gbc);
+        contentPanel.add(new JBLabel(String.format(AUTOCOMPLETE_MODEL_LABEL_FORMAT, autocompleteModelName)), gbc);
 
         gbc.gridy++;
         gbc.insets.top = 2;
@@ -130,7 +136,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         String embeddingModelName = OllamAssistSettings.getInstance().getEmbeddingModelName();
         gbc.gridy++;
         gbc.insets.top = 15;
-        contentPanel.add(new JBLabel(embeddingModelName + " (Embedding):"), gbc);
+        contentPanel.add(new JBLabel(String.format(EMBEDDING_MODEL_LABEL_FORMAT, embeddingModelName)), gbc);
 
         gbc.gridy++;
         gbc.insets.top = 2;
@@ -166,7 +172,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private JPanel createCommandPanel(JBTextField field, JButton button, String modelName) {
         JPanel panel = new JPanel(new BorderLayout(5, 0));
         field.setEditable(false);
-        field.setText("ollama pull " + modelName);
+        field.setText(String.format(OLLAMA_PULL_FORMAT, modelName));
 
         JScrollPane scrollPane = new JBScrollPane(field);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);

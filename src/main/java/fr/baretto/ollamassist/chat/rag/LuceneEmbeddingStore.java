@@ -42,6 +42,9 @@ import static fr.baretto.ollamassist.chat.rag.IndexRegistry.OLLAMASSIST_DIR;
 public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBEDDED>, Closeable, Disposable {
 
     public static final String DATABASE_KNOWLEDGE_INDEX = "/database/knowledge_index/";
+    private static final String PATH_SEPARATOR = "/";
+    private static final String FILE_NOT_FOUND_FORMAT = "File not found for id: %s";
+    private static final String FILE_READ_ERROR_FORMAT = "Failed to read file content for: %s";
     private static final String VECTOR = "vector";
     private static final String EMBEDDED = "embedded";
     private static final String LAST_INDEXED_DATE = "last_indexed_date";
@@ -313,14 +316,14 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     private String readFileContentFromId(String path) {
         VirtualFile file = LocalFileSystem.getInstance().findFileByPath(path);
         if (file == null || !file.exists()) {
-            log.warn("File not found for id: " + path);
+            log.warn(String.format(FILE_NOT_FOUND_FORMAT, path));
             return null;
         }
 
         try {
             return VfsUtilCore.loadText(file);
         } catch (IOException e) {
-            log.error("Failed to read file content for: " + path, e);
+            log.error(String.format(FILE_READ_ERROR_FORMAT, path), e);
             return null;
         }
     }
@@ -412,9 +415,11 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
 
         if (embedded instanceof TextSegment textSegment) {
             try {
-                return textSegment.metadata().getString("absolute_directory_path") + "/"
-                        + textSegment.metadata().getString("file_name")
-                        + UUID.randomUUID();
+                return String.format("%s%s%s%s",
+                    textSegment.metadata().getString("absolute_directory_path"),
+                    PATH_SEPARATOR,
+                    textSegment.metadata().getString("file_name"),
+                    UUID.randomUUID());
             } catch (Exception exception) {
                 return defaultId;
             }

@@ -109,7 +109,7 @@ public class OptimizedLightModelAssistant {
         // Add authentication if configured
         if (AuthenticationHelper.isAuthenticationConfigured()) {
             Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
+            customHeaders.put("Authorization", String.format("Basic %s", AuthenticationHelper.createBasicAuthHeader()));
             builder.customHeaders(customHeaders);
         }
         

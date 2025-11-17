@@ -14,6 +14,9 @@ import java.util.function.Consumer;
 
 public class ApprovalMessage extends JPanel {
 
+    private static final String FILE_PREFIX = "File: ";
+    private static final String TRUNCATION_SUFFIX = "\n... (truncated)";
+
     private final transient Consumer<Boolean> onDecision;
     private final JPanel buttonPanel;
 
@@ -52,14 +55,14 @@ public class ApprovalMessage extends JPanel {
         contentPanel.setOpaque(false);
 
         // File path
-        JLabel pathLabel = new JLabel("File: " + filePath);
+        JLabel pathLabel = new JLabel(FILE_PREFIX + filePath);
         pathLabel.setFont(pathLabel.getFont().deriveFont(Font.BOLD, 11f));
         pathLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 10, 0));
         contentPanel.add(pathLabel);
 
         // Code preview
         String previewContent = content.length() > 1000
-            ? content.substring(0, 1000) + "\n... (truncated)"
+            ? content.substring(0, 1000) + TRUNCATION_SUFFIX
             : content;
 
         RSyntaxTextArea codeArea = new RSyntaxTextArea(previewContent);

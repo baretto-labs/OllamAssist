@@ -17,6 +17,10 @@ import java.util.concurrent.Executors;
 
 public class ModelSelector extends JPanel {
 
+    private static final String ERROR_TITLE = "Loading Error";
+    private static final String ERROR_MESSAGE_FORMAT = "Failed to load models: %s";
+    private static final String ELLIPSIS = "...";
+
     private final ComboBox<String> comboBox;
     private final JProgressBar progressBar;
     private final transient Executor executor = Executors.newSingleThreadExecutor();
@@ -124,8 +128,8 @@ public class ModelSelector extends JPanel {
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(this,
-                "Failed to load models: " + message,
-                "Loading Error",
+                String.format(ERROR_MESSAGE_FORMAT, message),
+                ERROR_TITLE,
                 JOptionPane.ERROR_MESSAGE
         );
     }
@@ -158,7 +162,7 @@ public class ModelSelector extends JPanel {
                 truncated.deleteCharAt(truncated.length() - 1);
             }
 
-            return truncated + "...";
+            return truncated + ELLIPSIS;
         }
     }
 

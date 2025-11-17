@@ -24,6 +24,22 @@ import java.util.concurrent.TimeoutException;
 @Slf4j
 public class FileCreator {
 
+    private static final String ERROR_PREFIX = "Error: ";
+    private static final String ERROR_EMPTY_PATH = "Error: File path cannot be empty";
+    private static final String ERROR_BASE_PATH_UNAVAILABLE = "Error: Project base path is not available";
+    private static final String ERROR_FILE_EXISTS_FORMAT = "Error: File already exists at path: %s";
+    private static final String ERROR_CREATING_FILE_FORMAT = "Error creating file: %s";
+    private static final String ERROR_PARENT_DIR = "Error: Could not create parent directories";
+    private static final String ERROR_IO_FORMAT = "Error: %s";
+    private static final String FILE_CREATED_SUCCESS_FORMAT = "File created successfully: %s";
+    private static final String FILE_CREATION_TITLE = "File created";
+    private static final String FILE_CREATION_SUCCESS_FORMAT = "Successfully created: %s";
+    private static final String FILE_CREATION_CANCELLED = "File creation cancelled by user";
+    private static final String FILE_CREATION_REQUEST_TITLE = "File Creation Request";
+    private static final String FILE_CREATED_AUTO_TITLE = "File Created Automatically";
+    private static final String WARNING_TOOL_CALL_DETECTED = "⚠️ Tool Call Detected (via text parsing)";
+    private static final String MAX_DEPTH_ERROR_FORMAT = "Maximum directory nesting depth exceeded (%d)";
+
     private final Project project;
 
     public FileCreator(Project project) {
@@ -69,7 +85,7 @@ public class FileCreator {
         } catch (Exception e) {
             log.error("Error creating file: {}", filePath, e);
             stopLLMStreaming();
-            return "Error creating file: " + e.getMessage();
+            return String.format(ERROR_CREATING_FILE_FORMAT, e.getMessage());
         }
     }
 
@@ -79,13 +95,13 @@ public class FileCreator {
 
     private String validateFileCreationRequest(String filePath) {
         if (filePath == null || filePath.isBlank()) {
-            return "Error: File path cannot be empty";
+            return ERROR_EMPTY_PATH;
         }
 
         String projectBasePath = project.getBasePath();
         if (projectBasePath == null) {
             log.error("Project base path is null");
-            return "Error: Project base path is not available";
+            return ERROR_BASE_PATH_UNAVAILABLE;
         }
 
         return null;
@@ -109,7 +125,7 @@ public class FileCreator {
     private String checkFileNotExists(Path absolutePath, String filePath) {
         VirtualFile existingFile = LocalFileSystem.getInstance().findFileByPath(absolutePath.toString());
         if (existingFile != null && existingFile.exists()) {
-            return "Error: File already exists at path: " + filePath;
+            return String.format(ERROR_FILE_EXISTS_FORMAT, filePath);
         }
         return null;
     }
@@ -140,7 +156,7 @@ public class FileCreator {
         if (!approved) {
             log.info("File creation rejected by user");
             stopLLMStreaming();
-            return "File creation cancelled by user";
+            return FILE_CREATION_CANCELLED;
         }
 
         String result = executeFileCreation(absolutePath, content, filePath);
@@ -175,7 +191,7 @@ public class FileCreator {
 
     private void showAutoCreatedFileInChat(String filePath, String content) {
         FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
-            .title("File Created Automatically")
+            .title(FILE_CREATED_AUTO_TITLE)
             .filePath(filePath)
             .content(content)
             .responseFuture(CompletableFuture.completedFuture(true))
@@ -189,7 +205,7 @@ public class FileCreator {
     private void requestApproval(String filePath, String content, CompletableFuture<Boolean> approvalFuture) {
         // Publish approval request to chat UI via MessageBus
         FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
-            .title("File Creation Request")
+            .title(FILE_CREATION_REQUEST_TITLE)
             .filePath(filePath)
             .content(content)
             .responseFuture(approvalFuture)
@@ -207,7 +223,7 @@ public class FileCreator {
                     // Create parent directories if needed
                     VirtualFile parentDir = createParentDirectories(absolutePath.getParent());
                     if (parentDir == null) {
-                        return "Error: Could not create parent directories";
+                        return ERROR_PARENT_DIR;
                     }
 
                     // Create file
@@ -223,23 +239,23 @@ public class FileCreator {
                     Notifications.Bus.notify(
                         new Notification(
                             "OllamAssist",
-                            "File created",
-                            "Successfully created: " + filePath,
+                            FILE_CREATION_TITLE,
+                            String.format(FILE_CREATION_SUCCESS_FORMAT, filePath),
                             NotificationType.INFORMATION
                         ),
                         project
                     );
 
-                    return "File created successfully: " + filePath;
+                    return String.format(FILE_CREATED_SUCCESS_FORMAT, filePath);
 
                 } catch (IOException e) {
                     log.error("IO error creating file: {}", filePath, e);
-                    return "Error: " + e.getMessage();
+                    return String.format(ERROR_IO_FORMAT, e.getMessage());
                 }
             });
         } catch (Exception e) {
             log.error("Error in write action: {}", filePath, e);
-            return "Error: " + e.getMessage();
+            return String.format(ERROR_IO_FORMAT, e.getMessage());
         }
     }
 
@@ -252,7 +268,7 @@ public class FileCreator {
     private VirtualFile createParentDirectories(Path parentPath, int depth) throws IOException {
         if (depth > MAX_DIRECTORY_DEPTH) {
             log.error("Maximum directory depth exceeded: {}", depth);
-            throw new IOException("Maximum directory nesting depth exceeded (" + MAX_DIRECTORY_DEPTH + ")");
+            throw new IOException(String.format(MAX_DEPTH_ERROR_FORMAT, MAX_DIRECTORY_DEPTH));
         }
 
         VirtualFile parent = LocalFileSystem.getInstance().findFileByPath(parentPath.toString());

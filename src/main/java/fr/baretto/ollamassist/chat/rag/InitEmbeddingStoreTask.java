@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class InitEmbeddingStoreTask extends Task.Backgroundable {
 
+    private static final String FILES_PROGRESS_FORMAT = "%d/%d files";
+    private static final String ERROR_PREFIX = "Failed - ";
+
     private final AtomicInteger processedFiles = new AtomicInteger(0);
     private final IndexRegistry indexationRegistry;
     private final DocumentIndexingPipeline documentIndexingPipeline;
@@ -71,13 +74,13 @@ public class InitEmbeddingStoreTask extends Task.Backgroundable {
         ApplicationManager.getApplication().invokeLater(() -> {
             double progress = (double) processedFiles.get() / totalFiles;
             indicator.setFraction(progress);
-            indicator.setText2(processedFiles + "/" + totalFiles + " files");
+            indicator.setText2(String.format(FILES_PROGRESS_FORMAT, processedFiles.get(), totalFiles));
         });
     }
 
     private void handleError(Exception e, ProgressIndicator indicator) {
         log.error("Indexing failed", e);
-        indicator.setText2("Failed - " + e.getMessage());
+        indicator.setText2(ERROR_PREFIX + e.getMessage());
     }
 
 }

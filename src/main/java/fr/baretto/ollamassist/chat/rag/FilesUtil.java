@@ -24,6 +24,10 @@ import java.util.stream.Stream;
 @Slf4j
 public class FilesUtil {
 
+    private static final String NOTIFICATION_GROUP = "RAG_Indexation";
+    private static final String LIMIT_REACHED_TITLE = "Limit reached";
+    private static final String LIMIT_REACHED_MESSAGE_FORMAT = "Maximum indexable files limit (%d) exceeded. Editing or creating files will trigger their indexing.";
+
     private final Project project;
     private final ProjectFileIndex fileIndex;
     private final ShouldBeIndexed shouldBeIndexed;
@@ -115,9 +119,9 @@ public class FilesUtil {
     private void notifyLimitReached() {
         project.getMessageBus().syncPublisher(Notifications.TOPIC)
                 .notify(new Notification(
-                        "RAG_Indexation",
-                        "Limit reached",
-                        "Maximum indexable files limit (" + getMaxFiles() + ") exceeded. Editing or creating files will trigger their indexing.",
+                        NOTIFICATION_GROUP,
+                        LIMIT_REACHED_TITLE,
+                        String.format(LIMIT_REACHED_MESSAGE_FORMAT, getMaxFiles()),
                         NotificationType.WARNING
                 ));
     }
