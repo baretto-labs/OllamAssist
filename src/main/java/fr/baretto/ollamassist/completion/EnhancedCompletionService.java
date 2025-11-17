@@ -425,7 +425,7 @@ public class EnhancedCompletionService {
         
         @Override
         public String toString() {
-            return String.format("EnhancedCompletionService Stats:\n- Cache: %s\n- Pool: %s\n- Pending: %d", 
+            return String.format("EnhancedCompletionService Stats: Cache: %s , - Pool: %s , - Pending: %d",
                 cacheStats, poolStats, pendingRequests);
         }
     }

@@ -106,7 +106,6 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     private void subscribeToModelChanges() {
-        // Subscribe to ModelListener to update the ModelSelector when settings change
         ApplicationManager.getApplication().getMessageBus()
                 .connect(this)
                 .subscribe(ModelListener.TOPIC, this::updateModelSelector);

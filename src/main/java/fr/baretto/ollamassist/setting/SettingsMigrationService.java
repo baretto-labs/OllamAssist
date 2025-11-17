@@ -204,13 +204,6 @@ public class SettingsMigrationService implements PersistentStateComponent<Settin
         }
     }
 
-    private boolean isDefaultOllamaSettings(OllamaSettings.State state) {
-        // Only check URLs for default check, not model names (users configure models manually)
-        return OllamaSettings.DEFAULT_URL.equals(state.chatOllamaUrl)
-                && OllamaSettings.DEFAULT_URL.equals(state.completionOllamaUrl)
-                && OllamaSettings.DEFAULT_URL.equals(state.embeddingOllamaUrl);
-    }
-
     private boolean isDefaultRAGSettings(RAGSettings.State state) {
         return "src/".equals(state.sources)
                 && state.indexationSize == 5000
