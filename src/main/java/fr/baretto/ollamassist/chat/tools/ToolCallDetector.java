@@ -14,11 +14,7 @@ public class ToolCallDetector {
 
     public ToolCallDetector() {
         this.parsers = new ArrayList<>();
-        // Register all available parsers
         this.parsers.add(new BracketCallParser());
-        // Future parsers can be added here:
-        // this.parsers.add(new DirectCallParser());
-        // this.parsers.add(new KeywordCallParser());
     }
 
     /**
