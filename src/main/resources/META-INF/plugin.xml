@@ -56,7 +56,7 @@
   ]]></description>
 
     <change-notes><![CDATA[
-        <h2>V1.8.1</h2>
+        <h2>V1.9.0</h2>
         <UL>
             <LI>feat: split configuration panel.</LI>
             <LI>feat: add file creation capability to OllamAssist.</LI>
