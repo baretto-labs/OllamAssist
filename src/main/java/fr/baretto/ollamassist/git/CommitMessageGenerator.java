@@ -246,7 +246,7 @@ public class CommitMessageGenerator extends AnAction {
                 return result;
             }
         }
-        return Collections.emptyList();
+        return null;
     }
 
     private Collection<FilePath> extractUnversionedFiles(Class<?> clazz, Object source, String sourceName) {
@@ -259,7 +259,7 @@ public class CommitMessageGenerator extends AnAction {
                 return result;
             }
         }
-        return Collections.emptyList();
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -273,7 +273,7 @@ public class CommitMessageGenerator extends AnAction {
         } catch (Exception ignored) {
             // Try next method
         }
-        return Collections.emptyList();
+        return null;
     }
 
     private SelectedChanges createSelectedChangesIfFound(Collection<Change> changes, Collection<FilePath> unversionedFiles, String sourceName) {
