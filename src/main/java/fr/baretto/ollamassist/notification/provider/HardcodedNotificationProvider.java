@@ -14,7 +14,7 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
-                // v1.9.0 - Combined notification: Settings + File Creation
+                // v1.9.0 - Settings organization
                 Notification.builder()
                         .id("v1.9.0-release")
                         .version("1.9.0")
@@ -24,28 +24,6 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                         .message("""
                                 <html>
                                 <body style='font-family: sans-serif; padding: 10px;'>
-                                <h3>🎉 New Feature: AI-Powered File Creation</h3>
-
-                                <p>You can now ask the AI to <b>create files automatically</b> in your workspace.
-                                Simply ask something like: <i>"Create a HelloWorld class"</i> and the AI will generate
-                                the code and create the file for you (with your approval).</p>
-
-                                <p><b>⚠️ Important - Model Compatibility:</b></p>
-                                <p>Not all models support this feature reliably. Small models (&lt;8B parameters)
-                                like <code>llama3.1</code> don't have reliable function calling capabilities.</p>
-
-                                <p><b>Recommended models for file actions:</b></p>
-                                <ul>
-                                  <li><code>qwen2.5:14b</code> or larger</li>
-                                  <li><code>gpt-oss</code> (via OpenAI-compatible API)</li>
-                                  <li>Any model with 8B+ parameters specifically trained for tool usage</li>
-                                </ul>
-
-                                <p style='color: gray; font-size: 0.9em;'><i>Note: You can continue using any model for
-                                regular chat and code assistance - this limitation only affects automatic file creation actions.</i></p>
-
-                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
-
                                 <h3>💡 Improved Settings Panel</h3>
 
                                 <p>The configuration is now organized into <b>three separate tabs</b> for better clarity:</p>
@@ -56,6 +34,22 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                                 </ul>
 
                                 <p>This makes it easier to find and configure specific features.</p>
+
+                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h3>🚀 Coming Soon: AI File Creation (Experimental)</h3>
+
+                                <p>Ask the AI to <b>create files</b> in your workspace: <i>"Create a HelloWorld class"</i></p>
+
+                                <p><b>⚠️ Model Requirements:</b> Requires tool/function calling capability</p>
+                                <ul style='margin-top: 5px;'>
+                                  <li>❌ <b>Avoid:</b> <code>llama3.1</code>, <code>llama3.2</code> (unreliable)</li>
+                                  <li>✅ <b>Use:</b> <code>qwen2.5:14b+</code>, <code>gpt-oss</code></li>
+                                </ul>
+
+                                <p><b>🔧 How to Enable:</b></p>
+                                <p><b>Settings → OllamAssist → Actions → Enable AI Tools</b></p>
+                                <p style='font-size: 0.9em;'>(Disabled by default - enable only with compatible models)</p>
                                 </body>
                                 </html>
                                 """)

@@ -24,7 +24,7 @@ import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
-import fr.baretto.ollamassist.setting.UISettings;
+import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -266,7 +266,7 @@ public class OllamaContent {
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(contentContainer, BorderLayout.CENTER);
 
-        boolean[] isCollapsed = {UISettings.getInstance().getContextPanelCollapsed()};
+        boolean[] isCollapsed = {OllamAssistUISettings.getInstance().getContextPanelCollapsed()};
 
         contentContainer.setVisible(!isCollapsed[0]);
         toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
@@ -275,7 +275,7 @@ public class OllamaContent {
             isCollapsed[0] = !isCollapsed[0];
             contentContainer.setVisible(!isCollapsed[0]);
             toggleButton.setText((isCollapsed[0] ? "► " : "▼ ") + "Context");
-            UISettings.getInstance().setContextPanelCollapsed(isCollapsed[0]);
+            OllamAssistUISettings.getInstance().setContextPanelCollapsed(isCollapsed[0]);
         });
 
         return panel;

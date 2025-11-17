@@ -12,15 +12,15 @@ import org.jetbrains.annotations.Nullable;
  * Settings for UI state persistence.
  */
 @State(
-        name = "UISettings",
-        storages = {@Storage("UISettings.xml")}
+        name = "OllamAssistUISettings",
+        storages = {@Storage("OllamAssistUISettings.xml")}
 )
-public class UISettings implements PersistentStateComponent<UISettings.State> {
+public class OllamAssistUISettings implements PersistentStateComponent<OllamAssistUISettings.State> {
 
     private State myState = new State();
 
-    public static UISettings getInstance() {
-        return ApplicationManager.getApplication().getService(UISettings.class);
+    public static OllamAssistUISettings getInstance() {
+        return ApplicationManager.getApplication().getService(OllamAssistUISettings.class);
     }
 
     @Nullable

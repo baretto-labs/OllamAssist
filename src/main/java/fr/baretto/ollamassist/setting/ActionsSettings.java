@@ -45,9 +45,20 @@ public class ActionsSettings implements PersistentStateComponent<ActionsSettings
         myState.autoApproveFileCreation = autoApprove;
     }
 
+    public boolean isToolsEnabled() {
+        return myState.toolsEnabled;
+    }
+
+    public void setToolsEnabled(boolean enabled) {
+        myState.toolsEnabled = enabled;
+    }
+
     @Getter
     public static class State {
         // Auto-approve file creation without user confirmation
         private boolean autoApproveFileCreation = false;
+
+        // Enable/disable AI tools (function calling) - disabled by default (experimental)
+        private boolean toolsEnabled = false;
     }
 }

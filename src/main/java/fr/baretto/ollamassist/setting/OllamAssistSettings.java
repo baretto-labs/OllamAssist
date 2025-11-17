@@ -14,9 +14,8 @@ import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MOD
 
 /**
  * Legacy settings class for backward compatibility.
- * @deprecated Use {@link OllamaSettings}, {@link RAGSettings}, {@link ActionsSettings}, or {@link UISettings} instead.
+ * Use {@link OllamaSettings}, {@link RAGSettings}, {@link ActionsSettings}, or {@link UISettings} instead.
  */
-@Deprecated
 @State(
         name = "OllamAssist",
         storages = {@Storage("OllamAssist.xml")}
@@ -163,13 +162,13 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         ActionsSettings.getInstance().setAutoApproveFileCreation(autoApprove);
     }
 
-    // UI settings - delegating to UISettings
+    // UI settings - delegating to OllamAssistUISettings
     public void setUIState(boolean isCollapsed) {
-        UISettings.getInstance().setContextPanelCollapsed(isCollapsed);
+        OllamAssistUISettings.getInstance().setContextPanelCollapsed(isCollapsed);
     }
 
     public boolean getUIState() {
-        return UISettings.getInstance().getContextPanelCollapsed();
+        return OllamAssistUISettings.getInstance().getContextPanelCollapsed();
     }
 
     @Getter
@@ -177,8 +176,8 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
         public String chatOllamaUrl = DEFAULT_URL;
         public String completionOllamaUrl = DEFAULT_URL;
         public String embeddingOllamaUrl = DEFAULT_URL;
-        public String chatModelName = "llama3.1";
-        public String completionModelName = "llama3.1";
+        public String chatModelName = OllamaSettings.DEFAULT_MODEL;
+        public String completionModelName = OllamaSettings.DEFAULT_MODEL;
         public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;
         public String timeout = "300";
         public String sources = "src/";

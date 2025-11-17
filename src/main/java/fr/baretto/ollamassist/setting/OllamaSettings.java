@@ -22,6 +22,7 @@ import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MOD
 public class OllamaSettings implements PersistentStateComponent<OllamaSettings.State> {
 
     public static final String DEFAULT_URL = "http://localhost:11434";
+    public static final String DEFAULT_MODEL = "llama3.1";
     private State myState = new State();
 
     public static OllamaSettings getInstance() {
@@ -40,6 +41,16 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     @Override
     public void loadState(@NotNull State state) {
         myState = state;
+        // Ensure default values if fields are null or empty
+        if (myState.chatModelName == null || myState.chatModelName.isEmpty()) {
+            myState.chatModelName = DEFAULT_MODEL;
+        }
+        if (myState.completionModelName == null || myState.completionModelName.isEmpty()) {
+            myState.completionModelName = DEFAULT_MODEL;
+        }
+        if (myState.embeddingModelName == null || myState.embeddingModelName.isEmpty()) {
+            myState.embeddingModelName = DEFAULT_EMBEDDING_MODEL;
+        }
     }
 
     public String getChatOllamaUrl() {
@@ -67,6 +78,9 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public String getChatModelName() {
+        if (myState.chatModelName == null || myState.chatModelName.isEmpty()) {
+            return DEFAULT_MODEL;
+        }
         return myState.chatModelName;
     }
 
@@ -75,6 +89,9 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public String getCompletionModelName() {
+        if (myState.completionModelName == null || myState.completionModelName.isEmpty()) {
+            return DEFAULT_MODEL;
+        }
         return myState.completionModelName;
     }
 
@@ -83,6 +100,9 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public String getEmbeddingModelName() {
+        if (myState.embeddingModelName == null || myState.embeddingModelName.isEmpty()) {
+            return DEFAULT_EMBEDDING_MODEL;
+        }
         return myState.embeddingModelName;
     }
 
@@ -127,8 +147,8 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public String chatOllamaUrl = DEFAULT_URL;
         public String completionOllamaUrl = DEFAULT_URL;
         public String embeddingOllamaUrl = DEFAULT_URL;
-        public String chatModelName = "llama3.1";
-        public String completionModelName = "llama3.1";
+        public String chatModelName = DEFAULT_MODEL;
+        public String completionModelName = DEFAULT_MODEL;
         public String embeddingModelName = DEFAULT_EMBEDDING_MODEL;
         public String timeout = "300";
         public String username = "";

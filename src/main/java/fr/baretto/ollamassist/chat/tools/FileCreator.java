@@ -31,16 +31,21 @@ public class FileCreator {
     }
 
     @Tool(name = "CreateFile", value = """
-            Creates a new file in the workspace with the specified path and content.
-            The user must approve the file creation before it is executed.
-
+            Creates a new file in the workspace only when explicitly requested by the user.
+            Do not call this tool automatically. Before calling it, the assistant must verify that:
+            - The user clearly asked to create a new file OR explicitly confirmed the need for file creation.
+            - The intent is to generate a full standalone file, not just provide code samples or explanations.
+            
             Parameters:
             - filePath: Relative path from project root (e.g., "src/main/java/MyClass.java")
-            - content: The complete content to write to the file
-
+            - content: Full content of the file
+            
             Returns: Success or error message
-
-            IMPORTANT: Always use forward slashes (/) in paths, even on Windows.
+            
+            Additional rules:
+            - NEVER call this tool unless the user has directly expressed the need to create or write a file.
+            - Prefer answering with code blocks or explanations unless file creation is truly required.
+            - Always use forward slashes (/) in paths, even on Windows.
             """)
     public String createFile(String filePath, String content) {
         log.info("FileCreator.createFile called with path: {}", filePath);

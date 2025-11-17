@@ -18,7 +18,7 @@ class OllamassistSettingsConfigurableTest {
     private OllamaSettings mockOllamaSettings;
     private RAGSettings mockRAGSettings;
     private ActionsSettings mockActionsSettings;
-    private UISettings mockUISettings;
+    private OllamAssistUISettings mockUISettings;
 
     @BeforeEach
     void setup() {
@@ -32,8 +32,8 @@ class OllamassistSettingsConfigurableTest {
         mockActionsSettings = new ActionsSettings();
         mockActionsSettings.loadState(new ActionsSettings.State());
 
-        mockUISettings = new UISettings();
-        mockUISettings.loadState(new UISettings.State());
+        mockUISettings = new OllamAssistUISettings();
+        mockUISettings.loadState(new OllamAssistUISettings.State());
     }
 
     @Test
@@ -42,7 +42,7 @@ class OllamassistSettingsConfigurableTest {
              MockedStatic<OllamaSettings> mockedOllamaSettings = mockStatic(OllamaSettings.class);
              MockedStatic<RAGSettings> mockedRAGSettings = mockStatic(RAGSettings.class);
              MockedStatic<ActionsSettings> mockedActionsSettings = mockStatic(ActionsSettings.class);
-             MockedStatic<UISettings> mockedUISettings = mockStatic(UISettings.class)) {
+             MockedStatic<OllamAssistUISettings> mockedUISettings = mockStatic(OllamAssistUISettings.class)) {
 
             Application mockApp = mock(Application.class);
             mockedAppManager.when(ApplicationManager::getApplication).thenReturn(mockApp);
@@ -51,7 +51,7 @@ class OllamassistSettingsConfigurableTest {
             mockedOllamaSettings.when(OllamaSettings::getInstance).thenReturn(mockOllamaSettings);
             mockedRAGSettings.when(RAGSettings::getInstance).thenReturn(mockRAGSettings);
             mockedActionsSettings.when(ActionsSettings::getInstance).thenReturn(mockActionsSettings);
-            mockedUISettings.when(UISettings::getInstance).thenReturn(mockUISettings);
+            mockedUISettings.when(OllamAssistUISettings::getInstance).thenReturn(mockUISettings);
 
             // Given: Initial settings with default values
             OllamAssistSettings settings = createMockSettings();
@@ -84,7 +84,7 @@ class OllamassistSettingsConfigurableTest {
              MockedStatic<OllamaSettings> mockedOllamaSettings = mockStatic(OllamaSettings.class);
              MockedStatic<RAGSettings> mockedRAGSettings = mockStatic(RAGSettings.class);
              MockedStatic<ActionsSettings> mockedActionsSettings = mockStatic(ActionsSettings.class);
-             MockedStatic<UISettings> mockedUISettings = mockStatic(UISettings.class)) {
+             MockedStatic<OllamAssistUISettings> mockedUISettings = mockStatic(OllamAssistUISettings.class)) {
 
             Application mockApp = mock(Application.class);
             mockedAppManager.when(ApplicationManager::getApplication).thenReturn(mockApp);
@@ -92,7 +92,7 @@ class OllamassistSettingsConfigurableTest {
             mockedOllamaSettings.when(OllamaSettings::getInstance).thenReturn(mockOllamaSettings);
             mockedRAGSettings.when(RAGSettings::getInstance).thenReturn(mockRAGSettings);
             mockedActionsSettings.when(ActionsSettings::getInstance).thenReturn(mockActionsSettings);
-            mockedUISettings.when(UISettings::getInstance).thenReturn(mockUISettings);
+            mockedUISettings.when(OllamAssistUISettings::getInstance).thenReturn(mockUISettings);
 
             // Given: Settings with default values
             OllamAssistSettings settings = createMockSettings();
@@ -124,7 +124,7 @@ class OllamassistSettingsConfigurableTest {
              MockedStatic<OllamaSettings> mockedOllamaSettings = mockStatic(OllamaSettings.class);
              MockedStatic<RAGSettings> mockedRAGSettings = mockStatic(RAGSettings.class);
              MockedStatic<ActionsSettings> mockedActionsSettings = mockStatic(ActionsSettings.class);
-             MockedStatic<UISettings> mockedUISettings = mockStatic(UISettings.class)) {
+             MockedStatic<OllamAssistUISettings> mockedUISettings = mockStatic(OllamAssistUISettings.class)) {
 
             Application mockApp = mock(Application.class);
             mockedAppManager.when(ApplicationManager::getApplication).thenReturn(mockApp);
@@ -132,7 +132,7 @@ class OllamassistSettingsConfigurableTest {
             mockedOllamaSettings.when(OllamaSettings::getInstance).thenReturn(mockOllamaSettings);
             mockedRAGSettings.when(RAGSettings::getInstance).thenReturn(mockRAGSettings);
             mockedActionsSettings.when(ActionsSettings::getInstance).thenReturn(mockActionsSettings);
-            mockedUISettings.when(UISettings::getInstance).thenReturn(mockUISettings);
+            mockedUISettings.when(OllamAssistUISettings::getInstance).thenReturn(mockUISettings);
 
             // Given: Mock configurable with initial settings
             OllamAssistSettings settings = createMockSettings();

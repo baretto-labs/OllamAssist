@@ -19,6 +19,7 @@ import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.chat.tools.FileCreator;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
+import fr.baretto.ollamassist.setting.ActionsSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import lombok.Getter;
@@ -95,10 +96,19 @@ public final class OllamaService implements Disposable, ModelListener {
 
             OllamaStreamingChatModel model = builder.build();
 
-            return AiServices.builder(Assistant.class)
+            var aiServicesBuilder = AiServices.builder(Assistant.class)
                     .streamingChatModel(model)
-                    .chatMemory(chatMemory)
-                    .tools(new FileCreator(project))
+                    .chatMemory(chatMemory);
+
+            // Only add tools if enabled in settings
+            if (ActionsSettings.getInstance().isToolsEnabled()) {
+                log.info("Tools are enabled - adding FileCreator tool");
+                aiServicesBuilder.tools(new FileCreator(project));
+            } else {
+                log.info("Tools are disabled in settings");
+            }
+
+            return aiServicesBuilder
                     .contentRetriever(new ContextRetriever(
                             EmbeddingStoreContentRetriever
                                     .builder()

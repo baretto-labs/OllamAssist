@@ -210,4 +210,12 @@ public class ConfigurationPanel extends JPanel {
     public void setAutoApproveFileCreation(boolean value) {
         actionsPanel.setAutoApproveFileCreation(value);
     }
+
+    public boolean isToolsEnabled() {
+        return actionsPanel.isToolsEnabled();
+    }
+
+    public void setToolsEnabled(boolean value) {
+        actionsPanel.setToolsEnabled(value);
+    }
 }

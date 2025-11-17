@@ -224,15 +224,51 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
     }
 
     public void setChatModelName(String chatModelName) {
-        chatModel.setSelectedItem(chatModelName.trim());
+        if (chatModelName != null && !chatModelName.isEmpty()) {
+            String trimmedName = chatModelName.trim();
+
+            // Try exact match first
+            chatModel.setSelectedItem(trimmedName);
+
+            // If not found and name doesn't have a tag, try with :latest
+            if (chatModel.getSelectedItem() == null || !chatModel.getSelectedItem().equals(trimmedName)) {
+                if (!trimmedName.contains(":")) {
+                    chatModel.setSelectedItem(trimmedName + ":latest");
+                }
+            }
+        }
     }
 
     public void setCompletionModelName(String completionModelName) {
-        completionModel.setSelectedItem(completionModelName.trim());
+        if (completionModelName != null && !completionModelName.isEmpty()) {
+            String trimmedName = completionModelName.trim();
+
+            // Try exact match first
+            completionModel.setSelectedItem(trimmedName);
+
+            // If not found and name doesn't have a tag, try with :latest
+            if (completionModel.getSelectedItem() == null || !completionModel.getSelectedItem().equals(trimmedName)) {
+                if (!trimmedName.contains(":")) {
+                    completionModel.setSelectedItem(trimmedName + ":latest");
+                }
+            }
+        }
     }
 
     public void setEmbeddingModelName(String embeddingModelName) {
-        embeddingModel.setSelectedItem(embeddingModelName.trim());
+        if (embeddingModelName != null && !embeddingModelName.isEmpty()) {
+            String trimmedName = embeddingModelName.trim();
+
+            // Try exact match first
+            embeddingModel.setSelectedItem(trimmedName);
+
+            // If not found and name doesn't have a tag, try with :latest
+            if (embeddingModel.getSelectedItem() == null || !embeddingModel.getSelectedItem().equals(trimmedName)) {
+                if (!trimmedName.contains(":")) {
+                    embeddingModel.setSelectedItem(trimmedName + ":latest");
+                }
+            }
+        }
     }
 
     public JBTextField getChatOllamaUrlField() {
