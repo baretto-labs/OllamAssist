@@ -63,7 +63,9 @@ public class ModelSelector extends JPanel {
     }
 
     public void setSelectedModel(String model) {
-        comboBox.setSelectedItem(model);
+        // Update the model directly to avoid triggering ActionListener
+        DefaultComboBoxModel<String> currentModel = (DefaultComboBoxModel<String>) comboBox.getModel();
+        currentModel.setSelectedItem(model);
     }
 
     private void configureComboBoxBehavior() {
