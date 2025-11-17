@@ -39,7 +39,6 @@ public class CommitMessageGenerator extends AnAction {
         if (handleCancellationRequest(e)) {
             return;
         }
-
         startCommitMessageGenerationTask(e);
     }
 
