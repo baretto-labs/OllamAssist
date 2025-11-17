@@ -21,7 +21,9 @@ import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
+import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import fr.baretto.ollamassist.setting.OllamaSettings;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
@@ -67,6 +69,7 @@ public class PromptPanel extends JPanel implements Disposable {
         this.project = project;
         setupUI();
         setActions();
+        subscribeToModelChanges();
     }
 
     private void setActions() {
@@ -96,6 +99,23 @@ public class PromptPanel extends JPanel implements Disposable {
         insertNewLineAction.registerCustomShortcutSet(newlineShortcuts, editorTextField.getComponent());
 
         sendButton.addActionListener(e -> triggerAction());
+    }
+
+    private void subscribeToModelChanges() {
+        // Subscribe to ModelListener to update the ModelSelector when settings change
+        ApplicationManager.getApplication().getMessageBus()
+                .connect(this)
+                .subscribe(ModelListener.TOPIC, this::updateModelSelector);
+    }
+
+    private void updateModelSelector() {
+        // Update the ModelSelector display with the new model name from settings
+        SwingUtilities.invokeLater(() -> {
+            String newModelName = OllamaSettings.getInstance().getChatModelName();
+            if (modelSelector != null && newModelName != null && !newModelName.isEmpty()) {
+                modelSelector.setSelectedModel(newModelName);
+            }
+        });
     }
 
     private void setupUI() {
