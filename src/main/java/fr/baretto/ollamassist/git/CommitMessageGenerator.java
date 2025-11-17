@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Collection;
+import java.util.Collections;
 
 @Slf4j
 public class CommitMessageGenerator extends AnAction {
@@ -245,7 +246,7 @@ public class CommitMessageGenerator extends AnAction {
                 return result;
             }
         }
-        return null;
+        return Collections.emptyList();
     }
 
     private Collection<FilePath> extractUnversionedFiles(Class<?> clazz, Object source, String sourceName) {
@@ -258,7 +259,7 @@ public class CommitMessageGenerator extends AnAction {
                 return result;
             }
         }
-        return null;
+        return Collections.emptyList();
     }
 
     @SuppressWarnings("unchecked")
@@ -272,7 +273,7 @@ public class CommitMessageGenerator extends AnAction {
         } catch (Exception ignored) {
             // Try next method
         }
-        return null;
+        return Collections.emptyList();
     }
 
     private SelectedChanges createSelectedChangesIfFound(Collection<Change> changes, Collection<FilePath> unversionedFiles, String sourceName) {
