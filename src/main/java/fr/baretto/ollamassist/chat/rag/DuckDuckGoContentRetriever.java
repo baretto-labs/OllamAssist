@@ -60,9 +60,11 @@ public class DuckDuckGoContentRetriever {
         List<SearchResult> results;
         try {
             results = htmlSearch(webQuery);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         } catch (Exception e) {
             results = apiSearch(webQuery);
-
         }
         return results.stream()
                 .map(r -> {
