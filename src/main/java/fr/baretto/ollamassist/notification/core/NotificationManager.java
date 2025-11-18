@@ -27,11 +27,16 @@ public interface NotificationManager {
 
     /**
      * Displays all pending notifications to the user.
-     * Updates the last notified version after display.
      *
      * @param project The current project context
      */
     void displayPendingNotifications(Project project);
+
+    /**
+     * Updates the last notified version to the current plugin version.
+     * Should be called after the user acknowledges/closes the notification dialog.
+     */
+    void updateLastNotifiedVersion();
 
     /**
      * Resets all notification state (for testing/debugging).

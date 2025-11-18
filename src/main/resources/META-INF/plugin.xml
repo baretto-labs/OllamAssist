@@ -227,6 +227,9 @@
 
         <postStartupActivity implementation="fr.baretto.ollamassist.OllamAssistStartup">Ollamassist startup
         </postStartupActivity>
+        <postStartupActivity implementation="fr.baretto.ollamassist.notification.service.NotificationApplicationStartup">
+            OllamAssist notification startup
+        </postStartupActivity>
 
         <notificationGroup id="RAG_Indexation" displayType="BALLOON"/>
         <notificationGroup id="OllamAssist" displayType="BALLOON"/>

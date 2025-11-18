@@ -87,8 +87,10 @@ public final class NotificationManagerImpl implements NotificationManager {
 
         log.info("Displaying {} pending notifications", unread.size());
         displayer.show(project, unread);
+    }
 
-        // Update last notified version to current plugin version
+    @Override
+    public void updateLastNotifiedVersion() {
         storage.updateLastNotifiedVersion(currentPluginVersion);
         log.info("Updated last notified version to: {}", currentPluginVersion);
     }
