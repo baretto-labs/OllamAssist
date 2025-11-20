@@ -159,6 +159,10 @@ public class NotificationDialog extends DialogWrapper {
         for (Notification notification : notifications) {
             notificationManager.markAsRead(notification.getId());
         }
+
+        // Update last notified version only after user acknowledges the dialog
+        notificationManager.updateLastNotifiedVersion();
+
         super.doOKAction();
     }
 
