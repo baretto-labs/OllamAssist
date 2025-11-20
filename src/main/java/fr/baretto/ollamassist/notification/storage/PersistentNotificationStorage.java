@@ -66,7 +66,7 @@ public final class PersistentNotificationStorage implements NotificationStorage,
     @Getter
     @Setter
     public static class State {
-        private final Set<String> readNotificationIds = new HashSet<>();
+        private Set<String> readNotificationIds = new HashSet<>();
         private String lastNotifiedVersion = "0.0.0";
     }
 }
