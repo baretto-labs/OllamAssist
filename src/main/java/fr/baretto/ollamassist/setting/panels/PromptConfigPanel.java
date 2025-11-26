@@ -20,10 +20,17 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
         setLayout(new BorderLayout());
         setBorder(JBUI.Borders.empty(10));
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = JBUI.insetsBottom(20);
 
         // Chat System Prompt section
+        gbc.weighty = 0.5;
         mainPanel.add(createPromptSection(
                 "Chat System Prompt",
                 "This prompt defines the behavior and personality of the AI assistant in the chat window.",
@@ -31,11 +38,11 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
                 resetChatPromptButton = createResetButton("Reset Chat Prompt", () -> {
                     chatSystemPromptArea.setText(PromptSettings.DEFAULT_CHAT_SYSTEM_PROMPT);
                 })
-        ));
-
-        mainPanel.add(Box.createVerticalStrut(20));
+        ), gbc);
 
         // Refactor User Prompt section
+        gbc.gridy = 1;
+        gbc.weighty = 0.5;
         mainPanel.add(createPromptSection(
                 "Refactor User Prompt",
                 "This prompt is used when requesting code refactoring. Variables: {{code}}, {{language}}",
@@ -43,16 +50,18 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
                 resetRefactorPromptButton = createResetButton("Reset Refactor Prompt", () -> {
                     refactorUserPromptArea.setText(PromptSettings.DEFAULT_REFACTOR_USER_PROMPT);
                 })
-        ));
-
-        mainPanel.add(Box.createVerticalStrut(20));
+        ), gbc);
 
         // Reset All button
-        JPanel resetAllPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        gbc.gridy = 2;
+        gbc.weighty = 0.0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.WEST;
+        JPanel resetAllPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         resetAllPromptsButton = new JButton("Reset All Prompts to Default");
         resetAllPromptsButton.addActionListener(e -> resetAllPrompts());
         resetAllPanel.add(resetAllPromptsButton);
-        mainPanel.add(resetAllPanel);
+        mainPanel.add(resetAllPanel, gbc);
 
         // Load current settings
         loadSettings();
