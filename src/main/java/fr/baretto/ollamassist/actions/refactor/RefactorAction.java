@@ -20,6 +20,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.ui.JBColor;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.chat.service.OllamaService;
+import fr.baretto.ollamassist.setting.PromptSettings;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -66,9 +67,10 @@ public class RefactorAction extends AnAction {
                     StringBuilder responseBuilder = new StringBuilder();
                     java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
 
+                    String refactorPrompt = PromptSettings.getInstance().getRefactorUserPrompt();
                     TokenStream stream = Objects.requireNonNull(e.getProject()).getService(OllamaService.class)
                             .getAssistant()
-                            .refactor(selectedText, language);
+                            .refactor(refactorPrompt, selectedText, language);
 
                     stream.onPartialResponse(responseBuilder::append)
                             .onCompleteResponse(chatResponse -> latch.countDown())
