@@ -9,7 +9,7 @@ import dev.langchain4j.service.V;
 public interface Assistant {
 
     @SystemMessage("{{systemPrompt}}")
-    TokenStream chat(@V("systemPrompt") String systemPrompt, String message);
+    TokenStream chat(@V("systemPrompt") String systemPrompt, @UserMessage String message);
 
 
     @UserMessage("{{refactorPrompt}}")

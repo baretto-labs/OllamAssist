@@ -4,17 +4,16 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.setting.PromptSettings;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
 
+@Getter
 public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
 
     private final JTextArea chatSystemPromptArea;
     private final JTextArea refactorUserPromptArea;
-    private final JButton resetChatPromptButton;
-    private final JButton resetRefactorPromptButton;
-    private final JButton resetAllPromptsButton;
 
     public PromptConfigPanel() {
         setLayout(new BorderLayout());
@@ -31,25 +30,30 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
 
         // Chat System Prompt section
         gbc.weighty = 0.5;
+        chatSystemPromptArea = createTextArea();
+        JButton resetChatPromptButton = createResetButton("Reset Chat Prompt", () ->
+                chatSystemPromptArea.setText(PromptSettings.DEFAULT_CHAT_SYSTEM_PROMPT)
+        );
+
         mainPanel.add(createPromptSection(
                 "Chat System Prompt",
                 "This prompt defines the behavior and personality of the AI assistant in the chat window.",
-                chatSystemPromptArea = createTextArea(),
-                resetChatPromptButton = createResetButton("Reset Chat Prompt", () -> {
-                    chatSystemPromptArea.setText(PromptSettings.DEFAULT_CHAT_SYSTEM_PROMPT);
-                })
+                chatSystemPromptArea ,
+                resetChatPromptButton
         ), gbc);
 
         // Refactor User Prompt section
         gbc.gridy = 1;
         gbc.weighty = 0.5;
+        refactorUserPromptArea = createTextArea();
+        JButton resetRefactorPromptButton = createResetButton("Reset Refactor Prompt", () ->
+                refactorUserPromptArea.setText(PromptSettings.DEFAULT_REFACTOR_USER_PROMPT)
+        );
         mainPanel.add(createPromptSection(
                 "Refactor User Prompt",
                 "This prompt is used when requesting code refactoring. Variables: {{code}}, {{language}}",
-                refactorUserPromptArea = createTextArea(),
-                resetRefactorPromptButton = createResetButton("Reset Refactor Prompt", () -> {
-                    refactorUserPromptArea.setText(PromptSettings.DEFAULT_REFACTOR_USER_PROMPT);
-                })
+                refactorUserPromptArea,
+                resetRefactorPromptButton
         ), gbc);
 
         // Reset All button
@@ -58,7 +62,7 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
         gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.WEST;
         JPanel resetAllPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        resetAllPromptsButton = new JButton("Reset All Prompts to Default");
+        JButton resetAllPromptsButton = new JButton("Reset All Prompts to Default");
         resetAllPromptsButton.addActionListener(e -> resetAllPrompts());
         resetAllPanel.add(resetAllPromptsButton);
         mainPanel.add(resetAllPanel, gbc);
@@ -141,14 +145,6 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
 
     public void setRefactorUserPrompt(String prompt) {
         refactorUserPromptArea.setText(prompt);
-    }
-
-    public JTextArea getChatSystemPromptArea() {
-        return chatSystemPromptArea;
-    }
-
-    public JTextArea getRefactorUserPromptArea() {
-        return refactorUserPromptArea;
     }
 
     /**
