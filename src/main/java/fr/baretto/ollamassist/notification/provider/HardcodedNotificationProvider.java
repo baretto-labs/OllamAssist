@@ -14,6 +14,44 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.10.0 - Customizable Prompts
+                Notification.builder()
+                        .id("v1.10.0-release")
+                        .version("1.10.0")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.HIGH)
+                        .title("What's New in OllamAssist 1.10.0")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>✨ Customizable AI System Prompts</h3>
+
+                                <p>Take full control of how OllamAssist responds! You can now <b>customize the AI system prompts</b> to match your coding style and preferences.</p>
+
+                                <h4>🎯 What You Can Do:</h4>
+                                <ul>
+                                  <li><b>Chat System Prompt</b> - Define the AI's personality and behavior in the chat window</li>
+                                  <li><b>Refactor Prompt</b> - Customize how the AI handles code refactoring requests</li>
+                                  <li><b>Easy Reset</b> - Restore default prompts anytime with one click</li>
+                                </ul>
+
+                                <h4>🔧 How to Access:</h4>
+                                <p><b>Settings → OllamAssist → Prompts</b></p>
+
+                                <p>Perfect for teams with specific coding standards or developers who want to fine-tune AI behavior!</p>
+
+                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <p style='font-size: 0.9em; color: #666;'>
+                                💡 <i>Tip: Try making the AI more formal for documentation, or more casual for quick experiments!</i>
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2025, 1, 26, 0, 0))
+                        .build(),
+
                 // v1.9.0 - Settings organization
                 Notification.builder()
                         .id("v1.9.0-release")
@@ -57,11 +95,6 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                         .createdAt(LocalDateTime.of(2025, 1, 15, 0, 0))
                         .build()
 
-                // Future notifications can be added here:
-                // Notification.builder()
-                //     .id("v1.10.0-new-rag")
-                //     .version("1.10.0")
-                //     ...
         );
     }
 }

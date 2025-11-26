@@ -63,6 +63,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         OllamaSettings ollamaSettings = OllamaSettings.getInstance();
         RAGSettings ragSettings = RAGSettings.getInstance();
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
+        PromptSettings promptSettings = PromptSettings.getInstance();
 
         return !ollamaSettings.getChatOllamaUrl().equals(configurationPanel.getChatOllamaUrl())
                 || !ollamaSettings.getCompletionOllamaUrl().equals(configurationPanel.getCompletionOllamaUrl())
@@ -74,13 +75,20 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || !ragSettings.getSources().equals(configurationPanel.getSources())
                 || ragSettings.getIndexationSize() != configurationPanel.getMaxDocuments()
                 || actionsSettings.isAutoApproveFileCreation() != configurationPanel.isAutoApproveFileCreation()
-                || actionsSettings.isToolsEnabled() != configurationPanel.isToolsEnabled();
+                || actionsSettings.isToolsEnabled() != configurationPanel.isToolsEnabled()
+                || !promptSettings.getChatSystemPrompt().equals(configurationPanel.getChatSystemPrompt())
+                || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt());
     }
 
 
     @Override
     public void apply() {
         if (isModified()) {
+            // Validate prompts before saving
+            if (!configurationPanel.validatePrompts()) {
+                return;
+            }
+
             boolean needIndexation = needIndexation();
             boolean shouldCleanAllDatabase = shouldCleanAllDatabase();
 
@@ -103,6 +111,11 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ActionsSettings actionsSettings = ActionsSettings.getInstance();
             actionsSettings.setAutoApproveFileCreation(configurationPanel.isAutoApproveFileCreation());
             actionsSettings.setToolsEnabled(configurationPanel.isToolsEnabled());
+
+            // Save to PromptSettings
+            PromptSettings promptSettings = PromptSettings.getInstance();
+            promptSettings.setChatSystemPrompt(configurationPanel.getChatSystemPrompt());
+            promptSettings.setRefactorUserPrompt(configurationPanel.getRefactorUserPrompt());
 
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(ModelListener.TOPIC)
@@ -165,6 +178,11 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         configurationPanel.setAutoApproveFileCreation(actionsSettings.isAutoApproveFileCreation());
         configurationPanel.setToolsEnabled(actionsSettings.isToolsEnabled());
+
+        // Load from PromptSettings
+        PromptSettings promptSettings = PromptSettings.getInstance();
+        configurationPanel.setChatSystemPrompt(promptSettings.getChatSystemPrompt());
+        configurationPanel.setRefactorUserPrompt(promptSettings.getRefactorUserPrompt());
     }
 
     @Override

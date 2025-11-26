@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBTabbedPane;
 import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
 import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
+import fr.baretto.ollamassist.setting.panels.PromptConfigPanel;
 import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
 
 import javax.swing.*;
@@ -21,6 +22,7 @@ public class ConfigurationPanel extends JPanel {
     private final transient OllamaConfigPanel ollamaPanel;
     private final transient RAGConfigPanel ragPanel;
     private final transient ActionsConfigPanel actionsPanel;
+    private final transient PromptConfigPanel promptPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
@@ -32,12 +34,14 @@ public class ConfigurationPanel extends JPanel {
         ollamaPanel = new OllamaConfigPanel(project);
         ragPanel = new RAGConfigPanel(project);
         actionsPanel = new ActionsConfigPanel();
+        promptPanel = new PromptConfigPanel();
 
         // Create tabbed pane
         JBTabbedPane tabbedPane = new JBTabbedPane();
         tabbedPane.addTab("Ollama", ollamaPanel);
         tabbedPane.addTab("RAG", ragPanel);
         tabbedPane.addTab("Actions", actionsPanel);
+        tabbedPane.addTab("Prompts", promptPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -100,6 +104,10 @@ public class ConfigurationPanel extends JPanel {
             ActionsSettings.getInstance().setAutoApproveFileCreation(actionsPanel.isAutoApproveFileCreation());
             notifyChangeListeners();
         });
+
+        // Prompt panel listeners
+        promptPanel.getChatSystemPromptArea().getDocument().addDocumentListener(documentListener);
+        promptPanel.getRefactorUserPromptArea().getDocument().addDocumentListener(documentListener);
     }
 
     // Delegation methods to sub-panels for backward compatibility with SettingsBindingHelper
@@ -217,5 +225,26 @@ public class ConfigurationPanel extends JPanel {
 
     public void setToolsEnabled(boolean value) {
         actionsPanel.setToolsEnabled(value);
+    }
+
+    // Prompt settings
+    public String getChatSystemPrompt() {
+        return promptPanel.getChatSystemPrompt();
+    }
+
+    public void setChatSystemPrompt(String prompt) {
+        promptPanel.setChatSystemPrompt(prompt);
+    }
+
+    public String getRefactorUserPrompt() {
+        return promptPanel.getRefactorUserPrompt();
+    }
+
+    public void setRefactorUserPrompt(String prompt) {
+        promptPanel.setRefactorUserPrompt(prompt);
+    }
+
+    public boolean validatePrompts() {
+        return promptPanel.validatePrompts();
     }
 }

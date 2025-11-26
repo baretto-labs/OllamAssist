@@ -60,10 +60,10 @@ public final class NotificationManagerImpl implements NotificationManager {
                 .filter(n -> isVersionGreater(n.getVersion(), lastNotifiedVersion))
                 // 2. Filter out manually dismissed notifications
                 .filter(n -> !readIds.contains(n.getId()))
-                // 3. Sort by priority (HIGH first), then by version (oldest first)
+                // 3. Sort by priority (HIGH first), then by version (newest first)
                 .sorted(Comparator
                         .comparing(Notification::getPriority).reversed()
-                        .thenComparing(Notification::getVersion, this::compareVersions))
+                        .thenComparing(Notification::getVersion, (v1, v2) -> compareVersions(v2, v1)))
                 .toList();
 
         log.info("Found {} unread notifications", unread.size());

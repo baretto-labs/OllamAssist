@@ -25,6 +25,7 @@ import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
+import fr.baretto.ollamassist.setting.PromptSettings;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -102,10 +103,11 @@ public class OllamaContent {
             promptInput.toggleGenerationState(true);
 
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                String systemPrompt = PromptSettings.getInstance().getChatSystemPrompt();
                 TokenStream stream = context.project()
                         .getService(OllamaService.class)
                         .getAssistant()
-                        .chat(message);
+                        .chat(systemPrompt, message);
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     synchronized (this) {

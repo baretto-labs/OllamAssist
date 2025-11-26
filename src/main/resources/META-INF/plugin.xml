@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.10.0</h2>
+        <UL>
+            <LI>feat: customizable AI assistant system prompts - configure and personalize how the AI assistant responds to your queries.</LI>
+        </UL>
         <h2>V1.9.0</h2>
         <UL>
             <LI>feat: split configuration panel.</LI>
@@ -196,6 +200,7 @@
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamaSettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.RAGSettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.ActionsSettings"/>
+        <applicationService serviceImplementation="fr.baretto.ollamassist.setting.PromptSettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.OllamAssistUISettings"/>
         <applicationService serviceImplementation="fr.baretto.ollamassist.setting.SettingsMigrationService"/>
 
