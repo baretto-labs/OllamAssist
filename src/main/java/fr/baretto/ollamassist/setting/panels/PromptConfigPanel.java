@@ -70,6 +70,7 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
                 JBUI.Borders.empty(10)
         ));
         section.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
 
         // Description
         JLabel descLabel = new JLabel("<html>" + description + "</html>");
@@ -78,7 +79,8 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
 
         // Text area with scroll
         JBScrollPane textScrollPane = new JBScrollPane(textArea);
-        textScrollPane.setPreferredSize(new Dimension(600, 200));
+        textScrollPane.setPreferredSize(new Dimension(400, 200));
+        textScrollPane.setMinimumSize(new Dimension(200, 150));
         section.add(textScrollPane, BorderLayout.CENTER);
 
         // Reset button
