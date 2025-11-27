@@ -118,8 +118,6 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                // Reload models when URL changes
-                OllamaSettings settings = OllamaSettings.getInstance();
                 String configuredModel = getConfiguredModelForComboBox(modelComboBox);
                 loadModelsAsync(ollamaUrl, modelComboBox, configuredModel, isEmbedding);
             }
@@ -226,7 +224,6 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setChatOllamaUrl(String url) {
         chatOllamaUrl.setText(url.trim());
-        // Models are loaded asynchronously in constructor
     }
 
     public String getCompletionOllamaUrl() {
@@ -235,7 +232,6 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setCompletionOllamaUrl(String url) {
         completionOllamaUrl.setText(url.trim());
-        // Models are loaded asynchronously in constructor
     }
 
     public String getEmbeddingOllamaUrl() {
@@ -244,7 +240,6 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setEmbeddingOllamaUrl(String url) {
         embeddingOllamaUrl.setText(url.trim());
-        // Models are loaded asynchronously in constructor
     }
 
     public String getUsername() {
