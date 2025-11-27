@@ -264,15 +264,39 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
     }
 
     public String getChatModel() {
-        return (String) chatModel.getSelectedItem();
+        String selected = (String) chatModel.getSelectedItem();
+        // Don't return invalid values - return configured value from settings instead
+        if (isInvalidModelSelection(selected)) {
+            return OllamaSettings.getInstance().getChatModelName();
+        }
+        return selected;
     }
 
     public String getCompletionModel() {
-        return (String) completionModel.getSelectedItem();
+        String selected = (String) completionModel.getSelectedItem();
+        // Don't return invalid values - return configured value from settings instead
+        if (isInvalidModelSelection(selected)) {
+            return OllamaSettings.getInstance().getCompletionModelName();
+        }
+        return selected;
     }
 
     public String getEmbeddingModel() {
-        return (String) embeddingModel.getSelectedItem();
+        String selected = (String) embeddingModel.getSelectedItem();
+        // Don't return invalid values - return configured value from settings instead
+        if (isInvalidModelSelection(selected)) {
+            return OllamaSettings.getInstance().getEmbeddingModelName();
+        }
+        return selected;
+    }
+
+    /**
+     * Checks if the selected value is invalid (null, empty, or loading indicator).
+     */
+    private boolean isInvalidModelSelection(String selected) {
+        return selected == null ||
+               selected.trim().isEmpty() ||
+               LOADING_MODELS_TEXT.equals(selected);
     }
 
     public String getTimeout() {
