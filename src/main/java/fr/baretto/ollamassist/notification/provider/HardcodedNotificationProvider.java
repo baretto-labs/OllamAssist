@@ -14,7 +14,7 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
-                // v1.10.0 - Customizable Prompts
+                // v1.10.0 - Customizable Prompts & Async Loading
                 Notification.builder()
                         .id("v1.10.0-release")
                         .version("1.10.0")
@@ -38,7 +38,17 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                                 <h4>🔧 How to Access:</h4>
                                 <p><b>Settings → OllamAssist → Prompts</b></p>
 
-                                <p>Perfect for teams with specific coding standards or developers who want to fine-tune AI behavior!</p>
+                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h3>⚡ Instant Settings Panel Opening</h3>
+
+                                <p>Settings now open <b>instantly</b> with asynchronous model loading in the background. No more waiting!</p>
+
+                                <ul>
+                                  <li><b>Instant Display</b> - Settings panel appears immediately</li>
+                                  <li><b>Background Loading</b> - Model lists load asynchronously without blocking</li>
+                                  <li><b>Protected Settings</b> - Your configurations are never corrupted during loading</li>
+                                </ul>
 
                                 <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
 

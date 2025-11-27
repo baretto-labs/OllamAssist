@@ -59,6 +59,7 @@
         <h2>V1.10.0</h2>
         <UL>
             <LI>feat: customizable AI assistant system prompts - configure and personalize how the AI assistant responds to your queries.</LI>
+            <LI>feat: async model loading in settings - instant settings panel opening with background model fetching.</LI>
         </UL>
         <h2>V1.9.0</h2>
         <UL>
