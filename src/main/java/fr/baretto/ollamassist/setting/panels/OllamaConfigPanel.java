@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.setting.panels;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.components.JBLabel;
@@ -27,6 +28,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String LATEST_TAG = ":latest";
     private static final String COLON = ":";
+    private static final String LOADING_MODELS_TEXT = "Loading models...";
 
     private final JBTextField chatOllamaUrl = new JBTextField(OllamaSettings.getInstance().getChatOllamaUrl());
     private final JBTextField completionOllamaUrl = new JBTextField(OllamaSettings.getInstance().getCompletionOllamaUrl());
@@ -61,6 +63,54 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         add(createLabeledField("Password:", password, "Password for basic authentication (optional)."));
 
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
+
+        // Load models asynchronously on panel creation
+        loadAllModelsAsync();
+    }
+
+    /**
+     * Loads all models asynchronously when panel is created.
+     * This method handles the async execution, calling the synchronous fetch methods in background.
+     */
+    private void loadAllModelsAsync() {
+        OllamaSettings settings = OllamaSettings.getInstance();
+
+        loadModelsAsync(chatOllamaUrl, chatModel, settings.getChatModelName(), false);
+        loadModelsAsync(completionOllamaUrl, completionModel, settings.getCompletionModelName(), false);
+        loadModelsAsync(embeddingOllamaUrl, embeddingModel, settings.getEmbeddingModelName(), true);
+    }
+
+    /**
+     * Loads models asynchronously for a specific ComboBox.
+     * Shows loading indicator, fetches in background, updates UI on EDT.
+     */
+    private void loadModelsAsync(JBTextField urlField, ComboBox<String> comboBox, String configuredModel, boolean isEmbedding) {
+        // Show loading indicator immediately
+        SwingUtilities.invokeLater(() -> {
+            DefaultComboBoxModel<String> loadingModel = new DefaultComboBoxModel<>();
+            loadingModel.addElement(LOADING_MODELS_TEXT);
+            comboBox.setModel(loadingModel);
+        });
+
+        // Fetch models in background thread
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            String url = urlField.getText().isEmpty() ? DEFAULT_URL : urlField.getText();
+            List<OllamaModel> models = fetchAvailableModels(url);
+
+            // Update UI on EDT
+            SwingUtilities.invokeLater(() -> {
+                List<String> modelNames = models.stream()
+                        .map(OllamaModel::getName)
+                        .toList();
+
+                List<String> allModels = new ArrayList<>(modelNames);
+                if (isEmbedding && !allModels.isEmpty()) {
+                    allModels.add(DEFAULT_EMBEDDING_MODEL);
+                }
+
+                updateComboBox(comboBox, allModels, configuredModel);
+            });
+        });
     }
 
     private JPanel createOllamaUrlField(String label, JBTextField ollamaUrl, String message, ComboBox<String> modelComboBox, boolean isEmbedding) {
@@ -68,7 +118,10 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         ollamaUrl.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusLost(java.awt.event.FocusEvent evt) {
-                new Thread(() -> updateAvailableModels(ollamaUrl, modelComboBox, isEmbedding)).start();
+                // Reload models when URL changes
+                OllamaSettings settings = OllamaSettings.getInstance();
+                String configuredModel = getConfiguredModelForComboBox(modelComboBox);
+                loadModelsAsync(ollamaUrl, modelComboBox, configuredModel, isEmbedding);
             }
 
             @Override
@@ -77,6 +130,21 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
             }
         });
         return panel;
+    }
+
+    /**
+     * Gets the configured model name from settings based on which ComboBox.
+     */
+    private String getConfiguredModelForComboBox(ComboBox<String> comboBox) {
+        OllamaSettings settings = OllamaSettings.getInstance();
+        if (comboBox == chatModel) {
+            return settings.getChatModelName();
+        } else if (comboBox == completionModel) {
+            return settings.getCompletionModelName();
+        } else if (comboBox == embeddingModel) {
+            return settings.getEmbeddingModelName();
+        }
+        return null;
     }
 
     private ComboBox<String> createComboBox() {
@@ -124,10 +192,13 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         return panel;
     }
 
-    private List<OllamaModel> fetchAvailableModels(JBTextField ollamaUrl) {
+    /**
+     * Fetches available models from Ollama server synchronously.
+     * This is a simple synchronous method - the async handling is done by the caller.
+     */
+    private List<OllamaModel> fetchAvailableModels(String url) {
         try {
-            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
-                    .baseUrl(ollamaUrl.getText().isEmpty() ? DEFAULT_URL : ollamaUrl.getText());
+            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder().baseUrl(url);
 
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
@@ -135,25 +206,9 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
                 builder.customHeaders(customHeaders);
             }
 
-            return builder.build()
-                    .availableModels()
-                    .content();
+            return builder.build().availableModels().content();
         } catch (Exception e) {
             return Collections.emptyList();
-        }
-    }
-
-    private void updateAvailableModels(JBTextField ollamaUrl, ComboBox<String> comboBox, boolean isEmbedding) {
-        List<String> availableModels = fetchAvailableModels(ollamaUrl).stream()
-                .map(OllamaModel::getName)
-                .toList();
-
-        if (isEmbedding) {
-            List<String> availableModelsForEmbedding = new ArrayList<>(availableModels);
-            availableModelsForEmbedding.add(DEFAULT_EMBEDDING_MODEL);
-            updateComboBox(comboBox, availableModelsForEmbedding, (String) comboBox.getSelectedItem());
-        } else {
-            updateComboBox(comboBox, availableModels, (String) comboBox.getSelectedItem());
         }
     }
 
@@ -171,7 +226,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setChatOllamaUrl(String url) {
         chatOllamaUrl.setText(url.trim());
-        updateAvailableModels(chatOllamaUrl, chatModel, false);
+        // Models are loaded asynchronously in constructor
     }
 
     public String getCompletionOllamaUrl() {
@@ -180,7 +235,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setCompletionOllamaUrl(String url) {
         completionOllamaUrl.setText(url.trim());
-        updateAvailableModels(completionOllamaUrl, completionModel, false);
+        // Models are loaded asynchronously in constructor
     }
 
     public String getEmbeddingOllamaUrl() {
@@ -189,7 +244,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setEmbeddingOllamaUrl(String url) {
         embeddingOllamaUrl.setText(url.trim());
-        updateAvailableModels(embeddingOllamaUrl, embeddingModel, true);
+        // Models are loaded asynchronously in constructor
     }
 
     public String getUsername() {
