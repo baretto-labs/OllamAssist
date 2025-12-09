@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.setting;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBTabbedPane;
 import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
+import fr.baretto.ollamassist.setting.panels.McpConfigPanel;
 import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
 import fr.baretto.ollamassist.setting.panels.PromptConfigPanel;
 import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
@@ -23,6 +24,7 @@ public class ConfigurationPanel extends JPanel {
     private final transient RAGConfigPanel ragPanel;
     private final transient ActionsConfigPanel actionsPanel;
     private final transient PromptConfigPanel promptPanel;
+    private final transient McpConfigPanel mcpPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
@@ -35,6 +37,7 @@ public class ConfigurationPanel extends JPanel {
         ragPanel = new RAGConfigPanel(project);
         actionsPanel = new ActionsConfigPanel();
         promptPanel = new PromptConfigPanel();
+        mcpPanel = new McpConfigPanel();
 
         // Create tabbed pane
         JBTabbedPane tabbedPane = new JBTabbedPane();
@@ -42,6 +45,7 @@ public class ConfigurationPanel extends JPanel {
         tabbedPane.addTab("RAG", ragPanel);
         tabbedPane.addTab("Actions", actionsPanel);
         tabbedPane.addTab("Prompts", promptPanel);
+        tabbedPane.addTab("MCP", mcpPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -108,6 +112,9 @@ public class ConfigurationPanel extends JPanel {
         // Prompt panel listeners
         promptPanel.getChatSystemPromptArea().getDocument().addDocumentListener(documentListener);
         promptPanel.getRefactorUserPromptArea().getDocument().addDocumentListener(documentListener);
+
+        // MCP panel listeners
+        mcpPanel.getMcpEnabledCheckbox().addItemListener(e -> notifyChangeListeners());
     }
 
     // Delegation methods to sub-panels for backward compatibility with SettingsBindingHelper
@@ -246,5 +253,22 @@ public class ConfigurationPanel extends JPanel {
 
     public boolean validatePrompts() {
         return promptPanel.validatePrompts();
+    }
+
+    // MCP settings
+    public boolean isMcpEnabled() {
+        return mcpPanel.isMcpEnabled();
+    }
+
+    public void setMcpEnabled(boolean enabled) {
+        mcpPanel.setMcpEnabled(enabled);
+    }
+
+    public java.util.List<McpServerConfig> getMcpServers() {
+        return mcpPanel.getMcpServers();
+    }
+
+    public void setMcpServers(java.util.List<McpServerConfig> servers) {
+        mcpPanel.setMcpServers(servers);
     }
 }

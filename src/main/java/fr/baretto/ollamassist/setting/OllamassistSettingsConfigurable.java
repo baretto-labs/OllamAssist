@@ -64,6 +64,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         RAGSettings ragSettings = RAGSettings.getInstance();
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         PromptSettings promptSettings = PromptSettings.getInstance();
+        McpSettings mcpSettings = McpSettings.getInstance();
 
         return !ollamaSettings.getChatOllamaUrl().equals(configurationPanel.getChatOllamaUrl())
                 || !ollamaSettings.getCompletionOllamaUrl().equals(configurationPanel.getCompletionOllamaUrl())
@@ -77,7 +78,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || actionsSettings.isAutoApproveFileCreation() != configurationPanel.isAutoApproveFileCreation()
                 || actionsSettings.isToolsEnabled() != configurationPanel.isToolsEnabled()
                 || !promptSettings.getChatSystemPrompt().equals(configurationPanel.getChatSystemPrompt())
-                || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt());
+                || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt())
+                || mcpSettings.isMcpEnabled() != configurationPanel.isMcpEnabled()
+                || !mcpSettings.getMcpServers().equals(configurationPanel.getMcpServers());
     }
 
 
@@ -116,6 +119,25 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             PromptSettings promptSettings = PromptSettings.getInstance();
             promptSettings.setChatSystemPrompt(configurationPanel.getChatSystemPrompt());
             promptSettings.setRefactorUserPrompt(configurationPanel.getRefactorUserPrompt());
+
+            // Save to McpSettings
+            McpSettings mcpSettings = McpSettings.getInstance();
+            boolean mcpWasModified = mcpSettings.isMcpEnabled() != configurationPanel.isMcpEnabled()
+                    || !mcpSettings.getMcpServers().equals(configurationPanel.getMcpServers());
+            mcpSettings.setMcpEnabled(configurationPanel.isMcpEnabled());
+            mcpSettings.setMcpServers(configurationPanel.getMcpServers());
+
+            // Reinitialize MCP clients if configuration changed
+            if (mcpWasModified) {
+                log.info("MCP configuration changed, reinitializing clients");
+                ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                    try {
+                        fr.baretto.ollamassist.mcp.McpClientManager.getInstance().initializeClients();
+                    } catch (Exception e) {
+                        log.error("Failed to reinitialize MCP clients", e);
+                    }
+                });
+            }
 
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(ModelListener.TOPIC)
@@ -183,6 +205,11 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         PromptSettings promptSettings = PromptSettings.getInstance();
         configurationPanel.setChatSystemPrompt(promptSettings.getChatSystemPrompt());
         configurationPanel.setRefactorUserPrompt(promptSettings.getRefactorUserPrompt());
+
+        // Load from McpSettings
+        McpSettings mcpSettings = McpSettings.getInstance();
+        configurationPanel.setMcpEnabled(mcpSettings.isMcpEnabled());
+        configurationPanel.setMcpServers(mcpSettings.getMcpServers());
     }
 
     @Override

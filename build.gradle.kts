@@ -14,8 +14,9 @@ repositories {
         defaultRepositories()
     }
 }
-val langchain4jEasyRag = "1.8.0-beta15"
-val langchain4jVersion = "1.8.0"
+val langchain4jEasyRag = "1.9.1-beta17"
+val langchain4jVersion = "1.9.1"
+val langchain4jMcpVersion = "1.9.1-beta17"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"
@@ -92,6 +93,12 @@ dependencies {
 
     implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag")
     implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag")
+    implementation("dev.langchain4j:langchain4j-mcp:$langchain4jMcpVersion"){
+        exclude(group = "org.slf4j")
+    }
+    implementation("dev.langchain4j:langchain4j-mcp-docker:$langchain4jMcpVersion"){
+        exclude(group = "org.slf4j")
+    }
     runtimeOnly("org.slf4j:slf4j-jdk14:1.7.36")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")

@@ -11,6 +11,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
@@ -19,6 +20,7 @@ import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.chat.tools.FileCreator;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
+import fr.baretto.ollamassist.mcp.McpClientManager;
 import fr.baretto.ollamassist.setting.ActionsSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -109,6 +111,20 @@ public final class OllamaService implements Disposable, ModelListener {
                 aiServicesBuilder.tools(new FileCreator(project));
             } else {
                 log.info("Tools are disabled in settings");
+            }
+
+            // Add MCP tool provider if enabled and available
+            McpClientManager mcpManager = McpClientManager.getInstance();
+            if (mcpManager.isEnabled()) {
+                McpToolProvider mcpToolProvider = mcpManager.getToolProvider();
+                if (mcpToolProvider != null) {
+                    log.info("MCP integration is enabled - adding MCP tool provider");
+                    aiServicesBuilder.toolProvider(mcpToolProvider);
+                } else {
+                    log.warn("MCP is enabled but tool provider is not available");
+                }
+            } else {
+                log.info("MCP integration is disabled");
             }
 
             return aiServicesBuilder

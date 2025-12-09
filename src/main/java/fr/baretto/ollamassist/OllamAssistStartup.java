@@ -12,6 +12,7 @@ import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
+import fr.baretto.ollamassist.mcp.McpClientManager;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.SettingsMigrationService;
@@ -93,6 +94,18 @@ public class OllamAssistStartup implements ProjectActivity {
                 new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
+                        // Initialize MCP clients if MCP is enabled
+                        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                            try {
+                                McpClientManager.getInstance().initializeClients();
+                            } catch (Exception e) {
+                                // Log error but don't fail startup
+                                String message = "Failed to initialize MCP clients: " + e.getMessage();
+                                Notifications.Bus.notify(new Notification(OLLAM_ASSIST, "MCP Initialization Failed",
+                                        message, NotificationType.WARNING), project);
+                            }
+                        });
+
                         project.getService(OllamaService.class).init();
                         LightModelAssistant.get();
 
