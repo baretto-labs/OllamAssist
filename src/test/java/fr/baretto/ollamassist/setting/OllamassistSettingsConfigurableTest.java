@@ -61,10 +61,14 @@ class OllamassistSettingsConfigurableTest {
             String newChatUrl = "http://localhost:9999";
             String newChatModel = "llama3.2";
             String newTimeout = "600";
+            String newUsername = "user";
+            String newPassword = "pass1234";
 
             settings.setChatOllamaUrl(newChatUrl);
             settings.setChatModelName(newChatModel);
             settings.setTimeout(newTimeout);
+            settings.setUsername(newUsername);
+            settings.setPassword(newPassword);
 
             // Then: The state object should reflect the changes in OllamaSettings
             OllamaSettings.State currentOllamaState = mockOllamaSettings.getState();
@@ -72,6 +76,8 @@ class OllamassistSettingsConfigurableTest {
             assertThat(currentOllamaState.chatOllamaUrl).isEqualTo(newChatUrl);
             assertThat(currentOllamaState.chatModelName).isEqualTo(newChatModel);
             assertThat(currentOllamaState.timeout).isEqualTo(newTimeout);
+            assertThat(currentOllamaState.username).isEqualTo(newUsername);
+            assertThat(currentOllamaState.password).isEqualTo(newPassword);
 
             // Critical test: Verify that the state object is the same instance
             assertThat(currentOllamaState).isSameAs(initialOllamaState);
@@ -100,11 +106,15 @@ class OllamassistSettingsConfigurableTest {
             String newChatUrl = "http://localhost:9999";
             String newChatModel = "llama3.2";
             String newTimeout = "600";
+            String newUsername = "user";
+            String newPassword = "pass1234";
 
             // When: Modify state and explicitly call loadState
             settings.setChatOllamaUrl(newChatUrl);
             settings.setChatModelName(newChatModel);
             settings.setTimeout(newTimeout);
+            settings.setUsername(newUsername);
+            settings.setPassword(newPassword);
 
             // Get current state and reload it to trigger persistence mechanism
             OllamaSettings.State modifiedState = mockOllamaSettings.getState();
@@ -115,6 +125,8 @@ class OllamassistSettingsConfigurableTest {
             assertThat(reloadedState.chatOllamaUrl).isEqualTo(newChatUrl);
             assertThat(reloadedState.chatModelName).isEqualTo(newChatModel);
             assertThat(reloadedState.timeout).isEqualTo(newTimeout);
+            assertThat(reloadedState.username).isEqualTo(newUsername);
+            assertThat(reloadedState.password).isEqualTo(newPassword);
         }
     }
 

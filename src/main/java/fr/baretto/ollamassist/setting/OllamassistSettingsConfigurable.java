@@ -71,6 +71,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || !ollamaSettings.getChatModelName().equals(configurationPanel.getChatModel())
                 || !ollamaSettings.getCompletionModelName().equals(configurationPanel.getCompletionModel())
                 || !ollamaSettings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel())
+                || !ollamaSettings.getUsername().equals(configurationPanel.getUsername())
+                || !ollamaSettings.getPassword().equals(configurationPanel.getPassword())
                 || !ollamaSettings.getTimeout().equals(configurationPanel.getTimeout())
                 || !ragSettings.getSources().equals(configurationPanel.getSources())
                 || ragSettings.getIndexationSize() != configurationPanel.getMaxDocuments()
@@ -100,6 +102,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ollamaSettings.setChatModelName(configurationPanel.getChatModel());
             ollamaSettings.setCompletionModelName(configurationPanel.getCompletionModel());
             ollamaSettings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
+            ollamaSettings.setUsername(configurationPanel.getUsername());
+            ollamaSettings.setPassword(configurationPanel.getPassword());
             ollamaSettings.setTimeout(configurationPanel.getTimeout());
 
             // Save to RAGSettings
@@ -167,6 +171,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setChatModelName(ollamaSettings.getChatModelName());
         configurationPanel.setCompletionModelName(ollamaSettings.getCompletionModelName());
         configurationPanel.setEmbeddingModelName(ollamaSettings.getEmbeddingModelName());
+        configurationPanel.setUsername(ollamaSettings.getUsername());
+        configurationPanel.setPassword(ollamaSettings.getPassword());
         configurationPanel.setTimeout(ollamaSettings.getTimeout());
 
         // Load from RAGSettings
