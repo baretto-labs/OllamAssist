@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.10.1</h2>
+        <UL>
+            <LI>fix: login and password saving in settings.</LI>
+        </UL>
         <h2>V1.10.0</h2>
         <UL>
             <LI>feat: customizable AI assistant system prompts - configure and personalize how the AI assistant responds to your queries.</LI>
