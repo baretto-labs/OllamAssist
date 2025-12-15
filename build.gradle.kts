@@ -26,7 +26,7 @@ val assertjVersion = "3.27.0"
 val testcontainersVersion = "1.21.3"
 val rsyntaxtextareaVersion = "3.6.0"
 val plexusVersion = "4.0.2"
-val jsoupVersion = "1.17.2"
+val jsoupVersion = "1.21.2"
 val jacksonVersion = "2.20.1"
 val djlVersion = "0.28.0"
 sourceSets {
