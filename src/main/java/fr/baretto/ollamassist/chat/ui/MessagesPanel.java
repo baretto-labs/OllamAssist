@@ -1,8 +1,11 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
@@ -13,6 +16,7 @@ import java.awt.event.AdjustmentListener;
 import java.util.function.Consumer;
 
 public class MessagesPanel extends JPanel {
+    private static final String EDITOR_BACKGROUND = "Editor.background";
     private final JPanel container = new JPanel(new GridBagLayout());
     private final JBScrollPane scrollPane;
     private OllamaMessage latestOllamaMessage;
@@ -22,9 +26,16 @@ public class MessagesPanel extends JPanel {
 
     public MessagesPanel() {
         super(new BorderLayout());
+        setBackground(JBColor.namedColor(EDITOR_BACKGROUND, UIUtil.getPanelBackground()));
+
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBackground(JBColor.namedColor(EDITOR_BACKGROUND, UIUtil.getPanelBackground()));
+        container.setBorder(JBUI.Borders.empty(16, 8));
+
         scrollPane = new JBScrollPane(container);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); // Pas de scrollbar horizontale
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(JBUI.Borders.empty());
+        scrollPane.getViewport().setBackground(JBColor.namedColor(EDITOR_BACKGROUND, UIUtil.getPanelBackground()));
 
         add(scrollPane, BorderLayout.CENTER);
         container.add(presentationPanel);

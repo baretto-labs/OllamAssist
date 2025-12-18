@@ -2,11 +2,7 @@ package fr.baretto.ollamassist.setting;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBTabbedPane;
-import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
-import fr.baretto.ollamassist.setting.panels.McpConfigPanel;
-import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
-import fr.baretto.ollamassist.setting.panels.PromptConfigPanel;
-import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
+import fr.baretto.ollamassist.setting.panels.*;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -37,7 +33,7 @@ public class ConfigurationPanel extends JPanel {
         ragPanel = new RAGConfigPanel(project);
         actionsPanel = new ActionsConfigPanel();
         promptPanel = new PromptConfigPanel();
-        mcpPanel = new McpConfigPanel();
+        mcpPanel = new McpConfigPanel(project);
 
         // Create tabbed pane
         JBTabbedPane tabbedPane = new JBTabbedPane();
@@ -262,6 +258,22 @@ public class ConfigurationPanel extends JPanel {
 
     public void setMcpEnabled(boolean enabled) {
         mcpPanel.setMcpEnabled(enabled);
+    }
+
+    public boolean isMcpApprovalRequired() {
+        return mcpPanel.isMcpApprovalRequired();
+    }
+
+    public void setMcpApprovalRequired(boolean required) {
+        mcpPanel.setMcpApprovalRequired(required);
+    }
+
+    public int getMcpApprovalTimeoutSeconds() {
+        return mcpPanel.getMcpApprovalTimeoutSeconds();
+    }
+
+    public void setMcpApprovalTimeoutSeconds(int timeout) {
+        mcpPanel.setMcpApprovalTimeoutSeconds(timeout);
     }
 
     public java.util.List<McpServerConfig> getMcpServers() {

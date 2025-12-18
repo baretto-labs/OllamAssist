@@ -1,17 +1,17 @@
 package fr.baretto.ollamassist.completion;
 
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.CaretModel;
+import com.intellij.openapi.editor.Editor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for MultiSuggestionManager.

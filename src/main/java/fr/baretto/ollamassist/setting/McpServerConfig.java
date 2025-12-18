@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.setting;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
@@ -88,6 +89,13 @@ public class McpServerConfig {
      */
     private String environmentVariables = "";
 
+    /**
+     * Authentication token for HTTP/SSE transport (e.g., Bearer token for API authentication).
+     * This will be sent as "Authorization: Bearer <token>" header.
+     */
+    private String authToken = "";
+
+    @Getter
     public enum TransportType {
         STDIO("Stdio (Local Process)"),
         HTTP_SSE("HTTP/SSE (Server)"),
@@ -97,10 +105,6 @@ public class McpServerConfig {
 
         TransportType(String displayName) {
             this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
         }
 
         @Override

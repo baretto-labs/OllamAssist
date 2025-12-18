@@ -1,12 +1,16 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -23,26 +27,39 @@ public class OllamaMessage extends JPanel {
 
     public OllamaMessage(Context context) {
         setLayout(new BorderLayout());
+        setOpaque(false);
         this.context = context;
+
+        // Modern header with icon and label
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(JBUI.Borders.empty(4, 8, 4, 8));
         currentHeaderPanel = createHeaderLabel();
         headerPanel.add(currentHeaderPanel, BorderLayout.WEST);
 
+        // Main content panel with modern bubble design
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setOpaque(false);
+        mainPanel.setBackground(JBColor.namedColor("EditorPane.background", new JBColor(0xF7F8FA, 0x2B2D30)));
+        mainPanel.setBorder(new CompoundBorder(
+                JBUI.Borders.customLine(JBColor.border(), 1),
+                JBUI.Borders.empty(12, 16)
+        ));
 
         add(headerPanel, BorderLayout.NORTH);
         JScrollPane scrollPane = new JBScrollPane(mainPanel);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(JBUI.Borders.empty());
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
+        panel.setOpaque(false);
         panel.add(scrollPane, BorderLayout.NORTH);
         add(panel, BorderLayout.CENTER);
-        setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        setBorder(JBUI.Borders.empty(8, 12, 8, 12));
 
         startNewTextArea();
         mainPanel.addComponentListener(new ComponentAdapter() {
@@ -123,7 +140,8 @@ public class OllamaMessage extends JPanel {
         currentTextArea.setWrapStyleWord(true);
         currentTextArea.setEditable(false);
         currentTextArea.setOpaque(false);
-        currentTextArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        currentTextArea.setFont(UIUtil.getLabelFont().deriveFont(13f));
+        currentTextArea.setBorder(JBUI.Borders.empty(4, 0));
         mainPanel.add(currentTextArea);
     }
 
@@ -143,9 +161,10 @@ public class OllamaMessage extends JPanel {
     }
 
     private JLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("OllamAssist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
-        header.setFont(header.getFont().deriveFont(10f));
-        header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
+        JBLabel header = new JBLabel("OllamAssist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.LEFT);
+        header.setFont(UIUtil.getLabelFont().deriveFont(Font.BOLD, 12f));
+        header.setForeground(JBColor.namedColor("Label.infoForeground", JBColor.GRAY));
+        header.setBorder(JBUI.Borders.empty());
         return header;
     }
 

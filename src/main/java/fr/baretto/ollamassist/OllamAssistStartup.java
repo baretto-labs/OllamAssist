@@ -97,7 +97,7 @@ public class OllamAssistStartup implements ProjectActivity {
                         // Initialize MCP clients if MCP is enabled
                         ApplicationManager.getApplication().executeOnPooledThread(() -> {
                             try {
-                                McpClientManager.getInstance().initializeClients();
+                                McpClientManager.getInstance(project).initializeClients();
                             } catch (Exception e) {
                                 // Log error but don't fail startup
                                 String message = "Failed to initialize MCP clients: " + e.getMessage();

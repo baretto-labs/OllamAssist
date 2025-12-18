@@ -20,11 +20,16 @@ import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.StoreNotifier;
+import fr.baretto.ollamassist.mcp.McpClientManager;
+import fr.baretto.ollamassist.mcp.McpRuntimeState;
+import fr.baretto.ollamassist.setting.McpSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 import fr.baretto.ollamassist.setting.OllamaSettings;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -35,13 +40,14 @@ import java.util.*;
 import java.util.List;
 
 
+@Slf4j
 @Getter
 public class PromptPanel extends JPanel implements Disposable {
 
-    private static final Border DEFAULT_EDITOR_BORDER = BorderFactory.createEmptyBorder(6, 6, 6, 6);
+    private static final Border DEFAULT_EDITOR_BORDER = JBUI.Borders.empty(8, 10);
     private static final Border FOCUSED_EDITOR_BORDER = BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UIUtil.getFocusedBorderColor(), 1),
-            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+            BorderFactory.createLineBorder(JBColor.namedColor("Component.focusedBorderColor", UIUtil.getFocusedBorderColor()), 2),
+            JBUI.Borders.empty(6, 8)
     );
     private static final String ENABLE_WEB_SEARCH_WITH_DUCK_DUCK_GO = "Enable web search with DuckDuckGO";
     private static final String ENABLE_RAG = "Enable RAG search";
@@ -59,6 +65,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private boolean isGenerating = false;
     private JToggleButton webSearchButton;
     private JToggleButton ragSearchhButton;
+    private JToggleButton mcpButton;
     private boolean webSearchEnabled = OllamAssistSettings.getInstance().webSearchEnabled();
     private boolean ragEnabled = OllamAssistSettings.getInstance().ragEnabled();
 
@@ -161,8 +168,14 @@ public class PromptPanel extends JPanel implements Disposable {
             leftControlPanel.setOpaque(false);
             ragSearchhButton = createRagSearchButton();
             webSearchButton = createWebSearchButton();
+            mcpButton = createMcpButton();
             leftControlPanel.add(webSearchButton);
             leftControlPanel.add(ragSearchhButton);
+            leftControlPanel.add(mcpButton);
+            // Update button state asynchronously after all services are loaded
+            ApplicationManager.getApplication().executeOnPooledThread(() ->
+                    SwingUtilities.invokeLater(this::updateMcpButtonState)
+            );
             controlPanel.add(leftControlPanel, BorderLayout.WEST);
         }
 
@@ -188,10 +201,10 @@ public class PromptPanel extends JPanel implements Disposable {
             }
         });
 
-        setBackground(UIUtil.getPanelBackground());
+        setBackground(JBColor.namedColor("Editor.background", UIUtil.getPanelBackground()));
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(JBColor.border(), 1),
-                BorderFactory.createEmptyBorder(6, 6, 6, 6)
+                BorderFactory.createLineBorder(JBColor.namedColor("Component.borderColor", JBColor.border()), 1),
+                JBUI.Borders.empty(10, 12)
         ));
 
         add(container, BorderLayout.CENTER);
@@ -266,19 +279,102 @@ public class PromptPanel extends JPanel implements Disposable {
                 .setWebSearchEnabled(webSearchEnabled);
     }
 
+    private JToggleButton createMcpButton() {
+        JToggleButton button = new JToggleButton(IconUtils.MCP_DISABLED);
+        button.setSelected(false);
+        button.setToolTipText("MCP servers");
+        button.setPreferredSize(new Dimension(30, 30));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        button.setMargin(JBUI.emptyInsets());
+
+        button.addActionListener(e -> {
+            // Show the MCP server selector popup
+            McpServerSelectorPopup.show(project, mcpButton, this::onMcpSelectionChanged);
+            // Reset button state after showing popup (it's not a toggle, it opens a menu)
+            button.setSelected(false);
+        });
+
+        return button;
+    }
+
+    private void onMcpSelectionChanged() {
+        // Reinitialize MCP clients asynchronously
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            McpClientManager.getInstance(project).initializeClients();
+
+            // Trigger assistant reload via message bus
+            SwingUtilities.invokeLater(() -> {
+                project.getMessageBus()
+                        .syncPublisher(ChatModelModifiedNotifier.TOPIC)
+                        .onChatModelModified();
+
+                // Update button tooltip with new active count
+                updateMcpButtonState();
+            });
+        });
+    }
+
+    private void updateMcpButtonState() {
+        if (mcpButton == null || project == null) {
+            log.debug("Cannot update MCP button state: button or project is null");
+            return;
+        }
+
+        try {
+            // Get active count from runtime state
+            McpRuntimeState runtimeState = McpRuntimeState.getInstance(project);
+            if (runtimeState == null) {
+                log.warn("McpRuntimeState is null for project: {}", project.getName());
+                return;
+            }
+
+            long activeCount = runtimeState.getAllActiveStates()
+                    .values()
+                    .stream()
+                    .filter(active -> active)
+                    .count();
+
+            // Get total count from settings (only enabled servers)
+            McpSettings mcpSettings = McpSettings.getInstance(project);
+            if (mcpSettings == null) {
+                log.warn("McpSettings is null for project: {}", project.getName());
+                return;
+            }
+
+            long totalCount = mcpSettings.getMcpServers()
+                    .stream()
+                    .filter(fr.baretto.ollamassist.setting.McpServerConfig::isEnabled)
+                    .count();
+
+            // Update icon based on whether any servers are active
+            if (activeCount > 0) {
+                mcpButton.setIcon(IconUtils.MCP_ENABLED);
+            } else {
+                mcpButton.setIcon(IconUtils.MCP_DISABLED);
+            }
+
+            // Update tooltip
+            mcpButton.setToolTipText(activeCount + "/" + totalCount + " MCP servers active");
+        } catch (Exception e) {
+            log.error("Error updating MCP button state", e);
+        }
+    }
+
 
     private List<String> fetchAvailableModels() {
         try {
             OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
                     .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl());
-            
+
             // Add authentication if configured
             if (AuthenticationHelper.isAuthenticationConfigured()) {
                 Map<String, String> customHeaders = new HashMap<>();
                 customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
                 builder.customHeaders(customHeaders);
             }
-            
+
             return new ArrayList<>(builder.build()
                     .availableModels()
                     .content()

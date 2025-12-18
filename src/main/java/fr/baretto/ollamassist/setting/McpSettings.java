@@ -1,14 +1,10 @@
 package fr.baretto.ollamassist.setting;
 
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.components.PersistentStateComponent;
-import com.intellij.openapi.components.Service;
-import com.intellij.openapi.components.State;
-import com.intellij.openapi.components.Storage;
+import com.intellij.openapi.components.*;
+import com.intellij.openapi.project.Project;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,20 +12,19 @@ import java.util.List;
 /**
  * Settings for Model Context Protocol (MCP) servers.
  */
-@Service
+@Service(Service.Level.PROJECT)
 @State(
         name = "McpSettings",
-        storages = {@Storage("OllamAssist.xml")}
+        storages = {@Storage(StoragePathMacros.WORKSPACE_FILE)}
 )
 public final class McpSettings implements PersistentStateComponent<McpSettings.State> {
 
     private State myState = new State();
 
-    public static McpSettings getInstance() {
-        return ApplicationManager.getApplication().getService(McpSettings.class);
+    public static McpSettings getInstance(Project project) {
+        return project.getService(McpSettings.class);
     }
 
-    @Nullable
     @Override
     public State getState() {
         if (myState == null) {
@@ -59,6 +54,22 @@ public final class McpSettings implements PersistentStateComponent<McpSettings.S
         myState.mcpEnabled = enabled;
     }
 
+    public boolean isMcpApprovalRequired() {
+        return myState.mcpApprovalRequired;
+    }
+
+    public void setMcpApprovalRequired(boolean required) {
+        myState.mcpApprovalRequired = required;
+    }
+
+    public int getMcpApprovalTimeoutSeconds() {
+        return myState.mcpApprovalTimeoutSeconds;
+    }
+
+    public void setMcpApprovalTimeoutSeconds(int timeout) {
+        myState.mcpApprovalTimeoutSeconds = timeout;
+    }
+
     @Getter
     @Setter
     public static class State {
@@ -71,5 +82,15 @@ public final class McpSettings implements PersistentStateComponent<McpSettings.S
          * List of configured MCP servers
          */
         public List<McpServerConfig> mcpServers = new ArrayList<>();
+
+        /**
+         * Require approval for MCP tool calls
+         */
+        public boolean mcpApprovalRequired = true;
+
+        /**
+         * Approval timeout in seconds
+         */
+        public int mcpApprovalTimeoutSeconds = 300;
     }
 }

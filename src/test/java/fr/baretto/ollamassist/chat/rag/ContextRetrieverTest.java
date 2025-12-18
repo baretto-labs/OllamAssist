@@ -1,7 +1,6 @@
 package fr.baretto.ollamassist.chat.rag;
 
 import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationDisplayType;
 import com.intellij.notification.Notifications;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InternalServerException;
@@ -15,7 +14,8 @@ import org.mockito.MockedStatic;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class ContextRetrieverTest {

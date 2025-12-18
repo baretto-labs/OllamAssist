@@ -1,7 +1,9 @@
 package fr.baretto.ollamassist.setting.panels;
 
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.components.JBCheckBox;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.JBUI;
@@ -20,19 +22,46 @@ import java.util.List;
  */
 public class McpConfigPanel extends JBPanel<McpConfigPanel> {
 
+    private final Project project;
     private final JBCheckBox mcpEnabledCheckbox = new JBCheckBox("Enable MCP Integration", false);
+    private final JBCheckBox mcpApprovalRequiredCheckbox = new JBCheckBox("Require approval for MCP tool execution", true);
+    private final JSpinner mcpApprovalTimeoutSpinner;
     private final JBTable serversTable;
     private final McpTableModel tableModel;
     private final JPanel tablePanel;
 
-    public McpConfigPanel() {
+    public McpConfigPanel(Project project) {
+        this.project = project;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(JBUI.Borders.empty(10));
 
+        McpSettings settings = McpSettings.getInstance(project);
+
         // MCP enabled checkbox
-        mcpEnabledCheckbox.setSelected(McpSettings.getInstance().isMcpEnabled());
+        mcpEnabledCheckbox.setSelected(settings.isMcpEnabled());
         mcpEnabledCheckbox.setToolTipText("Enable Model Context Protocol integration to connect AI to external tools and services");
         add(createCheckboxPanel(mcpEnabledCheckbox));
+
+        add(Box.createVerticalStrut(10));
+
+        // MCP approval required checkbox
+        mcpApprovalRequiredCheckbox.setSelected(settings.isMcpApprovalRequired());
+        mcpApprovalRequiredCheckbox.setToolTipText("Require user approval before executing MCP tools for security");
+        add(createCheckboxPanel(mcpApprovalRequiredCheckbox));
+
+        add(Box.createVerticalStrut(5));
+
+        // MCP approval timeout spinner
+        SpinnerNumberModel timeoutModel = new SpinnerNumberModel(
+                settings.getMcpApprovalTimeoutSeconds(), // current value
+                10,   // minimum (10 seconds)
+                3600, // maximum (1 hour)
+                30    // step
+        );
+        mcpApprovalTimeoutSpinner = new JSpinner(timeoutModel);
+        JPanel timeoutPanel = createLabeledSpinnerPanel("Approval timeout (seconds):", mcpApprovalTimeoutSpinner);
+        timeoutPanel.setToolTipText("Maximum time to wait for user approval before timing out");
+        add(timeoutPanel);
 
         add(Box.createVerticalStrut(10));
 
@@ -42,7 +71,7 @@ public class McpConfigPanel extends JBPanel<McpConfigPanel> {
         add(Box.createVerticalStrut(10));
 
         // Table with MCP servers
-        tableModel = new McpTableModel(new ArrayList<>(McpSettings.getInstance().getMcpServers()));
+        tableModel = new McpTableModel(new ArrayList<>(McpSettings.getInstance(project).getMcpServers()));
         serversTable = new JBTable(tableModel);
         serversTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         serversTable.getColumnModel().getColumn(0).setPreferredWidth(150); // Name
@@ -74,6 +103,21 @@ public class McpConfigPanel extends JBPanel<McpConfigPanel> {
 
         checkbox.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(checkbox);
+
+        return panel;
+    }
+
+    private JPanel createLabeledSpinnerPanel(String labelText, JSpinner spinner) {
+        JBPanel<?> panel = new JBPanel<>();
+        panel.setLayout(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        panel.setBorder(JBUI.Borders.empty(5, 20, 5, 10));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JBLabel label = new JBLabel(labelText);
+        panel.add(label);
+
+        spinner.setPreferredSize(new Dimension(100, spinner.getPreferredSize().height));
+        panel.add(spinner);
 
         return panel;
     }
@@ -153,6 +197,22 @@ public class McpConfigPanel extends JBPanel<McpConfigPanel> {
 
     public JBCheckBox getMcpEnabledCheckbox() {
         return mcpEnabledCheckbox;
+    }
+
+    public boolean isMcpApprovalRequired() {
+        return mcpApprovalRequiredCheckbox.isSelected();
+    }
+
+    public void setMcpApprovalRequired(boolean required) {
+        mcpApprovalRequiredCheckbox.setSelected(required);
+    }
+
+    public int getMcpApprovalTimeoutSeconds() {
+        return (Integer) mcpApprovalTimeoutSpinner.getValue();
+    }
+
+    public void setMcpApprovalTimeoutSeconds(int timeout) {
+        mcpApprovalTimeoutSpinner.setValue(timeout);
     }
 
     /**

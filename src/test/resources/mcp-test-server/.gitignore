@@ -1,0 +1,5 @@
+# Compiled class files
+*.class
+
+# Test output files (if any)
+*.log

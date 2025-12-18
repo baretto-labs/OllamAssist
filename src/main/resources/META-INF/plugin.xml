@@ -227,6 +227,12 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
 
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.tools.FileCreator"/>
+
+        <!-- MCP (Model Context Protocol) services -->
+        <projectService serviceImplementation="fr.baretto.ollamassist.setting.McpSettings"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.mcp.McpClientManager"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.mcp.McpRuntimeState"/>
+
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>
 

@@ -1,10 +1,14 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import java.awt.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,19 +19,26 @@ public class UserMessage extends JPanel {
 
     public UserMessage(String userMessage) {
         setLayout(new BorderLayout());
-        setBackground(UIManager.getColor("Button.background").brighter());
+        setOpaque(false);
 
+        // Modern header with user icon on the right
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(JBUI.Borders.empty(4, 8));
         headerPanel.add(createHeaderLabel(), BorderLayout.EAST);
 
+        // Main content panel with modern bubble design
         mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setOpaque(false);
+        mainPanel.setBackground(JBColor.namedColor("Component.focusedBorderColor", new JBColor(0xE8F4FF, 0x2D3E50)));
+        mainPanel.setBorder(new CompoundBorder(
+                JBUI.Borders.customLine(JBColor.namedColor("Component.borderColor", JBColor.border()), 1),
+                JBUI.Borders.empty(12, 16)
+        ));
 
         add(headerPanel, BorderLayout.NORTH);
         add(mainPanel, BorderLayout.CENTER);
-        setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        setBorder(JBUI.Borders.empty(8, 12));
 
         parseAndRender(userMessage);
     }
@@ -66,7 +77,8 @@ public class UserMessage extends JPanel {
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setOpaque(false);
-        textArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        textArea.setFont(UIUtil.getLabelFont().deriveFont(13f));
+        textArea.setBorder(JBUI.Borders.empty(4, 0));
         mainPanel.add(textArea);
     }
 
@@ -98,9 +110,10 @@ public class UserMessage extends JPanel {
     }
 
     private @NotNull JBLabel createHeaderLabel() {
-        JBLabel header = new JBLabel("User", IconUtils.USER_ICON, SwingConstants.LEFT);
-        header.setFont(header.getFont().deriveFont(10f));
-        header.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+        JBLabel header = new JBLabel("User", IconUtils.USER_ICON, SwingConstants.RIGHT);
+        header.setFont(UIUtil.getLabelFont().deriveFont(Font.BOLD, 12f));
+        header.setForeground(JBColor.namedColor("Label.infoForeground", JBColor.GRAY));
+        header.setBorder(JBUI.Borders.empty());
         return header;
     }
 }

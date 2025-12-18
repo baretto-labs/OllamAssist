@@ -64,7 +64,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         RAGSettings ragSettings = RAGSettings.getInstance();
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         PromptSettings promptSettings = PromptSettings.getInstance();
-        McpSettings mcpSettings = McpSettings.getInstance();
+        McpSettings mcpSettings = McpSettings.getInstance(project);
 
         return !ollamaSettings.getChatOllamaUrl().equals(configurationPanel.getChatOllamaUrl())
                 || !ollamaSettings.getCompletionOllamaUrl().equals(configurationPanel.getCompletionOllamaUrl())
@@ -80,7 +80,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || !promptSettings.getChatSystemPrompt().equals(configurationPanel.getChatSystemPrompt())
                 || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt())
                 || mcpSettings.isMcpEnabled() != configurationPanel.isMcpEnabled()
-                || !mcpSettings.getMcpServers().equals(configurationPanel.getMcpServers());
+                || !mcpSettings.getMcpServers().equals(configurationPanel.getMcpServers())
+                || mcpSettings.isMcpApprovalRequired() != configurationPanel.isMcpApprovalRequired()
+                || mcpSettings.getMcpApprovalTimeoutSeconds() != configurationPanel.getMcpApprovalTimeoutSeconds();
     }
 
 
@@ -121,18 +123,24 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             promptSettings.setRefactorUserPrompt(configurationPanel.getRefactorUserPrompt());
 
             // Save to McpSettings
-            McpSettings mcpSettings = McpSettings.getInstance();
+            McpSettings mcpSettings = McpSettings.getInstance(project);
             boolean mcpWasModified = mcpSettings.isMcpEnabled() != configurationPanel.isMcpEnabled()
                     || !mcpSettings.getMcpServers().equals(configurationPanel.getMcpServers());
             mcpSettings.setMcpEnabled(configurationPanel.isMcpEnabled());
             mcpSettings.setMcpServers(configurationPanel.getMcpServers());
+            mcpSettings.setMcpApprovalRequired(configurationPanel.isMcpApprovalRequired());
+            mcpSettings.setMcpApprovalTimeoutSeconds(configurationPanel.getMcpApprovalTimeoutSeconds());
 
             // Reinitialize MCP clients if configuration changed
             if (mcpWasModified) {
-                log.info("MCP configuration changed, reinitializing clients");
+                log.info("MCP configuration changed, reinitializing runtime state and clients");
                 ApplicationManager.getApplication().executeOnPooledThread(() -> {
                     try {
-                        fr.baretto.ollamassist.mcp.McpClientManager.getInstance().initializeClients();
+                        // IMPORTANT: Reset runtime state FIRST to sync with new settings
+                        fr.baretto.ollamassist.mcp.McpRuntimeState.getInstance(project).resetToDefaults();
+
+                        // Then reinitialize clients based on the refreshed runtime state
+                        fr.baretto.ollamassist.mcp.McpClientManager.getInstance(project).initializeClients();
                     } catch (Exception e) {
                         log.error("Failed to reinitialize MCP clients", e);
                     }
@@ -207,9 +215,11 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setRefactorUserPrompt(promptSettings.getRefactorUserPrompt());
 
         // Load from McpSettings
-        McpSettings mcpSettings = McpSettings.getInstance();
+        McpSettings mcpSettings = McpSettings.getInstance(project);
         configurationPanel.setMcpEnabled(mcpSettings.isMcpEnabled());
         configurationPanel.setMcpServers(mcpSettings.getMcpServers());
+        configurationPanel.setMcpApprovalRequired(mcpSettings.isMcpApprovalRequired());
+        configurationPanel.setMcpApprovalTimeoutSeconds(mcpSettings.getMcpApprovalTimeoutSeconds());
     }
 
     @Override

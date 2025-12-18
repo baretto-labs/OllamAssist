@@ -1,14 +1,15 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class OllamaModels {
 

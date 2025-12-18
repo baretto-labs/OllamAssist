@@ -1,0 +1,302 @@
+package fr.baretto.ollamassist.mcp;
+
+import com.intellij.openapi.project.Project;
+import com.intellij.util.messages.MessageBus;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.service.tool.ToolExecutor;
+import fr.baretto.ollamassist.events.StopStreamingNotifier;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ApprovalToolExecutorTest {
+
+    @Mock
+    private Project project;
+
+    @Mock
+    private ToolExecutor delegate;
+
+    @Mock
+    private McpApprovalService approvalService;
+
+    @Mock
+    private MessageBus messageBus;
+
+    @Mock
+    private StopStreamingNotifier stopStreamingPublisher;
+
+    @Mock
+    private ToolExecutionRequest executionRequest;
+
+    @Mock
+    private InvocationContext invocationContext;
+
+    private ApprovalToolExecutor approvalToolExecutor;
+
+    @BeforeEach
+    void setUp() {
+        when(project.getMessageBus()).thenReturn(messageBus);
+        when(messageBus.syncPublisher(StopStreamingNotifier.TOPIC)).thenReturn(stopStreamingPublisher);
+
+        approvalToolExecutor = new ApprovalToolExecutor(delegate, approvalService, project);
+    }
+
+    @Test
+    void testApprovalFlow_Approved() {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{\"param\":\"value\"}";
+        String expectedResult = "Tool executed successfully";
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(delegate.executeWithContext(executionRequest, invocationContext))
+                .thenReturn(ToolExecutionResult.success(expectedResult));
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).isEqualTo(expectedResult);
+        verify(approvalService).requestApproval(toolName, toolArgs);
+        verify(delegate).executeWithContext(executionRequest, invocationContext);
+        verify(stopStreamingPublisher, never()).stopStreaming();
+    }
+
+    @Test
+    void testApprovalFlow_Denied() {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{\"param\":\"value\"}";
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs))
+                .thenReturn(CompletableFuture.completedFuture(false));
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).contains("cancelled by the user");
+        verify(approvalService).requestApproval(toolName, toolArgs);
+        verify(delegate, never()).executeWithContext(any(), any());
+        verify(stopStreamingPublisher).stopStreaming();
+    }
+
+    @Test
+    void testTimeout() {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{\"param\":\"value\"}";
+
+        CompletableFuture<Boolean> timeoutFuture = new CompletableFuture<>();
+        timeoutFuture.completeExceptionally(new TimeoutException("Approval request timed out"));
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs)).thenReturn(timeoutFuture);
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).contains("timed out");
+        verify(approvalService).requestApproval(toolName, toolArgs);
+        verify(delegate, never()).executeWithContext(any(), any());
+        verify(stopStreamingPublisher).stopStreaming();
+    }
+
+    @Test
+    void testInterruption() throws InterruptedException {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{\"param\":\"value\"}";
+
+        CompletableFuture<Boolean> interruptedFuture = new CompletableFuture<>();
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs)).thenReturn(interruptedFuture);
+
+        // Set up a thread to interrupt the current thread after a short delay
+        Thread currentThread = Thread.currentThread();
+        Thread interrupterThread = new Thread(() -> {
+            try {
+                Thread.sleep(100);
+                currentThread.interrupt();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        interrupterThread.start();
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).contains("interrupted");
+        assertThat(Thread.interrupted()).isTrue(); // Verify and clear interrupt flag
+        verify(approvalService).requestApproval(toolName, toolArgs);
+        verify(delegate, never()).executeWithContext(any(), any());
+        verify(stopStreamingPublisher).stopStreaming();
+
+        interrupterThread.join();
+    }
+
+    @Test
+    void testExecutionException() {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{\"param\":\"value\"}";
+        RuntimeException expectedException = new RuntimeException("Tool execution failed");
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(delegate.executeWithContext(executionRequest, invocationContext))
+                .thenThrow(expectedException);
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).contains("Error executing tool");
+        assertThat(result.resultAsString()).contains("Tool execution failed");
+        verify(approvalService).requestApproval(toolName, toolArgs);
+        verify(delegate).executeWithContext(executionRequest, invocationContext);
+    }
+
+    @Test
+    void testParseArguments_Null() {
+        // Act
+        String result = ApprovalToolExecutor.parseArguments(null);
+
+        // Assert
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void testParseArguments_EmptyString() {
+        // Act
+        String result = ApprovalToolExecutor.parseArguments("");
+
+        // Assert
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void testParseArguments_JsonString() {
+        // Arrange
+        String jsonArgs = "{\"param1\":\"value1\",\"param2\":42}";
+
+        // Act
+        String result = ApprovalToolExecutor.parseArguments(jsonArgs);
+
+        // Assert
+        assertThat(result).isEqualTo("""
+                param1: value1
+                param2: 42""");
+    }
+
+    @Test
+    void testParseArguments_InvalidJson() {
+        // Arrange
+        String invalidJson = "{invalid json}";
+
+        // Act
+        String result = ApprovalToolExecutor.parseArguments(invalidJson);
+
+        // Assert
+        // Should return original string if parsing fails
+        assertThat(result).isEqualTo(invalidJson);
+    }
+
+    @Test
+    void testParseArguments_NestedJson() {
+        // Arrange
+        String nestedJson = "{\"outer\":{\"inner\":\"value\"},\"array\":[1,2,3]}";
+
+        // Act
+        String result = ApprovalToolExecutor.parseArguments(nestedJson);
+
+        // Assert
+        assertThat(result).contains("outer:");
+        assertThat(result).contains("inner: value");
+        assertThat(result).contains("array:");
+    }
+
+    @Test
+    void testStopStreaming_OnDenial() {
+        // Arrange
+        String toolName = "test_tool";
+        String toolArgs = "{}";
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs))
+                .thenReturn(CompletableFuture.completedFuture(false));
+
+        // Act
+        approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        verify(stopStreamingPublisher, times(1)).stopStreaming();
+    }
+
+    @Test
+    void testApprovalService_CalledWithCorrectParameters() {
+        // Arrange
+        String toolName = "complex_tool";
+        String toolArgs = "{\"file\":\"/path/to/file\",\"action\":\"delete\"}";
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(toolArgs);
+        when(approvalService.requestApproval(toolName, toolArgs))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(delegate.executeWithContext(executionRequest, invocationContext))
+                .thenReturn(ToolExecutionResult.success("Done"));
+
+        // Act
+        approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        verify(approvalService).requestApproval(eq(toolName), eq(toolArgs));
+    }
+
+    @Test
+    void testExecuteWithContext_NullArguments() {
+        // Arrange
+        String toolName = "test_tool";
+
+        when(executionRequest.name()).thenReturn(toolName);
+        when(executionRequest.arguments()).thenReturn(null);
+        when(approvalService.requestApproval(eq(toolName), anyString()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        when(delegate.executeWithContext(executionRequest, invocationContext))
+                .thenReturn(ToolExecutionResult.success("OK"));
+
+        // Act
+        ToolExecutionResult result = approvalToolExecutor.executeWithContext(executionRequest, invocationContext);
+
+        // Assert
+        assertThat(result.resultAsString()).isEqualTo("OK");
+        verify(approvalService).requestApproval(eq(toolName), anyString());
+    }
+}

@@ -7,7 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 /**
  * Test class to verify settings persistence behavior.

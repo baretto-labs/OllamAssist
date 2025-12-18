@@ -9,9 +9,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
@@ -114,7 +114,7 @@ public final class OllamaService implements Disposable, ModelListener {
             }
 
             // Add MCP tool provider if enabled and available
-            McpClientManager mcpManager = McpClientManager.getInstance();
+            McpClientManager mcpManager = McpClientManager.getInstance(project);
             if (mcpManager.isEnabled()) {
                 McpToolProvider mcpToolProvider = mcpManager.getToolProvider();
                 if (mcpToolProvider != null) {

@@ -19,10 +19,9 @@ import fr.baretto.ollamassist.chat.tools.ToolCallDetector;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
-import fr.baretto.ollamassist.events.FileApprovalNotifier;
-import fr.baretto.ollamassist.events.ModelAvailableNotifier;
-import fr.baretto.ollamassist.events.NewUserMessageNotifier;
-import fr.baretto.ollamassist.events.StopStreamingNotifier;
+import fr.baretto.ollamassist.events.*;
+import fr.baretto.ollamassist.mcp.McpApprovalService;
+import fr.baretto.ollamassist.mcp.ui.McpToolApprovalDialog;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 import fr.baretto.ollamassist.setting.PromptSettings;
@@ -132,6 +131,34 @@ public class OllamaContent {
                 request.getContent(),
                 approved -> request.getResponseFuture().complete(approved)
             ));
+
+        connection.subscribe(McpToolApprovalNotifier.TOPIC, (McpToolApprovalNotifier) request -> {
+            log.info("Received MCP tool approval request for tool: {} on server: {}",
+                    request.getToolName(), request.getServerName());
+
+            // Show approval dialog on EDT
+            ApplicationManager.getApplication().invokeLater(() -> {
+                McpToolApprovalDialog dialog = new McpToolApprovalDialog(
+                        context.project(),
+                        request.getServerName(),
+                        request.getToolName(),
+                        request.getArguments()
+                );
+
+                boolean approved = dialog.showAndGet();
+
+                // If user checked "Always approve this tool", add to always-approved list
+                if (approved && dialog.isAlwaysApprove()) {
+                    McpApprovalService.getInstance(context.project())
+                            .addToAlwaysApproved(request.getServerName(), request.getToolName());
+                }
+
+                // Complete the future with the approval result
+                request.getResponseFuture().complete(approved);
+
+                log.debug("MCP tool approval result: {} for tool: {}", approved, request.getToolName());
+            });
+        });
 
         connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
             log.info("Stopping LLM streaming silently due to file action completion");

@@ -1,6 +1,5 @@
 package fr.baretto.ollamassist.chat.service;
 
-import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;

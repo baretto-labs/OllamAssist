@@ -20,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Collection;
-import java.util.Collections;
 
 @Slf4j
 public class CommitMessageGenerator extends AnAction {

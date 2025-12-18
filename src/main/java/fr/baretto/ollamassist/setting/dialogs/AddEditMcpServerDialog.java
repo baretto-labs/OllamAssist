@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * Dialog for adding or editing an MCP server configuration.
@@ -31,6 +31,7 @@ public class AddEditMcpServerDialog extends DialogWrapper {
 
     // HTTP/SSE fields
     private final JBTextField urlField = new JBTextField(30);
+    private final JBTextField authTokenField = new JBTextField(30);
     private final JBPanel<?> httpPanel = new JBPanel<>();
 
     // Docker fields
@@ -168,6 +169,21 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         gbc.gridy = 1;
         gbc.gridwidth = 2;
         httpPanel.add(new JBLabel("<html><i>HTTP/SSE endpoint (e.g., \"http://localhost:3001/mcp\")</i></html>"), gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+        httpPanel.add(new JBLabel("API Key / Auth Token (optional):"), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        httpPanel.add(authTokenField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        httpPanel.add(new JBLabel("<html><i>Will be sent as \"Authorization: Bearer &lt;token&gt;\" header</i></html>"), gbc);
 
         // Docker panel
         dockerPanel.setLayout(new GridBagLayout());
@@ -312,6 +328,7 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         // Transport-specific
         commandField.setText(String.join(" ", config.getCommand()));
         urlField.setText(config.getUrl());
+        authTokenField.setText(config.getAuthToken());
         dockerImageField.setText(config.getDockerImage());
         dockerHostField.setText(config.getDockerHost());
 
@@ -337,12 +354,13 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         // Transport-specific
         String commandText = commandField.getText().trim();
         config.setCommand(commandText.isEmpty() ?
-            Arrays.asList() :
+                List.of() :
             Arrays.stream(commandText.split("\\s+"))
                 .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList())
+                .toList()
         );
         config.setUrl(urlField.getText().trim());
+        config.setAuthToken(authTokenField.getText().trim());
         config.setDockerImage(dockerImageField.getText().trim());
         config.setDockerHost(dockerHostField.getText().trim());
 

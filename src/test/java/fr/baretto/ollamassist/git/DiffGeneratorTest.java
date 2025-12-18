@@ -1,18 +1,11 @@
 package fr.baretto.ollamassist.git;
 
-import com.intellij.openapi.vcs.FilePath;
-import com.intellij.openapi.vcs.VcsException;
-import com.intellij.openapi.vcs.changes.Change;
-import com.intellij.openapi.vcs.changes.ContentRevision;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DiffGeneratorTest {
 
