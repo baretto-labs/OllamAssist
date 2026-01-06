@@ -14,6 +14,51 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.10.1 - Critical Bugfixes
+                Notification.builder()
+                        .id("v1.10.1-release")
+                        .version("1.10.1")
+                        .type(Notification.NotificationType.INFO)
+                        .priority(Notification.Priority.HIGH)
+                        .title("OllamAssist 1.10.1 - Critical Bugfixes")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>🔧 Critical Fixes</h3>
+
+                                <p>This release fixes two major issues affecting plugin stability:</p>
+
+                                <h4>🐛 Issue #146: Startup Freeze After Upgrade</h4>
+                                <ul>
+                                  <li><b>Problem:</b> Plugin would freeze at "OllamAssist running..." after upgrading from v1.9.0</li>
+                                  <li><b>Cause:</b> Incompatible Lucene index format from previous version</li>
+                                  <li><b>Fix:</b> Automatic detection and recreation of incompatible indexes</li>
+                                  <li>✅ Seamless upgrades between versions</li>
+                                </ul>
+
+                                <h4>🐛 Issue #145: Windows Native Library Error</h4>
+                                <ul>
+                                  <li><b>Problem:</b> Plugin crashed on Windows with UnsatisfiedLinkError</li>
+                                  <li><b>Cause:</b> Missing DJL native libraries for local embedding model</li>
+                                  <li><b>Fix:</b> Automatic fallback to Ollama's nomic-embed-text model</li>
+                                  <li>✅ Plugin now works on all platforms</li>
+                                </ul>
+
+                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h4>✨ Enhanced Prerequisite Panel</h4>
+                                <p>The prerequisite check now shows detailed status for embedding models with automatic fallback detection and clear installation instructions.</p>
+
+                                <p style='font-size: 0.9em; color: #666;'>
+                                💡 <i>If you see a warning about using Ollama fallback, the plugin will work normally with slightly slower performance.</i>
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2025, 1, 6, 0, 0))
+                        .build(),
+
                 // v1.10.0 - Customizable Prompts & Async Loading
                 Notification.builder()
                         .id("v1.10.0-release")

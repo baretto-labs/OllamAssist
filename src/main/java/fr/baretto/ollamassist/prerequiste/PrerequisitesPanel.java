@@ -55,6 +55,8 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     private final JPanel chatModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel autocompleteModelHelpPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel embeddingModelHelpPanel = new JPanel(new BorderLayout(5, 0));
+    private final JBLabel embeddingWarningLabel = new JBLabel();
+    private final JPanel embeddingFallbackPanel = new JPanel(new BorderLayout(5, 0));
     private final JPanel loadingLabel = new LoadingPanel("OllamAssist starting ... ");
     private final transient Project project;
 
@@ -147,6 +149,14 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         JPanel embeddingCommandPanel = createCommandPanel(embeddingModelCommandField, copyEmbeddingCommandButton, embeddingModelName);
         embeddingModelHelpPanel.add(embeddingCommandPanel);
         contentPanel.add(embeddingModelHelpPanel, gbc);
+
+        gbc.gridy++;
+        embeddingWarningLabel.setVisible(false);
+        contentPanel.add(embeddingWarningLabel, gbc);
+
+        gbc.gridy++;
+        embeddingFallbackPanel.setVisible(false);
+        contentPanel.add(embeddingFallbackPanel, gbc);
 
         gbc.gridy++;
         gbc.insets.top = 30;
@@ -260,19 +270,20 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         CompletableFuture<Boolean> autocompleteModelFuture = autocompleteModelConfigured
             ? prerequisiteService.isAutocompleteModelAvailableAsync(settings.getCompletionOllamaUrl(), settings.getCompletionModelName())
             : CompletableFuture.completedFuture(false);
-        CompletableFuture<Boolean> embeddingModelFuture = embeddingModelConfigured
-            ? prerequisiteService.isEmbeddingModelAvailableAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName())
-            : CompletableFuture.completedFuture(false);
+        CompletableFuture<EmbeddingModelCheckResult> embeddingModelFuture = embeddingModelConfigured
+            ? prerequisiteService.checkEmbeddingModelAsync(settings.getEmbeddingOllamaUrl(), settings.getEmbeddingModelName())
+            : CompletableFuture.completedFuture(EmbeddingModelCheckResult.notAvailable());
 
         CompletableFuture.allOf(ollamaRunningFuture, chatModelFuture, autocompleteModelFuture, embeddingModelFuture)
                 .thenAccept(v -> {
                     boolean ollamaReady = ollamaRunningFuture.join();
                     boolean chatModelReady = chatModelConfigured && chatModelFuture.join();
                     boolean autocompleteModelReady = autocompleteModelConfigured && autocompleteModelFuture.join();
-                    boolean embeddingModelReady = embeddingModelConfigured && embeddingModelFuture.join();
+                    EmbeddingModelCheckResult embeddingResult = embeddingModelFuture.join();
+                    boolean embeddingModelReady = embeddingModelConfigured && embeddingResult.isUsable();
 
                     ApplicationManager.getApplication().invokeLater(() ->
-                            updateUI(ollamaReady, chatModelReady, autocompleteModelReady, embeddingModelReady,
+                            updateUI(ollamaReady, chatModelReady, autocompleteModelReady, embeddingResult,
                                     chatModelConfigured, autocompleteModelConfigured, embeddingModelConfigured));
 
                     if (ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady) {
@@ -292,7 +303,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
     }
 
 
-    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady, boolean embeddingModelReady,
+    private void updateUI(boolean ollamaReady, boolean chatModelReady, boolean autocompleteModelReady, EmbeddingModelCheckResult embeddingResult,
                           boolean chatModelConfigured, boolean autocompleteModelConfigured, boolean embeddingModelConfigured) {
         updateLabel(ollamaLabel, ollamaReady, ollamaReady ? "Ollama running" : "Ollama unavailable");
 
@@ -304,18 +315,105 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                                     (!autocompleteModelConfigured ? "Model not configured in settings" : "Model not found");
         updateLabel(autocompleteModelLabel, autocompleteModelReady, autocompleteMessage);
 
-        String embeddingMessage = embeddingModelReady ? MODEL_AVAILABLE :
-                                 (!embeddingModelConfigured ? "Model not configured in settings" : "Model not found");
-        updateLabel(embeddingModelLabel, embeddingModelReady, embeddingMessage);
+        // Update embedding model UI with detailed status
+        updateEmbeddingUI(embeddingResult, embeddingModelConfigured);
 
         ollamaHelpPanel.setVisible(!ollamaReady);
         chatModelHelpPanel.setVisible(chatModelConfigured && !chatModelReady);
         autocompleteModelHelpPanel.setVisible(autocompleteModelConfigured && !autocompleteModelReady);
-        embeddingModelHelpPanel.setVisible(embeddingModelConfigured && !embeddingModelReady);
 
+        boolean embeddingModelReady = embeddingModelConfigured && embeddingResult.isUsable();
         boolean allReady = ollamaReady && chatModelReady && autocompleteModelReady && embeddingModelReady;
         restartPanel.setVisible(!allReady);
         loadingLabel.setVisible(allReady);
+    }
+
+    private void updateEmbeddingUI(EmbeddingModelCheckResult result, boolean configured) {
+        if (!configured) {
+            updateLabel(embeddingModelLabel, false, "Model not configured in settings");
+            embeddingModelHelpPanel.setVisible(false);
+            embeddingWarningLabel.setVisible(false);
+            embeddingFallbackPanel.setVisible(false);
+            return;
+        }
+
+        switch (result.getStatus()) {
+            case LOCAL_OK:
+                updateLabel(embeddingModelLabel, true, "Local embedding model available");
+                embeddingModelHelpPanel.setVisible(false);
+                embeddingWarningLabel.setVisible(false);
+                embeddingFallbackPanel.setVisible(false);
+                break;
+
+            case LOCAL_FAILED_FALLBACK_OK:
+                embeddingModelLabel.setIcon(IconUtils.OLLAMASSIST_WARN_ICON);
+                embeddingModelLabel.setForeground(JBColor.ORANGE);
+                embeddingModelLabel.setText("Using Ollama fallback (nomic-embed-text)");
+
+                embeddingWarningLabel.setIcon(IconUtils.INFORMATION);
+                embeddingWarningLabel.setForeground(JBColor.ORANGE);
+                embeddingWarningLabel.setText(
+                    "<html><b>Note:</b> Local model failed to load (native library error). " +
+                    "Using Ollama fallback instead.<br>" +
+                    "This may happen on Windows. Performance will be slightly slower.</html>"
+                );
+                embeddingWarningLabel.setVisible(true);
+                embeddingModelHelpPanel.setVisible(false);
+                embeddingFallbackPanel.setVisible(false);
+                break;
+
+            case LOCAL_FAILED_NO_FALLBACK:
+                updateLabel(embeddingModelLabel, false, "Local model unavailable - fallback required");
+
+                // Setup fallback installation panel
+                embeddingFallbackPanel.removeAll();
+                embeddingFallbackPanel.setLayout(new BorderLayout(5, 0));
+
+                JBLabel fallbackInstruction = new JBLabel("Install fallback model:");
+                JBTextField fallbackCommand = new JBTextField("ollama pull nomic-embed-text");
+                fallbackCommand.setEditable(false);
+                fallbackCommand.setBackground(UIUtil.getPanelBackground());
+                fallbackCommand.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+
+                JButton copyFallbackButton = new JButton("Copy");
+                copyFallbackButton.setIcon(IconUtils.COPY);
+                copyFallbackButton.addActionListener(e -> {
+                    StringSelection selection = new StringSelection(fallbackCommand.getText());
+                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                    clipboard.setContents(selection, null);
+                });
+                ComponentCustomizer.applyHoverEffect(copyFallbackButton);
+
+                JPanel commandPanel = new JPanel(new BorderLayout(5, 0));
+                JScrollPane scrollPane = new JBScrollPane(fallbackCommand);
+                scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+                scrollPane.setBorder(null);
+                commandPanel.add(scrollPane, BorderLayout.CENTER);
+                commandPanel.add(copyFallbackButton, BorderLayout.EAST);
+
+                embeddingFallbackPanel.add(fallbackInstruction, BorderLayout.WEST);
+                embeddingFallbackPanel.add(commandPanel, BorderLayout.CENTER);
+
+                embeddingWarningLabel.setVisible(false);
+                embeddingModelHelpPanel.setVisible(false);
+                embeddingFallbackPanel.setVisible(true);
+                break;
+
+            case OLLAMA_OK:
+                updateLabel(embeddingModelLabel, true, MODEL_AVAILABLE);
+                embeddingModelHelpPanel.setVisible(false);
+                embeddingWarningLabel.setVisible(false);
+                embeddingFallbackPanel.setVisible(false);
+                break;
+
+            case NOT_AVAILABLE:
+                updateLabel(embeddingModelLabel, false, "Model not found");
+                embeddingModelHelpPanel.setVisible(true);
+                embeddingWarningLabel.setVisible(false);
+                embeddingFallbackPanel.setVisible(false);
+                break;
+        }
     }
 
     private void updateLabel(JBLabel label, boolean status, String text) {

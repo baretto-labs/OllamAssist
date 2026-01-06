@@ -73,7 +73,29 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     private void initIndexWriter() throws IOException {
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-        this.indexWriter = new IndexWriter(directory, config);
+
+        try {
+            this.indexWriter = new IndexWriter(directory, config);
+        } catch (IllegalArgumentException e) {
+            // Handle incompatible index created with older Lucene codec
+            // See issue #146: https://github.com/baretto-labs/OllamAssist/issues/146
+            if (e.getMessage() != null && e.getMessage().contains("Could not load codec")) {
+                log.warn("Detected incompatible Lucene index format. " +
+                        "This typically occurs after upgrading from an older plugin version. " +
+                        "Recreating index from scratch...", e);
+
+                // Clean the incompatible index files
+                cleanIndexDirectory();
+
+                // Recreate with CREATE mode to force fresh index
+                config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+                this.indexWriter = new IndexWriter(directory, config);
+
+                log.info("Index successfully recreated. Your workspace files will be re-indexed automatically.");
+            } else {
+                throw e;
+            }
+        }
     }
 
     private synchronized IndexWriter retrieveIndexWriter() throws IOException {
@@ -380,6 +402,10 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
 
     private void deleteAllIndexFiles() throws IOException {
         closeIndexWriter();
+        cleanIndexDirectory();
+    }
+
+    private void cleanIndexDirectory() throws IOException {
         Path indexPath = Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX);
         cleanDirectory(indexPath);
     }

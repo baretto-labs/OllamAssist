@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.10.0"
+version = "1.10.1"
 
 repositories {
     mavenCentral()
@@ -125,7 +125,7 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = "243"
         }
-        changeNotes = "Mise à jour vers IntelliJ Platform Gradle Plugin 2.6.0"
+        changeNotes = "Fix: Lucene index recovery (#146) + DJL Windows fallback (#145)"
     }
 
     signing {

@@ -56,6 +56,12 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.10.1</h2>
+        <UL>
+            <LI>fix/issue-146: Automatic recovery from incompatible Lucene index format when upgrading from older versions.</LI>
+            <LI>fix/issue-145: Graceful fallback to Ollama when local DJL embedding model fails to load on Windows.</LI>
+            <LI>feat: Enhanced prerequisite panel with detailed embedding model status and automatic fallback detection.</LI>
+        </UL>
         <h2>V1.10.0</h2>
         <UL>
             <LI>feat: customizable AI assistant system prompts - configure and personalize how the AI assistant responds to your queries.</LI>
