@@ -60,6 +60,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     private IndexWriter indexWriter;
 
     public LuceneEmbeddingStore(Project project) throws IOException {
+        this.project = project;
         this.directory = new NIOFSDirectory(
                 Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX),
                 new SingleInstanceLockFactory()
@@ -67,7 +68,6 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
         this.indexWriter = retrieveIndexWriter();
-        this.project = project;
     }
 
     private void initIndexWriter() throws IOException {
