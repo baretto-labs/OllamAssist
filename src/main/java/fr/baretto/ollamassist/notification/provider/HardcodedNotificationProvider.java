@@ -14,6 +14,38 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.10.2 - IndexWriterConfig Fix
+                Notification.builder()
+                        .id("v1.10.2-release")
+                        .version("1.10.2")
+                        .type(Notification.NotificationType.INFO)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.10.2 - Stability Fix")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>🔧 Stability Improvement</h3>
+
+                                <p>This release addresses a critical Lucene configuration issue that could cause plugin startup failures.</p>
+
+                                <h4>🐛 Fixed: PluginException on Startup</h4>
+                                <ul>
+                                  <li><b>Problem:</b> "do not share IndexWriterConfig instances across IndexWriters" exception</li>
+                                  <li><b>Cause:</b> IndexWriterConfig reuse during index recovery process</li>
+                                  <li><b>Fix:</b> Each IndexWriter now receives its own dedicated configuration instance</li>
+                                  <li>✅ More reliable plugin initialization</li>
+                                </ul>
+
+                                <p style='font-size: 0.9em; color: #666;'>
+                                💡 <i>This fix improves the reliability of the automatic index recovery mechanism introduced in v1.10.1.</i>
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2025, 1, 11, 0, 0))
+                        .build(),
+
                 // v1.10.1 - Critical Bugfixes
                 Notification.builder()
                         .id("v1.10.1-release")

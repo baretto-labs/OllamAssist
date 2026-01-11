@@ -56,6 +56,10 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.10.2</h2>
+        <UL>
+            <LI>fix: Prevent PluginException by ensuring each Lucene IndexWriter receives its own IndexWriterConfig instance.</LI>
+        </UL>
         <h2>V1.10.1</h2>
         <UL>
             <LI>fix/issue-146: Automatic recovery from incompatible Lucene index format when upgrading from older versions.</LI>

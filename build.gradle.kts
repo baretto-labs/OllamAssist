@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.10.1"
+version = "1.10.2"
 
 repositories {
     mavenCentral()
@@ -125,7 +125,7 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = "243"
         }
-        changeNotes = "Fix: Lucene index recovery (#146) + DJL Windows fallback (#145)"
+        changeNotes = "Fix: Lucene IndexWriterConfig sharing violation"
     }
 
     signing {

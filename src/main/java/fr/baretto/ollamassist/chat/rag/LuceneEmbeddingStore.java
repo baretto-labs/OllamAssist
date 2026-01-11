@@ -76,24 +76,60 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
 
         try {
             this.indexWriter = new IndexWriter(directory, config);
-        } catch (IllegalArgumentException e) {
-            // Handle incompatible index created with older Lucene codec
+        } catch (Exception e) {
+            // Handle incompatible index formats - Check by message content for maximum compatibility
+            // This approach is more robust than catching specific exception types
             // See issue #146: https://github.com/baretto-labs/OllamAssist/issues/146
-            if (e.getMessage() != null && e.getMessage().contains("Could not load codec")) {
-                log.warn("Detected incompatible Lucene index format. " +
-                        "This typically occurs after upgrading from an older plugin version. " +
-                        "Recreating index from scratch...", e);
+            String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            boolean isIncompatibleIndex = false;
+            String reason = "";
 
-                // Clean the incompatible index files
-                cleanIndexDirectory();
+            // Check for various incompatibility patterns
+            if (errorMessage.contains("could not load codec")) {
+                isIncompatibleIndex = true;
+                reason = "incompatible codec";
+            } else if (errorMessage.contains("indexcreatedversionmajor is in the future") ||
+                       e instanceof IndexFormatTooNewException ||
+                       errorMessage.contains("format too new")) {
+                isIncompatibleIndex = true;
+                reason = "index created with newer Lucene version (downgrade scenario)";
+            } else if (e instanceof IndexFormatTooOldException ||
+                       errorMessage.contains("format too old") ||
+                       errorMessage.contains("written by an older lucene version")) {
+                isIncompatibleIndex = true;
+                reason = "index created with older Lucene version (upgrade scenario)";
+            } else if (errorMessage.contains("segments") &&
+                       (errorMessage.contains("corrupt") || errorMessage.contains("invalid"))) {
+                isIncompatibleIndex = true;
+                reason = "corrupted index segments";
+            }
 
-                // Recreate with CREATE mode to force fresh index
-                config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-                this.indexWriter = new IndexWriter(directory, config);
+            if (isIncompatibleIndex) {
+                log.warn("Detected incompatible or corrupted Lucene index ({}). " +
+                        "This typically occurs when switching between different IntelliJ Platform versions. " +
+                        "Recreating index from scratch...", reason, e);
 
-                log.info("Index successfully recreated. Your workspace files will be re-indexed automatically.");
+                try {
+                    // Clean the incompatible index files
+                    cleanIndexDirectory();
+
+                    // Recreate with CREATE mode to force fresh index
+                    // IMPORTANT: Create a new IndexWriterConfig instance to avoid sharing across IndexWriter instances
+                    IndexWriterConfig recreateConfig = new IndexWriterConfig(analyzer);
+                    recreateConfig.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+                    this.indexWriter = new IndexWriter(directory, recreateConfig);
+
+                    log.info("Index successfully recreated. Your workspace files will be re-indexed automatically.");
+                } catch (Exception recoveryException) {
+                    log.error("Failed to recover from index incompatibility. Plugin functionality may be limited.", recoveryException);
+                    throw recoveryException;
+                }
+            } else if (e instanceof IOException) {
+                // Re-throw IOException as-is for proper handling upstream
+                throw (IOException) e;
             } else {
-                throw e;
+                // Wrap other exceptions in IOException
+                throw new IOException("Failed to initialize Lucene index", e);
             }
         }
     }
