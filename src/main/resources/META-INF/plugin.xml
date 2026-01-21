@@ -56,6 +56,12 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.10.3</h2>
+        <UL>
+            <LI>fix: URL normalization for custom Ollama endpoints - add missing http:// scheme and normalize trailing slashes.</LI>
+            <LI>feat: Added URL validation and normalization utility (UrlHelper) for robust custom Ollama URL handling.</LI>
+            <LI>feat: Added comprehensive unit tests for URL normalization (36 test cases).</LI>
+        </UL>
         <h2>V1.10.2</h2>
         <UL>
             <LI>fix: Prevent PluginException by ensuring each Lucene IndexWriter receives its own IndexWriterConfig instance.</LI>

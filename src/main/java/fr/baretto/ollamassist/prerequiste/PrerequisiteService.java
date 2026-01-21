@@ -58,7 +58,8 @@ public class PrerequisiteService {
 
             // Case 2: Ollama model configured
             try {
-                String response = HttpRequests.request(url + PATH_TO_TAGS)
+                String normalizedUrl = UrlHelper.buildApiUrl(url, PATH_TO_TAGS);
+                String response = HttpRequests.request(normalizedUrl)
                         .connectTimeout(3000)
                         .readTimeout(3000)
                         .readString();
@@ -68,6 +69,9 @@ public class PrerequisiteService {
                 } else {
                     return EmbeddingModelCheckResult.notAvailable();
                 }
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid URL: {}", e.getMessage());
+                return EmbeddingModelCheckResult.notAvailable();
             } catch (IOException e) {
                 log.warn("Failed to check Ollama model availability: {}", e.getMessage());
                 return EmbeddingModelCheckResult.notAvailable();
@@ -127,11 +131,15 @@ public class PrerequisiteService {
      */
     private boolean checkOllamaModelSync(String url, String modelName) {
         try {
-            String response = HttpRequests.request(url + PATH_TO_TAGS)
+            String normalizedUrl = UrlHelper.buildApiUrl(url, PATH_TO_TAGS);
+            String response = HttpRequests.request(normalizedUrl)
                     .connectTimeout(3000)
                     .readTimeout(3000)
                     .readString();
             return response.contains(modelName);
+        } catch (IllegalArgumentException e) {
+            log.debug("Invalid URL for fallback check: {}", e.getMessage());
+            return false;
         } catch (IOException e) {
             log.debug("Failed to check fallback model availability: {}", e.getMessage());
             return false;
@@ -141,12 +149,17 @@ public class PrerequisiteService {
     private CompletableFuture<Boolean> isOllamaAttributeExists(String url, String endpoint, Predicate<String> check) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String response = HttpRequests.request(url + endpoint)
+                String normalizedUrl = UrlHelper.buildApiUrl(url, endpoint);
+                String response = HttpRequests.request(normalizedUrl)
                         .connectTimeout(3000)
                         .readTimeout(3000)
                         .readString();
                 return check.test(response);
-            } catch (IOException ignored) {
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid URL: {}", e.getMessage());
+                return false;
+            } catch (IOException e) {
+                log.debug("Failed to connect to Ollama at {}: {}", url, e.getMessage());
                 return false;
             }
         }, AppExecutorUtil.getAppExecutorService());
