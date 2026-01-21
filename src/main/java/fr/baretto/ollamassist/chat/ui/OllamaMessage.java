@@ -4,18 +4,23 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import fr.baretto.ollamassist.events.FontSettingsNotifier;
+import fr.baretto.ollamassist.utils.FontUtils;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OllamaMessage extends JPanel {
 
     private final transient Context context;
     private final JPanel mainPanel;
     private final JLabel currentHeaderPanel;
+    private final List<JTextArea> textAreas = new ArrayList<>();
     private boolean inCodeBlock = false;
     private SyntaxHighlighterPanel latestCodeBlock;
     private JTextArea currentTextArea;
@@ -52,6 +57,13 @@ public class OllamaMessage extends JPanel {
                 mainPanel.repaint();
             }
         });
+
+        // Subscribe to font settings changes
+        if (context != null && context.project() != null) {
+            context.project().getMessageBus()
+                    .connect()
+                    .subscribe(FontSettingsNotifier.TOPIC, this::refreshFonts);
+        }
     }
 
     public void append(String token) {
@@ -124,6 +136,8 @@ public class OllamaMessage extends JPanel {
         currentTextArea.setEditable(false);
         currentTextArea.setOpaque(false);
         currentTextArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        currentTextArea.setFont(FontUtils.getNormalFont());
+        textAreas.add(currentTextArea);
         mainPanel.add(currentTextArea);
     }
 
@@ -144,9 +158,21 @@ public class OllamaMessage extends JPanel {
 
     private JLabel createHeaderLabel() {
         JBLabel header = new JBLabel("OllamAssist", IconUtils.OLLAMASSIST_THINKING_ICON, SwingConstants.RIGHT);
-        header.setFont(header.getFont().deriveFont(10f));
+        header.setFont(FontUtils.getSmallFont());
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         return header;
+    }
+
+    private void refreshFonts() {
+        SwingUtilities.invokeLater(() -> {
+            FontUtils.updateMultiplier();
+            currentHeaderPanel.setFont(FontUtils.getSmallFont());
+            for (JTextArea textArea : textAreas) {
+                textArea.setFont(FontUtils.getNormalFont());
+            }
+            revalidate();
+            repaint();
+        });
     }
 
     public void finalizeResponse(ChatResponse chatResponse) {

@@ -26,6 +26,7 @@ import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 import fr.baretto.ollamassist.setting.PromptSettings;
+import fr.baretto.ollamassist.utils.FontUtils;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -243,7 +244,7 @@ public class OllamaContent {
 
         JLabel tokenCountLabel = new JLabel("Tokens: 0");
         tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
-        tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        tokenCountLabel.setFont(FontUtils.getSmallFont());
         tokenCountLabel.setForeground(JBColor.GRAY);
         fileSelector.getFileTable().getModel().addTableModelListener(e ->
                 updateTokenCount(fileSelector, tokenCountLabel)

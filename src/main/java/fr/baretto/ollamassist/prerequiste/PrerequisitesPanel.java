@@ -16,6 +16,7 @@ import fr.baretto.ollamassist.completion.LightModelAssistant;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
+import fr.baretto.ollamassist.utils.FontUtils;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -89,7 +90,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         gbc.gridy = 0;
         gbc.gridwidth = 2;
         JBLabel title = new JBLabel("Prerequisites check:");
-        title.setFont(UIUtil.getLabelFont().deriveFont(Font.BOLD, 14f));
+        title.setFont(FontUtils.getTitleFont());
         contentPanel.add(title, gbc);
 
         gbc.gridy++;
@@ -229,15 +230,15 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
         ollamaDownloadLink.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
         chatModelCommandField.setBackground(UIUtil.getPanelBackground());
-        chatModelCommandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        chatModelCommandField.setFont(FontUtils.getCodeFont());
         chatModelCommandField.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
         autocompleteModelCommandField.setBackground(UIUtil.getPanelBackground());
-        autocompleteModelCommandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        autocompleteModelCommandField.setFont(FontUtils.getCodeFont());
         autocompleteModelCommandField.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
         embeddingModelCommandField.setBackground(UIUtil.getPanelBackground());
-        embeddingModelCommandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        embeddingModelCommandField.setFont(FontUtils.getCodeFont());
         embeddingModelCommandField.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 
         copyChatCommandButton.setIcon(IconUtils.COPY);
@@ -373,7 +374,7 @@ public class PrerequisitesPanel extends SimpleToolWindowPanel {
                 JBTextField fallbackCommand = new JBTextField("ollama pull nomic-embed-text");
                 fallbackCommand.setEditable(false);
                 fallbackCommand.setBackground(UIUtil.getPanelBackground());
-                fallbackCommand.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+                fallbackCommand.setFont(FontUtils.getCodeFont());
 
                 JButton copyFallbackButton = new JButton("Copy");
                 copyFallbackButton.setIcon(IconUtils.COPY);

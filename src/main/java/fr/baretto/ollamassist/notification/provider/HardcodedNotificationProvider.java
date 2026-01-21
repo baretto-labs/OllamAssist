@@ -14,6 +14,58 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.10.4 - UI Font Size Customization
+                Notification.builder()
+                        .id("v1.10.4-release")
+                        .version("1.10.4")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.10.4 - Better UI Font Sizing")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>🔤 Customizable UI Font Size</h3>
+
+                                <p>Finally! You can now <b>adjust font sizes across the entire UI</b> to match your preferences and display resolution.</p>
+
+                                <h4>✨ What's New:</h4>
+                                <ul>
+                                  <li><b>Font Size Slider</b> - Adjust from 50% to 200% in the UI settings</li>
+                                  <li><b>Real-time Preview</b> - See changes instantly in the settings panel</li>
+                                  <li><b>IDE Font Respect</b> - All UI components respect your IDE's default font settings</li>
+                                  <li><b>HiDPI Support</b> - Better scaling on high-resolution displays (2K, 4K)</li>
+                                </ul>
+
+                                <h4>🎯 Perfect For:</h4>
+                                <ul>
+                                  <li>✅ Users on high-resolution displays (2K, 4K monitors)</li>
+                                  <li>✅ Vision-impaired developers who need larger fonts</li>
+                                  <li>✅ Personalizing the IDE to your comfort level</li>
+                                </ul>
+
+                                <h4>🔧 How to Access:</h4>
+                                <p><b>Settings → OllamAssist → UI → Font Size Multiplier</b></p>
+
+                                <hr style='margin: 15px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h4>📊 Affected Components:</h4>
+                                <ul>
+                                  <li>Chat messages (headers and body text)</li>
+                                  <li>Code syntax highlighting blocks</li>
+                                  <li>Settings panels and notifications</li>
+                                  <li>All UI labels and buttons</li>
+                                </ul>
+
+                                <p style='font-size: 0.9em; color: #666;'>
+                                💡 <i>Tip: Try increasing to 125% on a 2K display for better readability!</i>
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 1, 21, 0, 0))
+                        .build(),
+
                 // v1.10.2 - IndexWriterConfig Fix
                 Notification.builder()
                         .id("v1.10.2-release")

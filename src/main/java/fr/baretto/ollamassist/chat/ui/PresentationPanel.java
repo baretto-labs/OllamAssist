@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.ui.components.JBScrollPane;
+import fr.baretto.ollamassist.utils.FontUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,21 +18,21 @@ public class PresentationPanel extends JPanel {
         mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel titleLabel = new JLabel("OllamAssist");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        titleLabel.setFont(FontUtils.getTitleFont());
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(titleLabel);
 
         mainPanel.add(Box.createVerticalStrut(10)); // Espacement
 
         JLabel descriptionLabel = new JLabel("This plugin allows interaction with Ollama directly within the IntelliJ IDE.");
-        descriptionLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        descriptionLabel.setFont(FontUtils.getNormalFont());
         descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(descriptionLabel);
 
         mainPanel.add(Box.createVerticalStrut(10)); // Espacement
 
         JLabel featuresTitle = new JLabel("Features:");
-        featuresTitle.setFont(new Font("Arial", Font.BOLD, 13));
+        featuresTitle.setFont(FontUtils.getSubtitleFont());
         featuresTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(featuresTitle);
 
@@ -50,33 +51,33 @@ public class PresentationPanel extends JPanel {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel chatFeature = new JLabel("• Chat: Chat and interact with ollama model, which can access your workspace.");
-        chatFeature.setFont(new Font("Arial", Font.PLAIN, 12));
-        chatFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, chatFeature.getPreferredSize().height));  // Ajuste la largeur
+        chatFeature.setFont(FontUtils.getNormalFont());
+        chatFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, chatFeature.getPreferredSize().height));
         panel.add(chatFeature);
 
         JLabel chatFeatureDetail = new JLabel("   It helps you understand code, implement methods, or write tests.");
-        chatFeatureDetail.setFont(new Font("Arial", Font.PLAIN, 12));
-        chatFeatureDetail.setMaximumSize(new Dimension(Integer.MAX_VALUE, chatFeatureDetail.getPreferredSize().height));  // Ajuste la largeur
+        chatFeatureDetail.setFont(FontUtils.getNormalFont());
+        chatFeatureDetail.setMaximumSize(new Dimension(Integer.MAX_VALUE, chatFeatureDetail.getPreferredSize().height));
         panel.add(chatFeatureDetail);
 
         JLabel settingFeature = new JLabel("• Settings: You can choose the model used in the settings.");
-        settingFeature.setFont(new Font("Arial", Font.PLAIN, 12));
-        settingFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, settingFeature.getPreferredSize().height));  // Ajuste la largeur
+        settingFeature.setFont(FontUtils.getNormalFont());
+        settingFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, settingFeature.getPreferredSize().height));
         panel.add(settingFeature);
 
         JLabel autoCompleteFeature = new JLabel("• Autocomplete (experimental): Ask OllamAssist to complete your code");
-        autoCompleteFeature.setFont(new Font("Arial", Font.PLAIN, 12));
-        autoCompleteFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeature.getPreferredSize().height));  // Ajuste la largeur
+        autoCompleteFeature.setFont(FontUtils.getNormalFont());
+        autoCompleteFeature.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeature.getPreferredSize().height));
         panel.add(autoCompleteFeature);
 
         JLabel autoCompleteFeatureDetail1 = new JLabel("  by pressing Shift+Space. Press Enter to insert the suggestion");
-        autoCompleteFeatureDetail1.setFont(new Font("Arial", Font.PLAIN, 12));
-        autoCompleteFeatureDetail1.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeatureDetail1.getPreferredSize().height));  // Ajuste la largeur
+        autoCompleteFeatureDetail1.setFont(FontUtils.getNormalFont());
+        autoCompleteFeatureDetail1.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeatureDetail1.getPreferredSize().height));
         panel.add(autoCompleteFeatureDetail1);
 
         JLabel autoCompleteFeatureDetail2 = new JLabel("  any other key will dismiss it.");
-        autoCompleteFeatureDetail2.setFont(new Font("Arial", Font.PLAIN, 12));
-        autoCompleteFeatureDetail2.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeatureDetail2.getPreferredSize().height));  // Ajuste la largeur
+        autoCompleteFeatureDetail2.setFont(FontUtils.getNormalFont());
+        autoCompleteFeatureDetail2.setMaximumSize(new Dimension(Integer.MAX_VALUE, autoCompleteFeatureDetail2.getPreferredSize().height));
         panel.add(autoCompleteFeatureDetail2);
 
         return panel;

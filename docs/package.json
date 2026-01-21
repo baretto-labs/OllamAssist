@@ -1,0 +1,14 @@
+{
+  "name": "ollamassist-docs",
+  "version": "1.0.0",
+  "description": "OllamAssist Documentation",
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "@fortawesome/fontawesome-free": "^6.7.0"
+  },
+  "devDependencies": {
+    "postcss": "^8.4.32",
+    "postcss-cli": "^11.0.0",
+    "autoprefixer": "^10.4.16"
+  }
+}

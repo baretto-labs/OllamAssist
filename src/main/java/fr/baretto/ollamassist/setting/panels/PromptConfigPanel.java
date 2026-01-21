@@ -4,6 +4,7 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.setting.PromptSettings;
+import fr.baretto.ollamassist.utils.FontUtils;
 import lombok.Getter;
 
 import javax.swing.*;
@@ -108,7 +109,7 @@ public class PromptConfigPanel extends JBPanel<PromptConfigPanel> {
         JTextArea textArea = new JTextArea();
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
-        textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        textArea.setFont(FontUtils.getCodeFont());
         textArea.setTabSize(4);
         return textArea;
     }

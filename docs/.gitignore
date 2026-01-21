@@ -1,0 +1,25 @@
+# Hugo
+public/
+resources/
+
+# Node dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Cache
+.cache/

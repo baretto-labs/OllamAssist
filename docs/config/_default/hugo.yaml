@@ -1,0 +1,75 @@
+baseURL: "https://baretto-labs.github.io/OllamAssist/"
+languageCode: "en-us"
+title: "OllamAssist Documentation"
+theme: "docsy"
+
+# Language settings
+languages:
+  en:
+    languageName: English
+    weight: 1
+
+# Markup configuration
+markup:
+  goldmark:
+    extensions:
+      table: true
+      strikethrough: true
+      taskList: true
+
+# Menu configuration
+menu:
+  main:
+    - name: "Documentation"
+      weight: 10
+      url: "/docs/"
+    - name: "Getting Started"
+      weight: 20
+      url: "/docs/getting-started/"
+    - name: "Features"
+      weight: 30
+      url: "/docs/features/"
+    - name: "Settings"
+      weight: 40
+      url: "/docs/settings/"
+    - name: "FAQs"
+      weight: 50
+      url: "/docs/faq/"
+    - name: "GitHub"
+      weight: 100
+      url: "https://github.com/baretto-labs/OllamAssist"
+
+# Params for Docsy theme
+params:
+  description: "AI-powered code assistant for IntelliJ IDEA with offline Ollama integration"
+  author: "Baretto"
+
+  # Docsy-specific settings
+  logo:
+    text: "OllamAssist"
+    url: "/"
+
+  # Social links
+  social:
+    github: "https://github.com/baretto-labs/OllamAssist"
+
+  # Versioning
+  version_menu: "Releases"
+
+  # UI
+  sidebar_search_disable: false
+
+  # Analytics
+  google_analytics_id: ""
+
+  # Links
+  github_repo: "https://github.com/baretto-labs/OllamAssist"
+  github_branch: "main"
+
+# Disable module imports to simplify deployment
+module:
+  imports:
+    - path: github.com/twbs/bootstrap
+      disable: true
+    - path: github.com/FortAwesome/Font-Awesome
+      disable: true

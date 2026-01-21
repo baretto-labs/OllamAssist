@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import com.intellij.ui.components.JBLabel;
+import fr.baretto.ollamassist.utils.FontUtils;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.jetbrains.annotations.NotNull;
 
@@ -99,7 +100,7 @@ public class UserMessage extends JPanel {
 
     private @NotNull JBLabel createHeaderLabel() {
         JBLabel header = new JBLabel("User", IconUtils.USER_ICON, SwingConstants.LEFT);
-        header.setFont(header.getFont().deriveFont(10f));
+        header.setFont(FontUtils.getSmallFont());
         header.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
         return header;
     }

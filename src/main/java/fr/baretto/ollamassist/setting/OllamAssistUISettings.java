@@ -45,9 +45,19 @@ public class OllamAssistUISettings implements PersistentStateComponent<OllamAssi
         myState.contextPanelCollapsed = isCollapsed;
     }
 
+    public float getFontSizeMultiplier() {
+        return myState.fontSizeMultiplier;
+    }
+
+    public void setFontSizeMultiplier(float multiplier) {
+        myState.fontSizeMultiplier = Math.max(0.5f, Math.min(2.0f, multiplier));
+    }
+
     @Getter
     public static class State {
         // Persiste configuration for UI component, currently used only for the chat context
         public boolean contextPanelCollapsed = false;
+        // Font size multiplier for UI components (0.5 to 2.0, default 1.0)
+        public float fontSizeMultiplier = 1.0f;
     }
 }

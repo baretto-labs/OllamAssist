@@ -6,6 +6,7 @@ import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
 import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
 import fr.baretto.ollamassist.setting.panels.PromptConfigPanel;
 import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
+import fr.baretto.ollamassist.setting.panels.UIConfigPanel;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -23,6 +24,7 @@ public class ConfigurationPanel extends JPanel {
     private final transient RAGConfigPanel ragPanel;
     private final transient ActionsConfigPanel actionsPanel;
     private final transient PromptConfigPanel promptPanel;
+    private final transient UIConfigPanel uiPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
@@ -35,6 +37,7 @@ public class ConfigurationPanel extends JPanel {
         ragPanel = new RAGConfigPanel(project);
         actionsPanel = new ActionsConfigPanel();
         promptPanel = new PromptConfigPanel();
+        uiPanel = new UIConfigPanel();
 
         // Create tabbed pane
         JBTabbedPane tabbedPane = new JBTabbedPane();
@@ -42,6 +45,7 @@ public class ConfigurationPanel extends JPanel {
         tabbedPane.addTab("RAG", ragPanel);
         tabbedPane.addTab("Actions", actionsPanel);
         tabbedPane.addTab("Prompts", promptPanel);
+        tabbedPane.addTab("UI", uiPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -246,5 +250,14 @@ public class ConfigurationPanel extends JPanel {
 
     public boolean validatePrompts() {
         return promptPanel.validatePrompts();
+    }
+
+    // UI settings delegation
+    public void applyUISettings() {
+        uiPanel.applySettings();
+    }
+
+    public void resetUISettings() {
+        uiPanel.resetSettings();
     }
 }
