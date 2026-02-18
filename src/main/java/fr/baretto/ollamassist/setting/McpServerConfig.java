@@ -41,16 +41,6 @@ public class McpServerConfig {
      */
     private String url = "";
 
-    /**
-     * Docker image name for Docker transport (e.g., "mcp/time")
-     */
-    private String dockerImage = "";
-
-    /**
-     * Docker host URL (e.g., "unix:///var/run/docker.sock")
-     */
-    private String dockerHost = "unix:///var/run/docker.sock";
-
     // Advanced configuration options
 
     /**
@@ -98,8 +88,7 @@ public class McpServerConfig {
     @Getter
     public enum TransportType {
         STDIO("Stdio (Local Process)"),
-        HTTP_SSE("HTTP/SSE (Server)"),
-        DOCKER("Docker Container");
+        HTTP_SSE("HTTP/SSE (Server)");
 
         private final String displayName;
 
@@ -120,7 +109,6 @@ public class McpServerConfig {
         return switch (type) {
             case STDIO -> String.join(" ", command);
             case HTTP_SSE -> url;
-            case DOCKER -> dockerImage;
         };
     }
 }

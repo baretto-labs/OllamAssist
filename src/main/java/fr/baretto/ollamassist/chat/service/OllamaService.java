@@ -160,6 +160,11 @@ public final class OllamaService implements Disposable, ModelListener {
 
     @Override
     public void reloadModel() {
-        this.assistant = initAssistant();
+        new Task.Backgroundable(project, "Reload chat model") {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                assistant = initAssistant();
+            }
+        }.queue();
     }
 }

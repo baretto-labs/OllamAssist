@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.setting;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
+import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import com.intellij.openapi.project.Project;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nls;
@@ -131,25 +132,26 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             mcpSettings.setMcpApprovalRequired(configurationPanel.isMcpApprovalRequired());
             mcpSettings.setMcpApprovalTimeoutSeconds(configurationPanel.getMcpApprovalTimeoutSeconds());
 
-            // Reinitialize MCP clients if configuration changed
             if (mcpWasModified) {
+                // MCP config changed: reinitialize clients then reload the assistant
                 log.info("MCP configuration changed, reinitializing runtime state and clients");
                 ApplicationManager.getApplication().executeOnPooledThread(() -> {
                     try {
-                        // IMPORTANT: Reset runtime state FIRST to sync with new settings
                         fr.baretto.ollamassist.mcp.McpRuntimeState.getInstance(project).resetToDefaults();
-
-                        // Then reinitialize clients based on the refreshed runtime state
                         fr.baretto.ollamassist.mcp.McpClientManager.getInstance(project).initializeClients();
+                        project.getMessageBus()
+                                .syncPublisher(ChatModelModifiedNotifier.TOPIC)
+                                .onChatModelModified();
                     } catch (Exception e) {
                         log.error("Failed to reinitialize MCP clients", e);
                     }
                 });
+            } else {
+                // Non-MCP settings changed: reload model immediately
+                ApplicationManager.getApplication().getMessageBus()
+                        .syncPublisher(ModelListener.TOPIC)
+                        .reloadModel();
             }
-
-            ApplicationManager.getApplication().getMessageBus()
-                    .syncPublisher(ModelListener.TOPIC)
-                    .reloadModel();
 
             if (shouldCleanAllDatabase) {
                 configurationPanel.triggerCleanAllDatabase();

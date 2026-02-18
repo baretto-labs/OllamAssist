@@ -300,63 +300,46 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     private void onMcpSelectionChanged() {
-        // Reinitialize MCP clients asynchronously
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             McpClientManager.getInstance(project).initializeClients();
 
-            // Trigger assistant reload via message bus
-            SwingUtilities.invokeLater(() -> {
-                project.getMessageBus()
-                        .syncPublisher(ChatModelModifiedNotifier.TOPIC)
-                        .onChatModelModified();
+            // Publish on the pooled thread: the subscriber queues a background task
+            project.getMessageBus()
+                    .syncPublisher(ChatModelModifiedNotifier.TOPIC)
+                    .onChatModelModified();
 
-                // Update button tooltip with new active count
-                updateMcpButtonState();
-            });
+            // Button state update must run on EDT
+            SwingUtilities.invokeLater(this::updateMcpButtonState);
         });
     }
 
     private void updateMcpButtonState() {
         if (mcpButton == null || project == null) {
-            log.debug("Cannot update MCP button state: button or project is null");
             return;
         }
 
         try {
-            // Get active count from runtime state
-            McpRuntimeState runtimeState = McpRuntimeState.getInstance(project);
-            if (runtimeState == null) {
-                log.warn("McpRuntimeState is null for project: {}", project.getName());
-                return;
-            }
-
-            long activeCount = runtimeState.getAllActiveStates()
-                    .values()
-                    .stream()
-                    .filter(active -> active)
-                    .count();
-
-            // Get total count from settings (only enabled servers)
+            McpClientManager mcpManager = McpClientManager.getInstance(project);
             McpSettings mcpSettings = McpSettings.getInstance(project);
-            if (mcpSettings == null) {
-                log.warn("McpSettings is null for project: {}", project.getName());
-                return;
-            }
 
-            long totalCount = mcpSettings.getMcpServers()
-                    .stream()
+            long selectedCount = McpRuntimeState.getInstance(project).getAllActiveStates()
+                    .values().stream().filter(active -> active).count();
+            long totalCount = mcpSettings.getMcpServers().stream()
                     .filter(fr.baretto.ollamassist.setting.McpServerConfig::isEnabled)
                     .count();
+            int toolCount = mcpManager.getLoadedToolCount();
 
-            // Update icon based on whether any servers are active
-            if (activeCount > 0) {
+            if (mcpManager.isEnabled() && toolCount > 0) {
                 mcpButton.setIcon(IconUtils.MCP_ENABLED);
+                mcpButton.setToolTipText(selectedCount + "/" + totalCount + " MCP servers active — " + toolCount + " tools loaded");
+            } else if (selectedCount > 0) {
+                // Selected but no tools loaded: connection failed
+                mcpButton.setIcon(IconUtils.MCP_ERROR);
+                mcpButton.setToolTipText("MCP connection failed — check IDE logs");
             } else {
                 mcpButton.setIcon(IconUtils.MCP_DISABLED);
+                mcpButton.setToolTipText("MCP servers");
             }
-
-            // Update tooltip
-            mcpButton.setToolTipText(activeCount + "/" + totalCount + " MCP servers active");
         } catch (Exception e) {
             log.error("Error updating MCP button state", e);
         }

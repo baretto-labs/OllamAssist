@@ -3,19 +3,24 @@ package fr.baretto.ollamassist.mcp;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.docker.DockerMcpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import fr.baretto.ollamassist.setting.McpServerConfig;
 import fr.baretto.ollamassist.setting.McpSettings;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 /**
  * Service that manages MCP (Model Context Protocol) client lifecycle.
@@ -25,9 +30,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Service(Service.Level.PROJECT)
 public final class McpClientManager implements Disposable {
 
+    private static final String NOTIFICATION_GROUP = "OllamAssist";
+
     private final Project project;
     private final List<McpClient> activeClients = Collections.synchronizedList(new ArrayList<>());
     private volatile McpToolProvider toolProvider = null;
+    @Getter
+    private volatile int loadedToolCount = 0;
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
 
     public McpClientManager(Project project) {
@@ -106,8 +115,14 @@ public final class McpClientManager implements Disposable {
             // Create tool provider if we have active clients
             if (!activeClients.isEmpty()) {
                 createToolProvider();
+                verifyToolsAndNotify();
             } else {
                 log.warn("No MCP clients were successfully created");
+                Notifications.Bus.notify(new Notification(
+                        NOTIFICATION_GROUP,
+                        "MCP Initialization Failed",
+                        "No MCP servers could connect. Check the command/URL and IDE logs for details.",
+                        NotificationType.ERROR), project);
             }
         } finally {
             rwLock.writeLock().unlock();
@@ -139,7 +154,6 @@ public final class McpClientManager implements Disposable {
         return switch (config.getType()) {
             case STDIO -> createStdioTransport(config);
             case HTTP_SSE -> createHttpTransport(config);
-            case DOCKER -> createDockerTransport(config);
         };
     }
 
@@ -158,10 +172,16 @@ public final class McpClientManager implements Disposable {
                 .command(config.getCommand())
                 .logEvents(config.isLogEvents());
 
-        // Add environment variables if configured
-        Map<String, String> envVars = parseEnvironmentVariables(config.getEnvironmentVariables());
-        if (!envVars.isEmpty()) {
-            log.debug("Adding {} environment variables for server: {}", envVars.size(), config.getName());
+        // Only set an explicit environment when the user has defined extra variables.
+        // Without this call, ProcessBuilder inherits the parent process environment,
+        // which already contains the correct PATH (nvm, Homebrew, etc.) since the IDE
+        // was launched from the terminal. Replacing the environment unconditionally
+        // (e.g., via EnvironmentUtil) risks stripping paths in sandboxed run configs.
+        Map<String, String> userEnvVars = parseEnvironmentVariables(config.getEnvironmentVariables());
+        if (!userEnvVars.isEmpty()) {
+            Map<String, String> envVars = new HashMap<>(System.getenv());
+            envVars.putAll(userEnvVars);
+            log.debug("Applying {} user-defined environment variables for server: {}", userEnvVars.size(), config.getName());
             builder.environment(envVars);
         }
 
@@ -225,24 +245,6 @@ public final class McpClientManager implements Disposable {
         }
 
         return builder.build();
-    }
-
-    /**
-     * Create Docker transport for containerized servers.
-     */
-    private McpTransport createDockerTransport(McpServerConfig config) {
-        if (config.getDockerImage() == null || config.getDockerImage().isEmpty()) {
-            log.error("No Docker image specified for Docker transport: {}", config.getName());
-            return null;
-        }
-
-        log.debug("Creating Docker transport with image: {} and host: {}",
-                config.getDockerImage(), config.getDockerHost());
-
-        return DockerMcpTransport.builder()
-                .image(config.getDockerImage())
-                .dockerHost(config.getDockerHost())
-                .build();
     }
 
     /**
@@ -322,6 +324,49 @@ public final class McpClientManager implements Disposable {
     }
 
     /**
+     * Calls listTools() on each active client to verify the connection and count available tools.
+     * Shows a notification summarizing the result.
+     */
+    private void verifyToolsAndNotify() {
+        List<String> toolNames = new ArrayList<>();
+        List<String> failedServers = new ArrayList<>();
+
+        synchronized (activeClients) {
+            for (McpClient client : activeClients) {
+                try {
+                    List<ToolSpecification> tools = client.listTools();
+                    String names = tools.stream()
+                            .map(ToolSpecification::name)
+                            .collect(Collectors.joining(", "));
+                    log.info("MCP server '{}' provides {} tools: [{}]", client.key(), tools.size(), names);
+                    toolNames.addAll(tools.stream().map(ToolSpecification::name).toList());
+                } catch (Exception e) {
+                    log.error("MCP server '{}' failed to list tools", client.key(), e);
+                    failedServers.add(client.key());
+                }
+            }
+        }
+
+        loadedToolCount = toolNames.size();
+
+        if (!failedServers.isEmpty()) {
+            Notifications.Bus.notify(new Notification(
+                    NOTIFICATION_GROUP,
+                    "MCP Connection Error",
+                    "Server(s) failed to list tools: " + String.join(", ", failedServers) + ". Check IDE logs.",
+                    NotificationType.ERROR), project);
+        } else if (toolNames.isEmpty()) {
+            Notifications.Bus.notify(new Notification(
+                    NOTIFICATION_GROUP,
+                    "MCP Connected — No Tools",
+                    "MCP servers connected but returned no tools.",
+                    NotificationType.WARNING), project);
+        } else {
+            log.info("MCP ready: {} tools loaded across {} server(s)", toolNames.size(), activeClients.size());
+        }
+    }
+
+    /**
      * Get the tool provider, or null if no MCP clients are active.
      */
     public McpToolProvider getToolProvider() {
@@ -388,6 +433,7 @@ public final class McpClientManager implements Disposable {
             }
         }
         toolProvider = null;
+        loadedToolCount = 0;
     }
 
     @Override

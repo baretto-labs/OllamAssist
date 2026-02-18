@@ -129,12 +129,11 @@ public class McpConfigPanel extends JBPanel<McpConfigPanel> {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel infoLabel = new JLabel("<html>" +
-                "<b>ℹ️ About MCP (Model Context Protocol):</b><br/>" +
+                "<b>About MCP (Model Context Protocol):</b><br/>" +
                 "MCP enables the AI assistant to use external tools and access external data sources.<br/>" +
-                "Configure servers below using one of three transport types:<br/>" +
+                "Configure servers below using one of two transport types:<br/>" +
                 "• <b>Stdio:</b> Launch local processes (e.g., npm-based servers)<br/>" +
                 "• <b>HTTP/SSE:</b> Connect to remote HTTP servers with Server-Sent Events<br/>" +
-                "• <b>Docker:</b> Run MCP servers in Docker containers<br/>" +
                 "Each server can be individually enabled or disabled." +
                 "</html>");
         infoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);

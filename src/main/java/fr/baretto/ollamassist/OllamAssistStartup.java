@@ -11,6 +11,7 @@ import com.intellij.openapi.startup.ProjectActivity;
 import fr.baretto.ollamassist.chat.askfromcode.EditorListener;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.completion.LightModelAssistant;
+import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.mcp.McpClientManager;
 import fr.baretto.ollamassist.prerequiste.PrerequisiteService;
@@ -94,20 +95,25 @@ public class OllamAssistStartup implements ProjectActivity {
                 new Task.Backgroundable(project, "Ollamassist is starting ...", true) {
                     @Override
                     public void run(@NotNull ProgressIndicator indicator) {
-                        // Initialize MCP clients if MCP is enabled
+                        // Init OllamaService first so it subscribes to ChatModelModifiedNotifier
+                        project.getService(OllamaService.class).init();
+                        LightModelAssistant.get();
+
+                        // Initialize MCP clients asynchronously, then reload the assistant
                         ApplicationManager.getApplication().executeOnPooledThread(() -> {
                             try {
                                 McpClientManager.getInstance(project).initializeClients();
+                                if (McpClientManager.getInstance(project).isEnabled()) {
+                                    project.getMessageBus()
+                                            .syncPublisher(ChatModelModifiedNotifier.TOPIC)
+                                            .onChatModelModified();
+                                }
                             } catch (Exception e) {
-                                // Log error but don't fail startup
                                 String message = "Failed to initialize MCP clients: " + e.getMessage();
                                 Notifications.Bus.notify(new Notification(OLLAM_ASSIST, "MCP Initialization Failed",
                                         message, NotificationType.WARNING), project);
                             }
                         });
-
-                        project.getService(OllamaService.class).init();
-                        LightModelAssistant.get();
 
                         ApplicationManager.getApplication()
                                 .getMessageBus()

@@ -34,11 +34,6 @@ public class AddEditMcpServerDialog extends DialogWrapper {
     private final JBTextField authTokenField = new JBTextField(30);
     private final JBPanel<?> httpPanel = new JBPanel<>();
 
-    // Docker fields
-    private final JBTextField dockerImageField = new JBTextField(30);
-    private final JBTextField dockerHostField = new JBTextField(30);
-    private final JBPanel<?> dockerPanel = new JBPanel<>();
-
     // Advanced options
     private final JBCheckBox logEventsCheckbox = new JBCheckBox("Log events");
     private final JBCheckBox logRequestsCheckbox = new JBCheckBox("Log HTTP requests");
@@ -185,42 +180,9 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         gbc.gridwidth = 2;
         httpPanel.add(new JBLabel("<html><i>Will be sent as \"Authorization: Bearer &lt;token&gt;\" header</i></html>"), gbc);
 
-        // Docker panel
-        dockerPanel.setLayout(new GridBagLayout());
-        gbc = new GridBagConstraints();
-        gbc.insets = JBUI.insets(5);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0;
-        dockerPanel.add(new JBLabel("Docker Image:"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        dockerPanel.add(dockerImageField, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.weightx = 0;
-        dockerPanel.add(new JBLabel("Docker Host:"), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        dockerPanel.add(dockerHostField, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.gridwidth = 2;
-        dockerPanel.add(new JBLabel("<html><i>Docker socket (e.g., \"unix:///var/run/docker.sock\")</i></html>"), gbc);
-
-        dockerHostField.setText("unix:///var/run/docker.sock");
-
         // Add panels to card layout
         dynamicConfigPanel.add(stdioPanel, McpServerConfig.TransportType.STDIO.name());
         dynamicConfigPanel.add(httpPanel, McpServerConfig.TransportType.HTTP_SSE.name());
-        dynamicConfigPanel.add(dockerPanel, McpServerConfig.TransportType.DOCKER.name());
 
         updateDynamicPanel();
 
@@ -329,8 +291,6 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         commandField.setText(String.join(" ", config.getCommand()));
         urlField.setText(config.getUrl());
         authTokenField.setText(config.getAuthToken());
-        dockerImageField.setText(config.getDockerImage());
-        dockerHostField.setText(config.getDockerHost());
 
         // Advanced
         logEventsCheckbox.setSelected(config.isLogEvents());
@@ -361,8 +321,6 @@ public class AddEditMcpServerDialog extends DialogWrapper {
         );
         config.setUrl(urlField.getText().trim());
         config.setAuthToken(authTokenField.getText().trim());
-        config.setDockerImage(dockerImageField.getText().trim());
-        config.setDockerHost(dockerHostField.getText().trim());
 
         // Advanced
         config.setLogEvents(logEventsCheckbox.isSelected());
@@ -389,10 +347,6 @@ public class AddEditMcpServerDialog extends DialogWrapper {
 
         if (type == McpServerConfig.TransportType.HTTP_SSE && urlField.getText().trim().isEmpty()) {
             return new ValidationInfo("URL is required for HTTP/SSE transport", urlField);
-        }
-
-        if (type == McpServerConfig.TransportType.DOCKER && dockerImageField.getText().trim().isEmpty()) {
-            return new ValidationInfo("Docker image is required for Docker transport", dockerImageField);
         }
 
         return null;
