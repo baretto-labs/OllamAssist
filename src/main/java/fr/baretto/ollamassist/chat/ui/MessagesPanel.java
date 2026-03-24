@@ -4,12 +4,14 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import fr.baretto.ollamassist.conversation.ConversationMessage;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class MessagesPanel extends JPanel {
@@ -56,8 +58,36 @@ public class MessagesPanel extends JPanel {
 
     private void clearAll() {
         container.removeAll();
+        presentationPanel = new PresentationPanel();
+        container.add(presentationPanel);
         container.repaint();
         container.revalidate();
+        latestOllamaMessage = null;
+    }
+
+    public void loadConversation(Context ctx, List<ConversationMessage> messages) {
+        SwingUtilities.invokeLater(() -> {
+            clearAll();
+            if (messages.isEmpty()) return;
+            if (presentationPanel != null) {
+                container.remove(presentationPanel);
+                presentationPanel = null;
+            }
+            for (ConversationMessage msg : messages) {
+                if (msg.getRole() == ConversationMessage.Role.USER) {
+                    UserMessage userMessagePanel = new UserMessage(msg.getContent());
+                    container.add(userMessagePanel, createGbc(container.getComponentCount()));
+                } else {
+                    OllamaMessage aiMessage = new OllamaMessage(ctx);
+                    container.add(aiMessage, createGbc(container.getComponentCount()));
+                    aiMessage.append(msg.getContent());
+                    aiMessage.stopSilently();
+                }
+            }
+            container.revalidate();
+            container.repaint();
+            scrollToBottom();
+        });
     }
 
     public void addUserMessage(final String userMessage) {

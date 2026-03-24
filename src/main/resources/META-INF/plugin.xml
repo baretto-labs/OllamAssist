@@ -56,6 +56,15 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.11.0</h2>
+        <UL>
+            <LI>feat: Conversation management - Conversations are now persisted per project across IDE sessions.</LI>
+            <LI>feat: Create multiple named conversations and switch between them from the chat panel.</LI>
+            <LI>feat: Conversation titles are auto-generated from the first message (60 characters max).</LI>
+            <LI>feat: Delete individual conversations with a confirmation dialog.</LI>
+            <LI>feat: Resume any conversation exactly where you left it after restarting the IDE.</LI>
+            <LI>fix: ConcurrentModificationException in FontUtils caused by recursive computeIfAbsent on shared HashMap.</LI>
+         </UL>
         <h2>V1.10.4</h2>
         <UL>
             <LI>feat: Customizable UI font size - Add global font size multiplier in Settings > OllamAssist > UI.</LI>

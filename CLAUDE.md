@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Task Memory
+
+`MEMORY.md` (at the project root) is the persistent task log for this project.
+
+**Claude Code must:**
+- Read `MEMORY.md` at the start of each session to restore context on active or recent tasks.
+- Update `MEMORY.md` when starting a new task, making significant decisions, or completing work.
+- Move completed tasks to the "Completed Tasks" section with a brief summary.
+- Record open questions or blockers that carry over between sessions.
+
+**Do not store in `MEMORY.md`:**
+- Code patterns, architecture, or file paths (already in this file or derivable from the code).
+- Information already documented elsewhere in `CLAUDE.md`.
+
 ## Communication Guidelines
 
 - Respond to chat questions in French

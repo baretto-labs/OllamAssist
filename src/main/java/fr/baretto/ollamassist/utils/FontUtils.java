@@ -9,8 +9,8 @@ import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 
 import java.awt.*;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Utility class for managing fonts throughout the plugin.
@@ -18,13 +18,8 @@ import java.util.Map;
  */
 public class FontUtils {
 
-    private static final Map<String, Font> FONT_CACHE = new HashMap<>();
+    private static final Map<String, Font> FONT_CACHE = new ConcurrentHashMap<>();
     private static float currentMultiplier = 1.0f;
-
-    static {
-        // Initialize with current settings
-        updateMultiplier();
-    }
 
     /**
      * Get the base font (respects IDE Look & Feel).
@@ -137,7 +132,13 @@ public class FontUtils {
      */
     private static Font getCachedFont(String key, FontSupplier supplier) {
         String cacheKey = key + "_" + currentMultiplier;
-        return FONT_CACHE.computeIfAbsent(cacheKey, k -> supplier.getFont());
+        Font cached = FONT_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        Font font = supplier.getFont();
+        FONT_CACHE.put(cacheKey, font);
+        return font;
     }
 
     /**

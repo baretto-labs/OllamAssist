@@ -8,6 +8,8 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -17,8 +19,11 @@ import dev.langchain4j.service.AiServices;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.chat.tools.FileCreator;
+import fr.baretto.ollamassist.conversation.Conversation;
+import fr.baretto.ollamassist.conversation.ConversationMessage;
 import fr.baretto.ollamassist.events.ChatModelModifiedNotifier;
 import fr.baretto.ollamassist.events.ConversationNotifier;
+import fr.baretto.ollamassist.events.ConversationSwitchedNotifier;
 import fr.baretto.ollamassist.setting.ActionsSettings;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -27,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -53,6 +59,8 @@ public final class OllamaService implements Disposable, ModelListener {
         initialize();
 
         messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) chatMemory::clear);
+        project.getMessageBus().connect().subscribe(ConversationSwitchedNotifier.TOPIC,
+                (ConversationSwitchedNotifier) conversation -> restoreMemory(conversation.getMessages()));
         project.getMessageBus().connect().subscribe(ChatModelModifiedNotifier.TOPIC,
                 (ChatModelModifiedNotifier) () -> new Task.Backgroundable(project, "Reload chat model") {
                     @Override
@@ -124,6 +132,17 @@ public final class OllamaService implements Disposable, ModelListener {
                     .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
+    }
+
+    public void restoreMemory(List<ConversationMessage> messages) {
+        chatMemory.clear();
+        for (ConversationMessage msg : messages) {
+            if (msg.getRole() == ConversationMessage.Role.USER) {
+                chatMemory.add(UserMessage.from(msg.getContent()));
+            } else {
+                chatMemory.add(AiMessage.from(msg.getContent()));
+            }
         }
     }
 
