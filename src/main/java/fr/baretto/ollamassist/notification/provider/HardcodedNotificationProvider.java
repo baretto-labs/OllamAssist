@@ -14,6 +14,42 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.11.0 - Conversation Management
+                Notification.builder()
+                        .id("v1.11.0-release")
+                        .version("1.11.0")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.HIGH)
+                        .title("What's New in OllamAssist 1.11.0")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>💬 Conversation Management</h3>
+
+                                <p>Your chat history is now <b>persisted across IDE sessions</b>. No more starting from scratch every time you reopen IntelliJ!</p>
+
+                                <h4>✨ What's New:</h4>
+                                <ul>
+                                  <li><b>Persistent conversations</b> - Each conversation is saved per project under <code>.ollamassist/conversations/</code></li>
+                                  <li><b>Multiple conversations</b> - Create as many conversations as you need and switch between them</li>
+                                  <li><b>Auto-generated titles</b> - Conversation titles are automatically derived from your first message</li>
+                                  <li><b>Delete conversations</b> - Remove conversations you no longer need (with confirmation)</li>
+                                  <li><b>Resume anywhere</b> - Reopen the IDE and pick up exactly where you left off</li>
+                                </ul>
+
+                                <h4>🔧 How to Use:</h4>
+                                <p>Use the dropdown at the top of the chat panel to switch conversations, or click <b>+</b> to start a new one.</p>
+
+                                <p style='font-size: 0.9em; color: #666;'>
+                                💡 <i>Tip: Keep separate conversations for different tasks or topics within the same project!</i>
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 3, 25, 0, 0))
+                        .build(),
+
                 // v1.10.4 - UI Font Size Customization
                 Notification.builder()
                         .id("v1.10.4-release")
