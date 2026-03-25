@@ -64,6 +64,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         RAGSettings ragSettings = RAGSettings.getInstance();
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         PromptSettings promptSettings = PromptSettings.getInstance();
+        OllamAssistUISettings uiSettings = OllamAssistUISettings.getInstance();
 
         return !ollamaSettings.getChatOllamaUrl().equals(configurationPanel.getChatOllamaUrl())
                 || !ollamaSettings.getCompletionOllamaUrl().equals(configurationPanel.getCompletionOllamaUrl())
@@ -121,6 +122,9 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             promptSettings.setChatSystemPrompt(configurationPanel.getChatSystemPrompt());
             promptSettings.setRefactorUserPrompt(configurationPanel.getRefactorUserPrompt());
 
+            // Apply UI settings
+            configurationPanel.applyUISettings();
+
             ApplicationManager.getApplication().getMessageBus()
                     .syncPublisher(ModelListener.TOPIC)
                     .reloadModel();
@@ -160,6 +164,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     public void reset() {
         // Load settings from new separated services
         loadAllSettings();
+        // Reset UI settings
+        configurationPanel.resetUISettings();
     }
 
     private void loadAllSettings() {

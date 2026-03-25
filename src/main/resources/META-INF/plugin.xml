@@ -56,6 +56,31 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.11.0</h2>
+        <UL>
+            <LI>feat: Conversation management - Conversations are now persisted per project across IDE sessions.</LI>
+            <LI>feat: Create multiple named conversations and switch between them from the chat panel.</LI>
+            <LI>feat: Conversation titles are auto-generated from the first message (60 characters max).</LI>
+            <LI>feat: Delete individual conversations with a confirmation dialog.</LI>
+            <LI>feat: Resume any conversation exactly where you left it after restarting the IDE.</LI>
+            <LI>fix: ConcurrentModificationException in FontUtils caused by recursive computeIfAbsent on shared HashMap.</LI>
+         </UL>
+        <h2>V1.10.4</h2>
+        <UL>
+            <LI>feat: Customizable UI font size - Add global font size multiplier in Settings > OllamAssist > UI.</LI>
+            <LI>feat: Interactive font size slider (50% to 200%) with real-time preview in settings panel.</LI>
+            <LI>feat: All UI components now respect IDE font settings with semantic font levels (title, subtitle, normal, small, code).</LI>
+            <LI>feat: Improved support for HiDPI and 2K displays with automatic DPI-aware scaling.</LI>
+            <LI>feat: Centralized FontUtils class for consistent font management across the plugin.</LI>
+            <LI>fix: Font sizes in chat messages, code blocks, and settings panels now properly scale with multiplier.</LI>
+            <LI>fix: FontSettingsNotifier event system for real-time UI refresh on font setting changes.</LI>
+        </UL>
+        <h2>V1.10.3</h2>
+        <UL>
+            <LI>fix: URL normalization for custom Ollama endpoints - add missing http:// scheme and normalize trailing slashes.</LI>
+            <LI>feat: Added URL validation and normalization utility (UrlHelper) for robust custom Ollama URL handling.</LI>
+            <LI>feat: Added comprehensive unit tests for URL normalization (36 test cases).</LI>
+        </UL>
         <h2>V1.10.2</h2>
         <UL>
             <LI>fix: Prevent PluginException by ensuring each Lucene IndexWriter receives its own IndexWriterConfig instance.</LI>

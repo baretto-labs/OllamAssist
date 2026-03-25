@@ -19,6 +19,9 @@ import fr.baretto.ollamassist.chat.tools.ToolCallDetector;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
 import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
+import fr.baretto.ollamassist.conversation.ConversationMessage;
+import fr.baretto.ollamassist.conversation.ConversationService;
+import fr.baretto.ollamassist.events.ConversationSwitchedNotifier;
 import fr.baretto.ollamassist.events.FileApprovalNotifier;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
@@ -26,6 +29,7 @@ import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 import fr.baretto.ollamassist.setting.PromptSettings;
+import fr.baretto.ollamassist.utils.FontUtils;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -90,12 +94,17 @@ public class OllamaContent {
         });
 
 
+        connection.subscribe(ConversationSwitchedNotifier.TOPIC, (ConversationSwitchedNotifier) conversation ->
+                outputPanel.loadConversation(context, conversation.getMessages()));
+
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             synchronized (this) {
                 if (currentChatThread != null) {
                     currentChatThread.stop();
                 }
             }
+            context.project().getService(ConversationService.class)
+                    .addMessage(ConversationMessage.user(message));
             outputPanel.cancelMessage();
             outputPanel.addUserMessage(message);
             outputPanel.addNewAIMessage();
@@ -149,6 +158,9 @@ public class OllamaContent {
         contentPanel.setLayout(new BorderLayout());
         contentPanel.add(createConversationPanel(), BorderLayout.NORTH);
         contentPanel.add(createSplitter(), BorderLayout.CENTER);
+
+        ConversationService conversationService = context.project().getService(ConversationService.class);
+        outputPanel.loadConversation(context, conversationService.getActiveConversation().getMessages());
     }
 
     private JPanel createSplitter() {
@@ -243,7 +255,7 @@ public class OllamaContent {
 
         JLabel tokenCountLabel = new JLabel("Tokens: 0");
         tokenCountLabel.setBorder(JBUI.Borders.empty(0, 5));
-        tokenCountLabel.setFont(tokenCountLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        tokenCountLabel.setFont(FontUtils.getSmallFont());
         tokenCountLabel.setForeground(JBColor.GRAY);
         fileSelector.getFileTable().getModel().addTableModelListener(e ->
                 updateTokenCount(fileSelector, tokenCountLabel)
@@ -309,18 +321,18 @@ public class OllamaContent {
     }
 
     private JPanel createConversationPanel() {
-        JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-
         JPanel conversationPanel = new JPanel(new BorderLayout());
-        conversationPanel.setLayout(new BoxLayout(conversationPanel, BoxLayout.Y_AXIS));
+        conversationPanel.setPreferredSize(new Dimension(0, 30));
 
-        conversationPanel.setPreferredSize(new Dimension(0, 24));
-        JBScrollPane scrollPane = new JBScrollPane(container);
+        ConversationManagerPanel conversationManagerPanel = new ConversationManagerPanel(context.project());
+        conversationPanel.add(conversationManagerPanel, BorderLayout.CENTER);
 
-        ConversationSelectorPanel conversationSelectorPanel = new ConversationSelectorPanel();
-        conversationPanel.add(conversationSelectorPanel, BorderLayout.NORTH);
-        conversationPanel.add(scrollPane, BorderLayout.CENTER);
+        OllamaService ollamaService = context.project().getService(OllamaService.class);
+        ollamaService.restoreMemory(
+                context.project().getService(ConversationService.class)
+                        .getActiveConversation()
+                        .getMessages());
+
         return conversationPanel;
     }
 
@@ -341,6 +353,13 @@ public class OllamaContent {
     private void done(ChatResponse chatResponse) {
         outputPanel.finalizeMessage(chatResponse);
         promptInput.toggleGenerationState(false);
+        if (chatResponse.finishReason() != FinishReason.OTHER
+                && chatResponse.aiMessage() != null
+                && chatResponse.aiMessage().text() != null
+                && !chatResponse.aiMessage().text().isBlank()) {
+            context.project().getService(ConversationService.class)
+                    .addMessage(ConversationMessage.assistant(chatResponse.aiMessage().text()));
+        }
     }
 
     private void publish(String token) {

@@ -9,6 +9,7 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.notification.core.Notification;
 import fr.baretto.ollamassist.notification.core.NotificationManager;
+import fr.baretto.ollamassist.utils.FontUtils;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
@@ -91,7 +92,7 @@ public class NotificationDialog extends DialogWrapper {
 
         // Icon + Type indicator
         JLabel iconLabel = new JLabel(getIconForType(notification.getType()));
-        iconLabel.setFont(iconLabel.getFont().deriveFont(22f));
+        iconLabel.setFont(FontUtils.getTitleFont());
         iconLabel.setVerticalAlignment(SwingConstants.TOP);
         iconLabel.setBorder(JBUI.Borders.emptyTop(2));
         card.add(iconLabel, BorderLayout.WEST);
@@ -106,7 +107,7 @@ public class NotificationDialog extends DialogWrapper {
                         notification.getTitle(),
                         notification.getVersion())
         );
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 13f));
+        titleLabel.setFont(FontUtils.getSubtitleFont());
         contentPanel.add(titleLabel, BorderLayout.NORTH);
 
         // Message - with proper wrapping
@@ -114,7 +115,7 @@ public class NotificationDialog extends DialogWrapper {
         messagePane.setEditable(false);
         messagePane.setOpaque(false);
         messagePane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        messagePane.setFont(UIUtil.getLabelFont());
+        messagePane.setFont(FontUtils.getNormalFont());
 
         // Disable hyperlink handling to avoid issues
         messagePane.addHyperlinkListener(null);
@@ -124,7 +125,7 @@ public class NotificationDialog extends DialogWrapper {
         // "Don't show again" button if dismissible
         if (notification.isDismissible()) {
             JButton dismissButton = new JButton("Don't show again");
-            dismissButton.setFont(dismissButton.getFont().deriveFont(10f));
+            dismissButton.setFont(FontUtils.getSmallFont());
             dismissButton.putClientProperty("JButton.buttonType", "borderless");
             dismissButton.addActionListener(e -> {
                 notificationManager.markAsRead(notification.getId());

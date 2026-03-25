@@ -10,6 +10,8 @@ import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.component.ComponentCustomizer;
+import fr.baretto.ollamassist.events.FontSettingsNotifier;
+import fr.baretto.ollamassist.utils.FontUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -52,7 +54,7 @@ public class SyntaxHighlighterPanel extends JPanel {
 
         JPanel headerPanel = new JPanel(new BorderLayout());
 
-        languageLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        languageLabel.setFont(FontUtils.getSubtitleFont());
         headerPanel.add(languageLabel, BorderLayout.WEST);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
@@ -71,6 +73,13 @@ public class SyntaxHighlighterPanel extends JPanel {
 
         add(headerPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
+
+        // Subscribe to font settings changes
+        if (context != null && context.project() != null) {
+            context.project().getMessageBus()
+                    .connect()
+                    .subscribe(FontSettingsNotifier.TOPIC, this::refreshFonts);
+        }
     }
 
     private void copyToClipboard() {
@@ -106,6 +115,21 @@ public class SyntaxHighlighterPanel extends JPanel {
         } catch (IOException e) {
             log.error(e.getMessage());
         }
+        updateRSyntaxTextAreaFont();
+    }
+
+    private void updateRSyntaxTextAreaFont() {
+        codeBlock.setFont(FontUtils.getCodeFont());
+    }
+
+    private void refreshFonts() {
+        SwingUtilities.invokeLater(() -> {
+            FontUtils.updateMultiplier();
+            languageLabel.setFont(FontUtils.getSubtitleFont());
+            updateRSyntaxTextAreaFont();
+            revalidate();
+            repaint();
+        });
     }
 
     public void adjustSizeToContent() {

@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.chat.ui;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
+import fr.baretto.ollamassist.utils.FontUtils;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
@@ -45,7 +46,7 @@ public class ApprovalMessage extends JPanel {
         headerPanel.setOpaque(false);
         Icon headerIcon = isAutoCreated ? IconUtils.OLLAMASSIST_ICON : IconUtils.OLLAMASSIST_WARN_ICON;
         JBLabel headerLabel = new JBLabel(title, headerIcon, SwingConstants.LEFT);
-        headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 12f));
+        headerLabel.setFont(FontUtils.getNormalFont());
         headerPanel.add(headerLabel, BorderLayout.WEST);
         add(headerPanel, BorderLayout.NORTH);
 
@@ -56,7 +57,7 @@ public class ApprovalMessage extends JPanel {
 
         // File path
         JLabel pathLabel = new JLabel(FILE_PREFIX + filePath);
-        pathLabel.setFont(pathLabel.getFont().deriveFont(Font.BOLD, 11f));
+        pathLabel.setFont(FontUtils.getSmallFont());
         pathLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 10, 0));
         contentPanel.add(pathLabel);
 
