@@ -1,5 +1,7 @@
 package fr.baretto.ollamassist.prerequiste;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -11,6 +13,7 @@ import java.net.URL;
  * Ensures URLs are properly formatted for HTTP requests to Ollama.
  */
 @Slf4j
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class UrlHelper {
 
     private static final String HTTP_SCHEME = "http://";
