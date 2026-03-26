@@ -231,7 +231,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     public void add(String id, Embedding embedding, EMBEDDED embedded) {
         rwLock.writeLock().lock();
         try {
-            if (indexWriter == null) {
+            if (indexWriter == null || !indexWriter.isOpen()) {
                 indexWriter = retrieveIndexWriter();
             }
             indexWriter.updateDocument(new Term(ID, id), toDocument(embedding, embedded, id));
@@ -291,7 +291,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                         id
                 ));
             }
-            if (indexWriter == null) {
+            if (indexWriter == null || !indexWriter.isOpen()) {
                 indexWriter = retrieveIndexWriter();
             }
             indexWriter.addDocuments(documents);
@@ -328,7 +328,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
             for (String id : ids) {
                 builder.add(new TermQuery(new Term(ID, id)), BooleanClause.Occur.SHOULD);
             }
-            if (indexWriter == null) {
+            if (indexWriter == null || !indexWriter.isOpen()) {
                 indexWriter = retrieveIndexWriter();
             }
             indexWriter.deleteDocuments(builder.build());
@@ -345,7 +345,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         rwLock.writeLock().lock();
         try {
             if (filter instanceof IdStartWithFilter idStartWithFilter) {
-                if (indexWriter == null) {
+                if (indexWriter == null || !indexWriter.isOpen()) {
                     indexWriter = retrieveIndexWriter();
                 }
                 indexWriter.deleteDocuments(idStartWithFilter.toLuceneQuery());
