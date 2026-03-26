@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.conversation.ConversationMessage;
 import fr.baretto.ollamassist.events.ConversationNotifier;
 
@@ -145,8 +146,19 @@ public class MessagesPanel extends JPanel {
     }
 
     public void finalizeMessage(ChatResponse chatResponse) {
+        finalizeMessage(chatResponse, List.of());
+    }
+
+    public void finalizeMessage(ChatResponse chatResponse, List<RagSource> sources) {
         latestOllamaMessage.finalizeResponse(chatResponse);
         latestOllamaMessage = null;
+        if (!sources.isEmpty() && context != null) {
+            SourcesPanel sourcesPanel = new SourcesPanel(sources, context.project());
+            container.add(sourcesPanel, createGbc(container.getComponentCount()));
+            container.revalidate();
+            container.repaint();
+            scrollToBottom();
+        }
     }
 
     public void addApprovalRequest(String title, String filePath, String content, Consumer<Boolean> onDecision) {

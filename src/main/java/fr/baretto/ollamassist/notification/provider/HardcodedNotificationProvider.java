@@ -14,7 +14,7 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
-                // v1.11.0 - Conversation Management
+                // v1.11.0 - Conversation Management + RAG Sources + Hybrid Retrieval
                 Notification.builder()
                         .id("v1.11.0-release")
                         .version("1.11.0")
@@ -28,26 +28,44 @@ public final class HardcodedNotificationProvider implements NotificationProvider
 
                                 <p>Your chat history is now <b>persisted across IDE sessions</b>. No more starting from scratch every time you reopen IntelliJ!</p>
 
-                                <h4>✨ What's New:</h4>
                                 <ul>
-                                  <li><b>Persistent conversations</b> - Each conversation is saved per project under <code>.ollamassist/conversations/</code></li>
-                                  <li><b>Multiple conversations</b> - Create as many conversations as you need and switch between them</li>
-                                  <li><b>Auto-generated titles</b> - Conversation titles are automatically derived from your first message</li>
-                                  <li><b>Delete conversations</b> - Remove conversations you no longer need (with confirmation)</li>
-                                  <li><b>Resume anywhere</b> - Reopen the IDE and pick up exactly where you left off</li>
+                                  <li><b>Persistent conversations</b> - Saved per project under <code>.ollamassist/conversations/</code></li>
+                                  <li><b>Multiple conversations</b> - Create, switch, and delete conversations from the chat panel</li>
+                                  <li><b>Auto-generated titles</b> - Derived automatically from your first message</li>
+                                  <li><b>Resume anywhere</b> - Pick up exactly where you left off after restarting the IDE</li>
                                 </ul>
 
-                                <h4>🔧 How to Use:</h4>
-                                <p>Use the dropdown at the top of the chat panel to switch conversations, or click <b>+</b> to start a new one.</p>
+                                <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h3>🔍 RAG Source Transparency</h3>
+
+                                <p>Each AI response now shows the <b>code chunks it was based on</b>.</p>
+
+                                <ul>
+                                  <li><b>Sources panel</b> - Collapsed "N sources" indicator below each response</li>
+                                  <li><b>Clickable links</b> - Click any source to navigate directly to the file in the editor</li>
+                                  <li><b>Native icons</b> - File type icons match IntelliJ's own icons for each extension</li>
+                                </ul>
+
+                                <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <h3>⚡ Smarter Code Retrieval</h3>
+
+                                <ul>
+                                  <li><b>Hybrid search</b> - Combines semantic (KNN) and keyword (BM25) search via Reciprocal Rank Fusion</li>
+                                  <li><b>PSI-aware chunking</b> - Java files are split by class and method for higher precision</li>
+                                  <li><b>Cross-IDE support</b> - Graceful fallback in PyCharm, CLion, and other JetBrains products</li>
+                                  <li><b>Index versioning</b> - Stale indexes are detected and rebuilt automatically on upgrade</li>
+                                </ul>
 
                                 <p style='font-size: 0.9em; color: #666;'>
-                                💡 <i>Tip: Keep separate conversations for different tasks or topics within the same project!</i>
+                                💡 <i>Tip: Expand the sources panel after a response to understand exactly what context the AI used!</i>
                                 </p>
                                 </body>
                                 </html>
                                 """)
                         .dismissible(true)
-                        .createdAt(LocalDateTime.of(2026, 3, 25, 0, 0))
+                        .createdAt(LocalDateTime.of(2026, 3, 26, 0, 0))
                         .build(),
 
                 // v1.10.4 - UI Font Size Customization

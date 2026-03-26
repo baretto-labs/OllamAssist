@@ -63,8 +63,15 @@
             <LI>feat: Conversation titles are auto-generated from the first message (60 characters max).</LI>
             <LI>feat: Delete individual conversations with a confirmation dialog.</LI>
             <LI>feat: Resume any conversation exactly where you left it after restarting the IDE.</LI>
+            <LI>feat: RAG sources panel - each AI response now shows the retrieved code chunks used to generate it.</LI>
+            <LI>feat: Clickable source links navigate directly to the corresponding file in the editor.</LI>
+            <LI>feat: Source icons match IntelliJ's native file type icons based on extension.</LI>
+            <LI>feat: Hybrid retrieval with Reciprocal Rank Fusion (KNN + BM25) for more accurate code search.</LI>
+            <LI>feat: PSI-aware chunking splits Java files by class and method for higher retrieval precision.</LI>
+            <LI>feat: Index versioning with automatic migration - stale indexes are rebuilt transparently on upgrade.</LI>
+            <LI>feat: Cross-IDE compatibility - PSI chunking degrades gracefully in PyCharm, CLion, and other JetBrains products.</LI>
             <LI>fix: ConcurrentModificationException in FontUtils caused by recursive computeIfAbsent on shared HashMap.</LI>
-         </UL>
+        </UL>
         <h2>V1.10.4</h2>
         <UL>
             <LI>feat: Customizable UI font size - Add global font size multiplier in Settings > OllamAssist > UI.</LI>
@@ -223,6 +230,7 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
+    <depends optional="true">com.intellij.java</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->

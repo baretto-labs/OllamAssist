@@ -29,28 +29,15 @@ val plexusVersion = "4.0.2"
 val jsoupVersion = "1.21.2"
 val jacksonVersion = "2.20.1"
 val djlVersion = "0.28.0"
-sourceSets {
-    create("benchmark") {
-        java.srcDir("src/benchmark/java")
-        resources.srcDir("src/benchmark/resources")
-        compileClasspath += sourceSets["main"].output + configurations["testRuntimeClasspath"]
-        runtimeClasspath += output + compileClasspath
-    }
-
-}
-
-configurations {
-    maybeCreate("benchmarkImplementation").extendsFrom(
-        configurations["implementation"],
-        configurations["testImplementation"]
-    )
-    maybeCreate("benchmarkRuntimeOnly").extendsFrom(configurations["runtimeOnly"], configurations["testRuntimeOnly"])
-}
 
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3", useInstaller = true)
-        bundledPlugins("Git4Idea")
+        bundledPlugins("Git4Idea", "com.intellij.java")
+    }
+
+    implementation("org.apache.lucene:lucene-queryparser:9.10.0") {
+        exclude(group = "org.apache.lucene")
     }
 
     implementation("ai.djl:api:$djlVersion")
@@ -74,7 +61,6 @@ dependencies {
         exclude(group = "ai.djl.huggingface", module = "tokenizers")
         exclude(group = "org.apache.lucene")
         exclude(group = "org.slf4j")
-        // Exclude heavy Apache Tika parsers not needed for indexing code files
         exclude(group = "org.apache.tika", module = "tika-parser-microsoft-module")
         exclude(group = "org.apache.tika", module = "tika-parser-miscoffice-module")
         exclude(group = "org.apache.tika", module = "tika-parser-pdf-module")
@@ -99,8 +85,6 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jacksonVersion")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion")
 
-
-
     implementation("com.fifesoft:rsyntaxtextarea:$rsyntaxtextareaVersion")
 
     compileOnly("org.projectlombok:lombok:$lombokVersion")
@@ -112,10 +96,6 @@ dependencies {
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
     testImplementation("org.assertj:assertj-core:$assertjVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
-
-    add("benchmarkImplementation", "org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
-    add("benchmarkImplementation", "org.testcontainers:junit-jupiter:$testcontainersVersion")
-    add("benchmarkImplementation", "org.testcontainers:postgresql:$testcontainersVersion")
 }
 
 
@@ -138,8 +118,6 @@ intellijPlatform {
         token.set(System.getenv("PUBLISH_TOKEN"))
     }
 
-    // Disable buildSearchableOptions in development for faster builds
-    // It will be enabled automatically in CI or when PUBLISH_TOKEN is set
     buildSearchableOptions.set(System.getenv("CI") != null || System.getenv("PUBLISH_TOKEN") != null)
 }
 
@@ -159,20 +137,12 @@ tasks {
     test {
         useJUnitPlatform {
             includeEngines("junit-jupiter")
+            excludeTags("benchmark")
         }
     }
 
-    val benchmark by registering(Test::class) {
-        description = "Runs benchmark tests."
-        group = "verification"
-        testClassesDirs = sourceSets["benchmark"].output.classesDirs
-        classpath = sourceSets["benchmark"].runtimeClasspath
-        useJUnitPlatform()
-        shouldRunAfter(test)
-    }
-
     check {
-        dependsOn(benchmark)
+        dependsOn("benchmark")
     }
 
     build {
@@ -185,6 +155,24 @@ tasks {
             property("sonar.organization", "baretto-labs")
             property("sonar.host.url", "https://sonarcloud.io")
             property("sonar.login", System.getenv("SONAR_TOKEN"))
+        }
+    }
+}
+
+intellijPlatformTesting {
+    testIde {
+        register("benchmark") {
+            task {
+                group = "verification"
+                description = "Runs LLM-as-a-judge benchmark tests (tagged @benchmark)."
+                useJUnitPlatform {
+                    includeTags("benchmark")
+                }
+                shouldRunAfter(tasks.test)
+                systemProperties(
+                    project.properties.filterKeys { it.startsWith("benchmark.") }
+                )
+            }
         }
     }
 }
