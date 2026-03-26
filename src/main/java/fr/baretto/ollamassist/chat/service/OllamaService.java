@@ -14,8 +14,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
+import fr.baretto.ollamassist.chat.rag.HybridRetriever;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.rag.*;
 import fr.baretto.ollamassist.chat.tools.FileCreator;
@@ -121,13 +121,7 @@ public final class OllamaService implements Disposable, ModelListener {
 
             return aiServicesBuilder
                     .contentRetriever(new ContextRetriever(
-                            EmbeddingStoreContentRetriever
-                                    .builder()
-                                    .embeddingModel(DocumentIngestFactory.createEmbeddingModel())
-                                    .dynamicMaxResults(query -> 2)
-                                    .dynamicMinScore(query -> 0.80)
-                                    .embeddingStore(embeddingStore)
-                                    .build(),
+                            new HybridRetriever(embeddingStore, DocumentIngestFactory.createEmbeddingModel()),
                             project))
                     .build();
         } finally {

@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.chat.rag;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtilCore;
@@ -20,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
@@ -45,8 +48,11 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     private static final String PATH_SEPARATOR = "/";
     private static final String FILE_NOT_FOUND_FORMAT = "File not found for id: %s";
     private static final String FILE_READ_ERROR_FORMAT = "Failed to read file content for: %s";
+    private static final String INDEX_VERSION = "2.0";
+    private static final String VERSION_FILE = "index.version";
     private static final String VECTOR = "vector";
     private static final String EMBEDDED = "embedded";
+    private static final String CONTENT_BM25 = "content_bm25";
     private static final String LAST_INDEXED_DATE = "last_indexed_date";
     private static final String METADATA = "metadata";
     private static final String ID = "id";
@@ -67,7 +73,40 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         );
         this.analyzer = new StandardAnalyzer();
         this.mapper = new ObjectMapper();
+        checkAndMigrateIndexVersion();
         this.indexWriter = retrieveIndexWriter();
+    }
+
+    private void checkAndMigrateIndexVersion() {
+        Path indexPath = Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX);
+        Path versionFile = indexPath.resolve(VERSION_FILE);
+
+        String storedVersion = null;
+        if (Files.exists(versionFile)) {
+            try {
+                storedVersion = Files.readString(versionFile).trim();
+            } catch (IOException e) {
+                log.warn("Could not read index version file: {}", e.getMessage());
+            }
+        }
+
+        if (!INDEX_VERSION.equals(storedVersion)) {
+            log.info("Index version mismatch (stored={}, current={}). Clearing index.", storedVersion, INDEX_VERSION);
+            try {
+                cleanIndexDirectory();
+                Files.createDirectories(indexPath);
+                Files.writeString(versionFile, INDEX_VERSION);
+                var app = ApplicationManager.getApplication();
+                if (app != null) {
+                    IndexRegistry registry = app.getService(IndexRegistry.class);
+                    if (registry != null) {
+                        registry.markAsCorrupted(project.getName());
+                    }
+                }
+            } catch (IOException e) {
+                log.error("Failed to migrate index version", e);
+            }
+        }
     }
 
     private void initIndexWriter() throws IOException {
@@ -208,7 +247,9 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         Document doc = new Document();
 
         doc.add(new StringField(ID, id, Field.Store.YES));
-        doc.add(new StoredField(EMBEDDED, ((TextSegment) embedded).text()));
+        String text = ((TextSegment) embedded).text();
+        doc.add(new StoredField(EMBEDDED, text));
+        doc.add(new TextField(CONTENT_BM25, text, Field.Store.NO));
 
         String lastIndexedDate = ZonedDateTime.now().toString();
         doc.add(new StringField(LAST_INDEXED_DATE, lastIndexedDate, Field.Store.YES));
@@ -411,6 +452,66 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         return Math.max(baseMinScore, dynamicThreshold);
     }
 
+    public List<EmbeddingMatch<EMBEDDED>> bm25Search(String queryText, int topK) {
+        rwLock.readLock().lock();
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            QueryParser parser = new QueryParser(CONTENT_BM25, analyzer);
+            parser.setDefaultOperator(QueryParser.Operator.OR);
+
+            Query query;
+            try {
+                query = parser.parse(QueryParser.escape(queryText));
+            } catch (ParseException e) {
+                log.warn("BM25 query parse failed for '{}': {}", queryText, e.getMessage());
+                return List.of();
+            }
+
+            TopDocs topDocs = searcher.search(query, topK);
+            List<EmbeddingMatch<EMBEDDED>> results = new ArrayList<>();
+
+            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+                Document doc = searcher.storedFields().document(scoreDoc.doc);
+                String id = doc.get(ID);
+                String text = doc.get(EMBEDDED);
+                if (text == null) continue;
+                Metadata metadata = new Metadata(mapper.readValue(doc.get(METADATA), Map.class));
+                results.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(text, metadata)));
+            }
+            return results;
+        } catch (Exception e) {
+            log.error("BM25 search failed", e);
+            return List.of();
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public List<EmbeddingMatch<EMBEDDED>> knnSearch(float[] queryVector, int topK) {
+        rwLock.readLock().lock();
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            Query vectorQuery = KnnFloatVectorField.newVectorQuery(VECTOR, queryVector, topK);
+            TopDocs topDocs = searcher.search(vectorQuery, topK);
+            List<EmbeddingMatch<EMBEDDED>> results = new ArrayList<>();
+
+            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+                Document doc = searcher.storedFields().document(scoreDoc.doc);
+                String id = doc.get(ID);
+                String text = doc.get(EMBEDDED);
+                if (text == null) continue;
+                Metadata metadata = new Metadata(mapper.readValue(doc.get(METADATA), Map.class));
+                results.add(new EmbeddingMatch<>((double) scoreDoc.score, id, null, (EMBEDDED) TextSegment.from(text, metadata)));
+            }
+            return results;
+        } catch (Exception e) {
+            log.error("KNN search failed", e);
+            return List.of();
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
     @Override
     public void close() {
         rwLock.writeLock().lock();
@@ -430,6 +531,8 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
             closeIndexWriter();
             deleteAllIndexFiles();
             initIndexWriter();
+            Path indexPath = Paths.get(OLLAMASSIST_DIR, project.getName(), DATABASE_KNOWLEDGE_INDEX);
+            Files.writeString(indexPath.resolve(VERSION_FILE), INDEX_VERSION);
             log.info("Index recreated successfully");
         } catch (IOException e) {
             log.error("Échec de la recréation de l'index", e);
@@ -496,7 +599,9 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         doc.add(new StringField(ID, filePath, Field.Store.YES));
 
         if (embedded instanceof TextSegment segment) {
-            doc.add(new StoredField(EMBEDDED, segment.text()));
+            String text = segment.text();
+            doc.add(new StoredField(EMBEDDED, text));
+            doc.add(new TextField(CONTENT_BM25, text, Field.Store.NO));
 
             String lastIndexedDate = ZonedDateTime.now().toString();
             doc.add(new StringField(LAST_INDEXED_DATE, lastIndexedDate, Field.Store.YES));

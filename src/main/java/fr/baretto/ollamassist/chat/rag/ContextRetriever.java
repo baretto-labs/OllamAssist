@@ -61,6 +61,25 @@ public class ContextRetriever implements ContentRetriever {
 
     private static final String NOTIFICATION_GROUP_ID = "OllamAssist";
 
+    /**
+     * Captures the RAG sources from the last {@link #retrieve(Query)} call on the current thread.
+     *
+     * <p>LangChain4j's {@code DefaultAiServices} calls {@code retrieve()} synchronously on the same
+     * thread as {@code assistant.chat()}, so this ThreadLocal is readable from the call site
+     * immediately after {@code chat()} returns the {@link dev.langchain4j.service.TokenStream}.
+     */
+    private static final ThreadLocal<List<RagSource>> LAST_SOURCES = new ThreadLocal<>();
+
+    /**
+     * Returns and clears the RAG sources captured during the last {@link #retrieve(Query)} call
+     * on the current thread. Always call this immediately after {@code assistant.chat()} returns.
+     */
+    public static List<RagSource> popSources() {
+        List<RagSource> sources = LAST_SOURCES.get();
+        LAST_SOURCES.remove();
+        return sources != null ? sources : List.of();
+    }
+
 
     private final ContentRetriever contentRetriever;
     private final WorkspaceContextRetriever workspaceContextProvider;
@@ -88,9 +107,12 @@ public class ContextRetriever implements ContentRetriever {
 
     @Override
     public List<Content> retrieve(Query query) {
+        LAST_SOURCES.remove();
+
         // For a refactoring, websearch/RAG or context should not be used.
         if (query.text().startsWith("**Do NOT include notes, explanations, or extra text.**")
                 && query.text().contains("Refactor the")) {
+            LAST_SOURCES.set(List.of());
             return List.of();
         }
 
@@ -121,20 +143,36 @@ public class ContextRetriever implements ContentRetriever {
 
             allDone.get(5000, TimeUnit.SECONDS);
 
-            List<Content> results = new ArrayList<>(safeGet(retrieverFuture));
-            results.addAll(safeGet(webSearchFuture));
-            results.addAll(safeGet(workspaceFuture).stream()
+            List<Content> indexResults  = safeGet(retrieverFuture);
+            List<Content> webResults    = safeGet(webSearchFuture);
+            List<Content> workspaceResults = safeGet(workspaceFuture);
+
+            List<Content> results = new ArrayList<>(indexResults);
+            results.addAll(webResults);
+            results.addAll(workspaceResults.stream()
                     .filter(content -> containsNothing(results, content))
                     .toList());
+
+            // Capture sources for UI display (readable via popSources() on this thread)
+            List<RagSource> ragSources = new ArrayList<>();
+            indexResults.forEach(c -> ragSources.add(RagSource.fromContent(c, RagSource.SourceType.INDEX)));
+            webResults.forEach(c -> ragSources.add(RagSource.fromContent(c, RagSource.SourceType.WEB)));
+            workspaceResults.stream()
+                    .filter(c -> containsNothing(new ArrayList<>(indexResults), c))
+                    .forEach(c -> ragSources.add(RagSource.fromContent(c, RagSource.SourceType.WORKSPACE)));
+            LAST_SOURCES.set(ragSources);
+
             return results;
 
         } catch (TimeoutException e) {
+            LAST_SOURCES.set(List.of());
             PluginNotifier.notify(NOTIFICATION_GROUP_ID,
                     "Timeout",
                     "Context retrieval took longer than 2 seconds and was aborted.",
                     NotificationType.WARNING);
             return Collections.emptyList();
         } catch (InterruptedException e) {
+            LAST_SOURCES.set(List.of());
             Thread.currentThread().interrupt();
             PluginNotifier.notify(
                     NOTIFICATION_GROUP_ID,
@@ -144,6 +182,7 @@ public class ContextRetriever implements ContentRetriever {
             );
             return Collections.emptyList();
         } catch (InternalServerException e) {
+            LAST_SOURCES.set(List.of());
             String modelName = settings.getEmbeddingModelName();
             String url = settings.getEmbeddingOllamaUrl();
             String serverResponse = e.getMessage();
@@ -154,6 +193,7 @@ public class ContextRetriever implements ContentRetriever {
             PluginNotifier.notify(NOTIFICATION_GROUP_ID, "Model error", errorMessage, NotificationType.ERROR);
             return Collections.emptyList();
         } catch (Exception e) {
+            LAST_SOURCES.set(List.of());
             PluginNotifier.notify(
                     NOTIFICATION_GROUP_ID,
                     "Error",

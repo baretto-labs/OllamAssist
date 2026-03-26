@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
+import fr.baretto.ollamassist.chat.rag.ContextRetriever;
+import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.chat.service.OllamaService;
 import fr.baretto.ollamassist.chat.tools.DetectedToolCall;
 import fr.baretto.ollamassist.chat.tools.FileCreator;
@@ -39,6 +41,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -118,13 +121,17 @@ public class OllamaContent {
                         .getAssistant()
                         .chat(systemPrompt, message);
 
+                // retrieve() was called synchronously on this thread by LangChain4j AiServices;
+                // pop the captured sources before switching to the EDT.
+                List<RagSource> sources = ContextRetriever.popSources();
+
                 ApplicationManager.getApplication().invokeLater(() -> {
                     synchronized (this) {
                         currentChatThread = ChatThread.builder()
                                 .tokenStream(stream)
                                 .onNext(this::publish)
                                 .onError(this::logException)
-                                .onCompleteResponse(this::done)
+                                .onCompleteResponse(response -> done(response, sources))
                                 .contextRef(context)
                                 .build()
                                 .start();
@@ -351,7 +358,11 @@ public class OllamaContent {
     }
 
     private void done(ChatResponse chatResponse) {
-        outputPanel.finalizeMessage(chatResponse);
+        done(chatResponse, List.of());
+    }
+
+    private void done(ChatResponse chatResponse, List<RagSource> sources) {
+        outputPanel.finalizeMessage(chatResponse, sources);
         promptInput.toggleGenerationState(false);
         if (chatResponse.finishReason() != FinishReason.OTHER
                 && chatResponse.aiMessage() != null

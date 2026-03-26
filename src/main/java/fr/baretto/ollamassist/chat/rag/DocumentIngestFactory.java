@@ -1,5 +1,6 @@
 package fr.baretto.ollamassist.chat.rag;
 
+import com.intellij.openapi.project.Project;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15QuantizedEmbeddingModel;
@@ -30,16 +31,16 @@ public class DocumentIngestFactory {
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String FALLBACK_EMBEDDING_MODEL = "nomic-embed-text";
 
-    public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store) {
-        EmbeddingModel embeddingModel;
+    public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store, Project project) {
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(DocumentIngestFactory.class.getClassLoader());
         try {
-            embeddingModel = createEmbeddingModel();
+            EmbeddingModel embeddingModel = createEmbeddingModel();
             return EmbeddingStoreIngestor
                     .builder()
                     .embeddingStore(store)
                     .embeddingModel(embeddingModel)
+                    .documentSplitter(new CodeAwareDocumentSplitter(project))
                     .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
