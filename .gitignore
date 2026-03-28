@@ -42,3 +42,6 @@ bin/
 .DS_Store
 /.idea/
 /.intellijPlatform/
+/.ollamassist/
+/benchmark-results/
+
