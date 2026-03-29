@@ -142,6 +142,34 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         myState.password = password;
     }
 
+    // -------------------------------------------------------------------------
+    // Agent timeouts
+    // -------------------------------------------------------------------------
+
+    public int getAgentPlanTimeoutSeconds() {
+        return myState.agentPlanTimeoutSeconds > 0 ? myState.agentPlanTimeoutSeconds : 120;
+    }
+
+    public void setAgentPlanTimeoutSeconds(int seconds) {
+        myState.agentPlanTimeoutSeconds = Math.max(10, Math.min(seconds, 3600));
+    }
+
+    public int getRunCommandTimeoutSeconds() {
+        return myState.runCommandTimeoutSeconds > 0 ? myState.runCommandTimeoutSeconds : 60;
+    }
+
+    public void setRunCommandTimeoutSeconds(int seconds) {
+        myState.runCommandTimeoutSeconds = Math.max(5, Math.min(seconds, 3600));
+    }
+
+    public int getApprovalTimeoutMinutes() {
+        return myState.approvalTimeoutMinutes > 0 ? myState.approvalTimeoutMinutes : 5;
+    }
+
+    public void setApprovalTimeoutMinutes(int minutes) {
+        myState.approvalTimeoutMinutes = Math.max(1, Math.min(minutes, 60));
+    }
+
     @Getter
     public static class State {
         public String chatOllamaUrl = DEFAULT_URL;
@@ -153,5 +181,9 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public String timeout = "300";
         public String username = "";
         public String password = "";
+        // Agent-specific timeouts (0 = use default)
+        public int agentPlanTimeoutSeconds = 0;
+        public int runCommandTimeoutSeconds = 0;
+        public int approvalTimeoutMinutes = 0;
     }
 }
