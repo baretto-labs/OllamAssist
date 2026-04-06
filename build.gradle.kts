@@ -78,7 +78,7 @@ dependencies {
 
     implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag")
     implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag")
-    runtimeOnly("org.slf4j:slf4j-jdk14:1.7.36")
+    runtimeOnly("org.slf4j:slf4j-jdk14:2.0.17")
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
