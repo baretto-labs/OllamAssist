@@ -17,7 +17,7 @@ repositories {
 val langchain4jEasyRag = "1.8.0-beta15"
 val langchain4jVersion = "1.9.1"
 val mockitoVersion = "5.19.0"
-val lombokVersion = "1.18.38"
+val lombokVersion = "1.18.44"
 val junitJupiterVersion = "5.11.0-M2"
 val junitVintageVersion = "5.11.0-M2"
 val junitEngineVersion = "5.11.4"
