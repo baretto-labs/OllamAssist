@@ -45,7 +45,30 @@ public final class CommandClassifier {
             pattern("\\bchmod\\b.*-[a-z]*R[a-z]*\\s+[0-7]{3,4}\\s+/\\s"),
             pattern("\\bchown\\b.*-[a-z]*R[a-z]*\\s+\\S+\\s+/\\s"),
             // xargs with rm (indirect deletion)
-            pattern("\\bxargs\\b.*\\brm\\b")
+            pattern("\\bxargs\\b.*\\brm\\b"),
+            // pipe to shell interpreter — remote code execution risk
+            pattern("\\|\\s*(sh|bash|zsh|dash|ksh|python3?|ruby|perl|node)\\b"),
+            // command substitution via backticks or $() — allows arbitrary injection
+            pattern("`[^`\n]+`"),
+            pattern("\\$\\([^)\n]+\\)")
+    );
+
+    // -------------------------------------------------------------------------
+    // Output redirection to sensitive targets — always DESTRUCTIVE
+    // Must be checked before READ_ONLY so that a READ_ONLY command (cat, grep, find…)
+    // that redirects its output to /dev/, /etc/, /proc/, or /sys/ is correctly blocked.
+    // -------------------------------------------------------------------------
+
+    private static final List<Pattern> DESTRUCTIVE_REDIRECT_PATTERNS = List.of(
+            // Redirect (write or append) to a raw device
+            pattern(">\\s*/dev/"),
+            // Redirect to system configuration directories
+            pattern(">\\s*/etc/"),
+            pattern(">\\s*/proc/"),
+            pattern(">\\s*/sys/"),
+            // Redirect to /root/ or /boot/
+            pattern(">\\s*/root/"),
+            pattern(">\\s*/boot/")
     );
 
     // -------------------------------------------------------------------------
@@ -67,8 +90,6 @@ public final class CommandClassifier {
             pattern("^\\s*du\\b"),
             pattern("^\\s*df\\b"),
             pattern("^\\s*pwd\\b"),
-            pattern("^\\s*echo\\b"),
-            pattern("^\\s*printf\\b"),
             pattern("^\\s*env\\b"),
             pattern("^\\s*printenv\\b"),
             // search
@@ -100,8 +121,6 @@ public final class CommandClassifier {
             pattern("^\\s*htop\\b"),
             pattern("^\\s*lsof\\b"),
             pattern("^\\s*netstat\\b"),
-            pattern("^\\s*curl\\b"),
-            pattern("^\\s*wget\\b"),
             pattern("^\\s*ping\\b"),
             pattern("^\\s*nslookup\\b"),
             pattern("^\\s*dig\\b")
@@ -128,9 +147,27 @@ public final class CommandClassifier {
             }
         }
 
+        // Check output redirection to sensitive targets — takes priority over READ_ONLY match
+        for (Pattern p : DESTRUCTIVE_REDIRECT_PATTERNS) {
+            if (p.matcher(normalized).find()) {
+                return CommandTier.DESTRUCTIVE;
+            }
+        }
+
+        // If the command contains any output redirection, it cannot be READ_ONLY.
+        // A command like "cat file > output.txt" modifies state even if "cat" alone is read-only.
+        boolean hasRedirection = normalized.contains(">>");
+        if (!hasRedirection) {
+            // Check for single > that is not part of >> (already checked above)
+            // Simple heuristic: contains ">" outside of ">>" patterns
+            String withoutDoubleArrow = normalized.replace(">>", "\u0000\u0000");
+            hasRedirection = withoutDoubleArrow.contains(">");
+        }
+
         for (Pattern p : READ_ONLY_PATTERNS) {
             if (p.matcher(normalized).find()) {
-                return CommandTier.READ_ONLY;
+                // A READ_ONLY command with output redirection becomes MUTATING
+                return hasRedirection ? CommandTier.MUTATING : CommandTier.READ_ONLY;
             }
         }
 

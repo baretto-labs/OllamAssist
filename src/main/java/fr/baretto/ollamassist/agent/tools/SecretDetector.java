@@ -53,5 +53,11 @@ public final class SecretDetector {
             Pattern.compile("xox[baprs]-[0-9A-Za-z\\-]{10,}")),
         new SecretPattern("JWT token",
             Pattern.compile("eyJ[A-Za-z0-9\\-_]+\\.eyJ[A-Za-z0-9\\-_]+\\.[A-Za-z0-9\\-_]+")),
+        new SecretPattern("Dotenv secret assignment",
+            Pattern.compile("(?im)^(?:API[_-]?KEY|SECRET[_-]?KEY|TOKEN|PASSWORD|PASSWD|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|AUTH[_-]?TOKEN|CLIENT[_-]?SECRET|DB[_-]?(?:PASSWORD|PASS)|DATABASE[_-]?(?:PASSWORD|PASS))\\s*=\\s*\\S{16,}")),
+        new SecretPattern("Azure storage connection string",
+            Pattern.compile("DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=")),
+        new SecretPattern("GCP service account private key",
+            Pattern.compile("\"private_key_id\"\\s*:\\s*\"[a-f0-9]{40}\"")),
     };
 }

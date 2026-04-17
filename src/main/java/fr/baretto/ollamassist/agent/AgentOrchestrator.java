@@ -22,9 +22,13 @@ import org.jetbrains.annotations.TestOnly;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 @Service(Service.Level.PROJECT)
 @Slf4j
@@ -33,9 +37,13 @@ public final class AgentOrchestrator implements Disposable {
     private final Project project;
     private volatile PlannerAgent plannerAgent;
     private volatile CriticAgent criticAgent;
-    private volatile OllamaChatModel agentModel;
+    /** Model dedicated to the PlannerAgent (may be the same instance as criticModel). */
+    private volatile OllamaChatModel plannerModel;
+    /** Model dedicated to the CriticAgent (may be the same instance as plannerModel). */
+    private volatile OllamaChatModel criticModel;
     private volatile ToolDispatcher toolDispatcher;
     private volatile boolean executionCancelled = false;
+    private final AtomicReference<CompletableFuture<Void>> currentExecution = new AtomicReference<>(null);
 
     public AgentOrchestrator(@NotNull Project project) {
         this.project = project;
@@ -61,6 +69,41 @@ public final class AgentOrchestrator implements Disposable {
         return userGoal + "\n\n--- Recent history (for context only, do not repeat past actions) ---\n" + context;
     }
 
+    /**
+     * Resolves {@code @ClassName} file references in the goal, then enriches with memory context.
+     * The resolved file contents are prepended to the goal so the PlannerAgent has direct access
+     * to the relevant source without needing a separate FILE_READ step.
+     */
+    private String enrichGoal(String userGoal) {
+        String withFiles = GoalContextResolver.resolve(userGoal, project);
+        return enrichGoalWithMemory(withFiles);
+    }
+
+    private String buildPlanErrorMessage(Throwable cause) {
+        if (cause instanceof TimeoutException) {
+            return "Plan generation timed out after " + planTimeoutSeconds() + "s — the model may be unavailable or overloaded";
+        }
+        String msg = cause.getMessage();
+        if (msg != null && (msg.contains("JsonParseException") || msg.contains("JsonMappingException")
+                || msg.contains("MismatchedInputException") || msg.contains("Unrecognized token")
+                || msg.contains("was expecting") || (cause.getClass().getName().contains("jackson")))) {
+            return "The model returned invalid JSON — agent mode requires a model with structured output support "
+                    + "(e.g. qwen2.5:14b, mistral-nemo, llama3.1:70b). "
+                    + "Change your chat model in Settings → Ollama.";
+        }
+        // Check cause chain for Jackson errors
+        Throwable t = cause;
+        while (t != null) {
+            if (t.getClass().getName().contains("jackson") || t.getClass().getName().contains("JsonParse")) {
+                return "The model returned invalid JSON — agent mode requires a model with structured output support "
+                        + "(e.g. qwen2.5:14b, mistral-nemo, llama3.1:70b). "
+                        + "Change your chat model in Settings → Ollama.";
+            }
+            t = t.getCause();
+        }
+        return msg != null ? msg : cause.getClass().getSimpleName();
+    }
+
     private long planTimeoutSeconds() {
         try {
             return OllamaSettings.getInstance().getAgentPlanTimeoutSeconds();
@@ -75,7 +118,7 @@ public final class AgentOrchestrator implements Disposable {
             publishProgress(AgentProgressEvent.planning());
             try {
                 long timeout = planTimeoutSeconds();
-                String enrichedGoal = enrichGoalWithMemory(userGoal);
+                String enrichedGoal = enrichGoal(userGoal);
                 AgentPlan agentPlan = CompletableFuture
                         .supplyAsync(() -> agent.plan(enrichedGoal))
                         .orTimeout(timeout, TimeUnit.SECONDS)
@@ -85,9 +128,7 @@ public final class AgentOrchestrator implements Disposable {
                 return agentPlan;
             } catch (Exception e) {
                 Throwable cause = e.getCause() != null ? e.getCause() : e;
-                String message = cause instanceof TimeoutException
-                        ? "Plan generation timed out after " + planTimeoutSeconds() + "s — the model may be unavailable or overloaded"
-                        : cause.getMessage();
+                String message = buildPlanErrorMessage(cause);
                 log.error("Plan generation failed for goal: {}", userGoal, cause);
                 publishProgress(AgentProgressEvent.aborted(message));
                 throw new RuntimeException("Plan generation failed", cause);
@@ -100,7 +141,22 @@ public final class AgentOrchestrator implements Disposable {
     // -------------------------------------------------------------------------
 
     public CompletableFuture<Void> execute(AgentPlan plan) {
-        return execute(plan, getOrCreateToolDispatcher(), getOrCreateCriticAgent());
+        return executeGuarded(plan, getOrCreateToolDispatcher(), getOrCreateCriticAgent());
+    }
+
+    @TestOnly
+    CompletableFuture<Void> executeGuarded(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic) {
+        CompletableFuture<Void> running = currentExecution.get();
+        if (running != null && !running.isDone()) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("An execution is already in progress. Cancel it before starting a new one."));
+        }
+        StepRetryHelper retryHelper = new StepRetryHelper(project);
+        CompletableFuture<Void> future = execute(plan, dispatcher, critic, isParanoidMode(),
+                retryHelper::requestDecision);
+        currentExecution.set(future);
+        future.whenComplete((v, t) -> currentExecution.compareAndSet(future, null));
+        return future;
     }
 
     /** Cancels the currently running execution, if any. Safe to call at any time. */
@@ -110,14 +166,44 @@ public final class AgentOrchestrator implements Disposable {
 
     private static final int MAX_CRITIC_ADAPTATIONS = 5;
 
+    /** Maximum chars kept for a single step output injected into the Critic or next step params. */
+    private static final int MAX_STEP_OUTPUT_CHARS = 4_096;
+    /** Maximum total chars accumulated in the execution log before older entries are trimmed. */
+    private static final int MAX_EXECUTION_LOG_CHARS = 100_000;
+
     @TestOnly
     CompletableFuture<Void> execute(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic) {
+        // null retry provider = legacy test behavior: stop the phase on first failure, let Critic decide
+        return execute(plan, dispatcher, critic, isParanoidMode(), null);
+    }
+
+    @TestOnly
+    CompletableFuture<Void> execute(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic, boolean paranoidMode) {
+        return execute(plan, dispatcher, critic, paranoidMode, null);
+    }
+
+    /**
+     * Test-only entry-point that injects a custom retry decision provider.
+     * Use this to test RETRY / SKIP / ABORT_PHASE behavior without blocking on real user input.
+     */
+    @TestOnly
+    CompletableFuture<Void> execute(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic,
+                                     BiFunction<Step, String, StepRetryDecision> retryProvider) {
+        return execute(plan, dispatcher, critic, isParanoidMode(), retryProvider);
+    }
+
+    private CompletableFuture<Void> execute(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic,
+                                             boolean paranoidMode,
+                                             @org.jetbrains.annotations.Nullable BiFunction<Step, String, StepRetryDecision> retryProvider) {
         executionCancelled = false;
         dispatcher.resetRateLimits();
+        String correlationId = UUID.randomUUID().toString().substring(0, 8);
+        log.debug("Starting execution correlationId={} paranoid={} goal='{}'", correlationId, paranoidMode, plan.getGoal());
         return CompletableFuture.runAsync(() -> {
             List<Phase> remainingPhases = new ArrayList<>(plan.getPhases());
             String lastStepOutput = "";
             int adaptationCount = 0;
+            int completedStepCount = 0;
             // Accumulates all step results across all phases for Critic context
             StringBuilder executionLog = new StringBuilder();
 
@@ -132,45 +218,90 @@ public final class AgentOrchestrator implements Disposable {
                 // Execute all steps in this phase
                 StringBuilder phaseResults = new StringBuilder();
                 boolean phaseFailed = false;
-                for (Step step : phase.getSteps()) {
-                    publishProgress(AgentProgressEvent.stepStarted(step));
-                    ToolResult result = dispatcher.dispatch(step, lastStepOutput);
+                boolean abortedByParanoidCritic = false;
 
-                    if (result.isSuccess()) {
-                        // Update execution state BEFORE notifying UI — ensures consistency
-                        // even if publishProgress() throws (e.g. MessageBus offline).
-                        lastStepOutput = result.getOutput() != null ? result.getOutput() : "";
-                        String stepLine = "[" + step.getToolId() + "] "
-                                + PromptSanitizer.sanitize(lastStepOutput) + "\n";
-                        phaseResults.append(stepLine);
-                        executionLog.append(stepLine);
-                        publishProgress(AgentProgressEvent.stepCompleted(step));
-                    } else {
-                        String stepLine = "[" + step.getToolId() + "] FAILED: "
-                                + PromptSanitizer.sanitize(result.getErrorMessage()) + "\n";
-                        phaseResults.append(stepLine);
-                        executionLog.append(stepLine);
-                        publishProgress(AgentProgressEvent.stepFailed(step, result.getErrorMessage()));
-                        phaseFailed = true;
-                        break; // Stop remaining steps in this phase, let critic decide
-                    }
-                }
+                stepLoop:
+                for (Step step : phase.getSteps()) {
+                    boolean retryStep = true;
+                    while (retryStep) {
+                        retryStep = false;
+                        publishProgress(AgentProgressEvent.stepStarted(step));
+                        ToolResult result = dispatcher.dispatch(step, lastStepOutput, correlationId);
+
+                        if (result.isSuccess()) {
+                            // Update execution state BEFORE notifying UI — ensures consistency
+                            // even if publishProgress() throws (e.g. MessageBus offline).
+                            lastStepOutput = truncateStepOutput(result.getOutput());
+                            String stepLine = "[" + step.getToolId() + "] "
+                                    + PromptSanitizer.sanitize(lastStepOutput) + "\n";
+                            phaseResults.append(stepLine);
+                            executionLog.append(stepLine);
+                            trimExecutionLog(executionLog);
+                            completedStepCount++;
+                            publishProgress(AgentProgressEvent.stepCompleted(step, lastStepOutput));
+
+                            // Paranoid mode: evaluate after every successful step
+                            if (paranoidMode) {
+                                CriticDecision stepDecision = runCritic(critic, plan.getGoal(), phase,
+                                        phaseResults.toString(), executionLog.toString(), remainingPhases, false);
+                                if (stepDecision == null) { abortedByParanoidCritic = true; phaseFailed = true; break stepLoop; }
+                                if (stepDecision.getStatus() == CriticDecision.Status.ABORT) {
+                                    recordMemory(correlationId, plan.getGoal(), "ABORTED", stepDecision.getReasoning());
+                                    publishProgress(AgentProgressEvent.aborted(stepDecision.getReasoning()));
+                                    return;
+                                }
+                                if (stepDecision.getStatus() == CriticDecision.Status.ADAPT && !stepDecision.getRevisedPhases().isEmpty()) {
+                                    List<Phase> revisedFromStep = stepDecision.getRevisedPhases();
+                                    String stepValidationError = validateRevisedPhases(revisedFromStep, plan.getGoal());
+                                    if (stepValidationError != null) {
+                                        log.error("Paranoid Critic ADAPT rejected — invalid revised phases: {}", stepValidationError);
+                                        publishProgress(AgentProgressEvent.aborted(
+                                                "Critic returned invalid revised phases: " + stepValidationError));
+                                        return;
+                                    }
+                                    adaptationCount++;
+                                    if (adaptationCount > MAX_CRITIC_ADAPTATIONS) {
+                                        publishProgress(AgentProgressEvent.aborted(
+                                                "Too many plan adaptations (" + MAX_CRITIC_ADAPTATIONS + ") — the agent may be stuck in a loop. Aborting."));
+                                        return;
+                                    }
+                                    AgentPlan revisedPlan = new AgentPlan(plan.getGoal(), stepDecision.getReasoning(), revisedFromStep);
+                                    publishProgress(AgentProgressEvent.planAdapted(revisedPlan));
+                                    remainingPhases = new ArrayList<>(revisedFromStep);
+                                    phaseFailed = true; // skip per-phase Critic, restart loop
+                                    break stepLoop;
+                                }
+                            }
+                        } else {
+                            String stepLine = "[" + step.getToolId() + "] FAILED: "
+                                    + PromptSanitizer.sanitize(result.getErrorMessage()) + "\n";
+                            phaseResults.append(stepLine);
+                            executionLog.append(stepLine);
+                            trimExecutionLog(executionLog);
+                            publishProgress(AgentProgressEvent.stepFailed(step, result.getErrorMessage()));
+
+                            if (retryProvider == null) {
+                                // Legacy / test behavior: stop this phase, let the Critic decide recovery
+                                phaseFailed = true;
+                                break stepLoop;
+                            }
+
+                            StepRetryDecision retryDecision = retryProvider.apply(step, result.getErrorMessage());
+                            switch (retryDecision) {
+                                case RETRY -> retryStep = true;
+                                case SKIP -> { /* step skipped — continue to next step in phase */ }
+                                case ABORT_PHASE -> { phaseFailed = true; break stepLoop; }
+                            }
+                        }
+                    } // end while (retryStep)
+                } // end stepLoop: for
+
+                if (abortedByParanoidCritic) return;
 
                 // After each phase (success or failure): run the Critic
-                publishProgress(AgentProgressEvent.criticThinking());
-                String criticPrompt = buildCriticPrompt(plan.getGoal(), phase, phaseResults.toString(),
-                        executionLog.toString(), remainingPhases, phaseFailed);
-                CriticDecision decision;
-                try {
-                    decision = critic.evaluate(criticPrompt);
-                    log.debug("Critic decision for phase '{}': {}", phase.getDescription(), decision);
-                } catch (Exception e) {
-                    log.error("Critic returned a malformed response for phase '{}': {}", phase.getDescription(), e.getMessage());
-                    publishProgress(AgentProgressEvent.aborted(
-                            "Critic returned an invalid response (likely malformed JSON from the LLM). "
-                                    + "Phase: " + phase.getDescription() + ". Error: " + e.getMessage()));
-                    return;
-                }
+                CriticDecision decision = runCritic(critic, plan.getGoal(), phase,
+                        phaseResults.toString(), executionLog.toString(), remainingPhases, phaseFailed);
+                if (decision == null) return; // aborted by Critic exception
 
                 switch (decision.getStatus()) {
                     case OK -> { /* continue with remaining phases */ }
@@ -179,6 +310,13 @@ public final class AgentOrchestrator implements Disposable {
                         if (revised.isEmpty()) {
                             log.warn("Critic returned ADAPT but provided no revised phases — treating as OK");
                         } else {
+                            String validationError = validateRevisedPhases(revised, plan.getGoal());
+                            if (validationError != null) {
+                                log.error("Critic ADAPT rejected — invalid revised phases: {}", validationError);
+                                publishProgress(AgentProgressEvent.aborted(
+                                        "Critic returned invalid revised phases: " + validationError));
+                                return;
+                            }
                             adaptationCount++;
                             if (adaptationCount > MAX_CRITIC_ADAPTATIONS) {
                                 publishProgress(AgentProgressEvent.aborted(
@@ -191,28 +329,86 @@ public final class AgentOrchestrator implements Disposable {
                         }
                     }
                     case ABORT -> {
-                        recordMemory(plan.getGoal(), "ABORTED", decision.getReasoning());
+                        recordMemory(correlationId, plan.getGoal(), "ABORTED", decision.getReasoning());
                         publishProgress(AgentProgressEvent.aborted(decision.getReasoning()));
                         return;
                     }
                 }
             }
 
-            recordMemory(plan.getGoal(), "COMPLETED", "All phases succeeded.");
-            publishProgress(AgentProgressEvent.completed());
+            recordMemory(correlationId, plan.getGoal(), "COMPLETED", "All phases succeeded.");
+            publishProgress(AgentProgressEvent.completed(completedStepCount));
         });
     }
 
-    private void recordMemory(String goal, String status, String reason) {
+    private void recordMemory(String correlationId, String goal, String status, String reason) {
         AgentMemoryService memory = project.getService(AgentMemoryService.class);
         if (memory != null) {
-            memory.record(goal, status, reason);
+            memory.record(correlationId, goal, status, reason);
         }
     }
 
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Runs the Critic and publishes progress events. Returns {@code null} if the Critic
+     * threw a malformed response (ABORTED event already published).
+     */
+    private CriticDecision runCritic(CriticAgent critic, String goal, Phase phase,
+                                     String phaseResults, String fullExecutionLog,
+                                     List<Phase> remaining, boolean phaseFailed) {
+        publishProgress(AgentProgressEvent.criticThinking(phase.getDescription()));
+        String criticPrompt = buildCriticPrompt(goal, phase, phaseResults, fullExecutionLog, remaining, phaseFailed);
+        log.debug("Critic prompt for phase '{}':\n{}", phase.getDescription(), criticPrompt);
+        try {
+            CriticDecision decision = critic.evaluate(criticPrompt);
+            log.debug("Critic decision for phase '{}': {}", phase.getDescription(), decision);
+            return decision;
+        } catch (Exception e) {
+            log.error("Critic returned a malformed response for phase '{}': {}", phase.getDescription(), e.getMessage());
+            publishProgress(AgentProgressEvent.aborted(
+                    "Critic returned an invalid response (likely malformed JSON from the LLM). "
+                            + "Phase: " + phase.getDescription() + ". Error: " + e.getMessage()));
+            return null;
+        }
+    }
+
+    private boolean isParanoidMode() {
+        try {
+            return OllamaSettings.getInstance().isAgentParanoidMode();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Truncates a step output to {@link #MAX_STEP_OUTPUT_CHARS} to prevent unbounded memory
+     * growth and Critic context overflow across many steps.
+     */
+    private static String truncateStepOutput(@org.jetbrains.annotations.Nullable String output) {
+        if (output == null) return "";
+        if (output.length() <= MAX_STEP_OUTPUT_CHARS) return output;
+        return output.substring(0, MAX_STEP_OUTPUT_CHARS) + "... [output truncated]";
+    }
+
+    /**
+     * Trims the execution log when it exceeds {@link #MAX_EXECUTION_LOG_CHARS}, keeping the most
+     * recent entries. Drops whole lines from the front to avoid splitting mid-entry.
+     */
+    private static void trimExecutionLog(StringBuilder log) {
+        if (log.length() <= MAX_EXECUTION_LOG_CHARS) return;
+        int keepFrom = log.length() - MAX_EXECUTION_LOG_CHARS;
+        // Advance to the next newline so we don't cut a line mid-entry
+        int nl = log.indexOf("\n", keepFrom);
+        if (nl > 0 && nl < log.length() - 1) keepFrom = nl + 1;
+        log.delete(0, keepFrom);
+        log.insert(0, "[earlier history trimmed]\n");
+    }
+
+    /** Maximum chars of tool output injected into a single Critic prompt (prevents context overflow). */
+    static final int MAX_CRITIC_CONTEXT_CHARS = 3_000;
 
     private String buildCriticPrompt(String goal, Phase completedPhase, String phaseResults,
                                       String fullExecutionLog, List<Phase> remaining, boolean phaseFailed) {
@@ -222,10 +418,11 @@ public final class AgentOrchestrator implements Disposable {
 
         if (fullExecutionLog.length() > phaseResults.length()) {
             // There are results from previous phases — include them for context
-            prompt.append("Execution history (all phases so far):\n").append(fullExecutionLog).append("\n");
+            prompt.append("Execution history (all phases so far):\n")
+                    .append(truncateCriticContext(fullExecutionLog)).append("\n");
         } else {
             prompt.append("Current phase ").append(phaseStatus).append(": ").append(completedPhase.getDescription()).append("\n");
-            prompt.append("Step results:\n").append(phaseResults).append("\n");
+            prompt.append("Step results:\n").append(truncateCriticContext(phaseResults)).append("\n");
         }
 
         prompt.append("Remaining phases: ").append(remaining.size()).append("\n\n");
@@ -241,8 +438,34 @@ public final class AgentOrchestrator implements Disposable {
         return prompt.toString();
     }
 
+    private static String truncateCriticContext(String text) {
+        if (text == null || text.length() <= MAX_CRITIC_CONTEXT_CHARS) return text;
+        int omitted = text.length() - MAX_CRITIC_CONTEXT_CHARS;
+        return text.substring(0, MAX_CRITIC_CONTEXT_CHARS)
+                + "\n... [context truncated — " + omitted + " chars omitted] ...";
+    }
+
+    /**
+     * Validates revised phases proposed by the Critic before accepting them.
+     * Reuses the same rules as {@link #validatePlan} (unknown toolIds, blast-radius guards).
+     *
+     * @return {@code null} if valid, or an error message if invalid
+     */
+    @org.jetbrains.annotations.Nullable
+    private String validateRevisedPhases(List<Phase> phases, String goal) {
+        if (phases == null || phases.isEmpty()) return null;
+        try {
+            validatePlan(new AgentPlan(goal, "critic revision", phases), goal);
+            return null;
+        } catch (IllegalStateException e) {
+            return e.getMessage();
+        }
+    }
+
     /** Maximum FILE_DELETE steps allowed in a single plan (G3 blast-radius guard). */
     private static final int MAX_DELETE_STEPS = 3;
+    private static final int MAX_PHASES = 10;
+    private static final int MAX_TOTAL_STEPS = 30;
 
     private void validatePlan(AgentPlan plan, String goal) {
         if (plan == null) {
@@ -251,6 +474,30 @@ public final class AgentOrchestrator implements Disposable {
         if (plan.isEmpty()) {
             throw new IllegalStateException("PlannerAgent returned an empty plan for goal: " + goal);
         }
+        if (plan.getPhases().size() > MAX_PHASES) {
+            throw new IllegalStateException(
+                    "Plan contains " + plan.getPhases().size() + " phases (max allowed: " + MAX_PHASES + "). "
+                    + "Break the goal into smaller sub-goals.");
+        }
+        long totalSteps = plan.getPhases().stream().mapToLong(p -> p.getSteps().size()).sum();
+        if (totalSteps > MAX_TOTAL_STEPS) {
+            throw new IllegalStateException(
+                    "Plan contains " + totalSteps + " steps total (max allowed: " + MAX_TOTAL_STEPS + "). "
+                    + "Break the goal into smaller sub-goals.");
+        }
+        // Reject plans containing unknown tool IDs — prevents LLM hallucinations from reaching execution
+        List<String> unknownToolIds = plan.getPhases().stream()
+                .flatMap(p -> p.getSteps().stream())
+                .map(Step::getToolId)
+                .filter(id -> !ToolRegistry.KNOWN_TOOL_IDS.contains(id))
+                .distinct()
+                .collect(Collectors.toList());
+        if (!unknownToolIds.isEmpty()) {
+            throw new IllegalStateException(
+                    "Plan contains unknown tool IDs: " + unknownToolIds
+                    + ". Valid tools: " + ToolRegistry.KNOWN_TOOL_IDS);
+        }
+
         // G3: reject plans with an unusual number of destructive steps
         long deleteCount = plan.getPhases().stream()
                 .flatMap(p -> p.getSteps().stream())
@@ -267,7 +514,7 @@ public final class AgentOrchestrator implements Disposable {
         if (plannerAgent == null) {
             synchronized (this) {
                 if (plannerAgent == null) {
-                    plannerAgent = createAiService(PlannerAgent.class);
+                    plannerAgent = createAiService(PlannerAgent.class, getOrCreatePlannerModel());
                 }
             }
         }
@@ -289,37 +536,57 @@ public final class AgentOrchestrator implements Disposable {
         if (criticAgent == null) {
             synchronized (this) {
                 if (criticAgent == null) {
-                    criticAgent = createAiService(CriticAgent.class);
+                    criticAgent = createAiService(CriticAgent.class, getOrCreateCriticModel());
                 }
             }
         }
         return criticAgent;
     }
 
-    private OllamaChatModel getOrCreateAgentModel() {
-        if (agentModel == null) {
+    private OllamaChatModel getOrCreatePlannerModel() {
+        if (plannerModel == null) {
             synchronized (this) {
-                if (agentModel == null) {
+                if (plannerModel == null) {
                     OllamaSettings settings = OllamaSettings.getInstance();
-                    agentModel = OllamaChatModel.builder()
+                    plannerModel = OllamaChatModel.builder()
                             .baseUrl(settings.getChatOllamaUrl())
-                            .modelName(settings.getChatModelName())
+                            .modelName(settings.getAgentPlannerModelName())
                             .responseFormat(ResponseFormat.JSON)
-                            .temperature(0.2)
+                            .temperature(0.3)
                             .timeout(settings.getTimeoutDuration())
                             .build();
+                    log.debug("Planner model created: {}", settings.getAgentPlannerModelName());
                 }
             }
         }
-        return agentModel;
+        return plannerModel;
     }
 
-    private <T> T createAiService(Class<T> serviceClass) {
+    private OllamaChatModel getOrCreateCriticModel() {
+        if (criticModel == null) {
+            synchronized (this) {
+                if (criticModel == null) {
+                    OllamaSettings settings = OllamaSettings.getInstance();
+                    criticModel = OllamaChatModel.builder()
+                            .baseUrl(settings.getChatOllamaUrl())
+                            .modelName(settings.getAgentCriticModelName())
+                            .responseFormat(ResponseFormat.JSON)
+                            .temperature(0.1)
+                            .timeout(settings.getTimeoutDuration())
+                            .build();
+                    log.debug("Critic model created: {}", settings.getAgentCriticModelName());
+                }
+            }
+        }
+        return criticModel;
+    }
+
+    private <T> T createAiService(Class<T> serviceClass, OllamaChatModel model) {
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(AgentOrchestrator.class.getClassLoader());
             return AiServices.builder(serviceClass)
-                    .chatModel(getOrCreateAgentModel())
+                    .chatModel(model)
                     .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
@@ -330,13 +597,14 @@ public final class AgentOrchestrator implements Disposable {
         plannerAgent = null;
         criticAgent = null;
         toolDispatcher = null;
-        closeModel();
-        agentModel = null;
+        closeModel(plannerModel);
+        closeModel(criticModel);
+        plannerModel = null;
+        criticModel = null;
         log.debug("Agents invalidated — will be recreated on next call");
     }
 
-    private void closeModel() {
-        OllamaChatModel model = agentModel;
+    private static void closeModel(OllamaChatModel model) {
         if (model instanceof AutoCloseable closeable) {
             try {
                 closeable.close();
@@ -354,10 +622,13 @@ public final class AgentOrchestrator implements Disposable {
 
     @Override
     public void dispose() {
+        cancelExecution();
         plannerAgent = null;
         criticAgent = null;
         toolDispatcher = null;
-        closeModel();
-        agentModel = null;
+        closeModel(plannerModel);
+        closeModel(criticModel);
+        plannerModel = null;
+        criticModel = null;
     }
 }
