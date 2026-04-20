@@ -121,10 +121,26 @@ public final class GoalContextResolver {
      *
      * @return the (possibly truncated) file content, or {@code null} if no match
      */
+    /**
+     * Resolves the project root to its canonical real path (following symlinks).
+     * Required so that {@code realPath.startsWith(root)} works correctly on macOS/Linux
+     * where temp directories may themselves be symlinks (e.g. {@code /var} → {@code /private/var}).
+     * Returns {@code null} if the path cannot be resolved (I/O error → fail-closed: skip the walk).
+     */
+    private static Path resolveRoot(String basePath) {
+        try {
+            return Paths.get(basePath).toRealPath();
+        } catch (IOException e) {
+            log.warn("GoalContextResolver: cannot resolve project root '{}': {}", basePath, e.getMessage());
+            return null;
+        }
+    }
+
     private static String findContaining(String stem, String basePath) {
         if (stem == null || stem.isBlank()) return null;
         String lowerStem = stem.toLowerCase(java.util.Locale.ROOT);
-        Path root = Paths.get(basePath);
+        Path root = resolveRoot(basePath);
+        if (root == null) return null;
         String[] result = {null};
         try {
             Files.walkFileTree(root, new SimpleFileVisitor<>() {
@@ -144,7 +160,13 @@ public final class GoalContextResolver {
                     String stemCandidate = name.substring(0, name.length() - 5).toLowerCase(java.util.Locale.ROOT);
                     if (stemCandidate.contains(lowerStem)) {
                         try {
-                            byte[] bytes = Files.readAllBytes(file);
+                            // SI-2 / A3: resolve symlinks before reading.
+                            Path realPath = file.toRealPath();
+                            if (!realPath.startsWith(root)) {
+                                log.warn("GoalContextResolver: symlink escape rejected: {} → {}", file, realPath);
+                                return FileVisitResult.CONTINUE;
+                            }
+                            byte[] bytes = Files.readAllBytes(realPath);
                             String text = new String(bytes, StandardCharsets.UTF_8);
                             result[0] = text.length() > MAX_FILE_CHARS
                                     ? text.substring(0, MAX_FILE_CHARS) + "\n... [content truncated]"
@@ -174,7 +196,8 @@ public final class GoalContextResolver {
      * @return the (possibly truncated) file content, or {@code null} if not found
      */
     private static String findAndRead(String fileName, String basePath) {
-        Path root = Paths.get(basePath);
+        Path root = resolveRoot(basePath);
+        if (root == null) return null;
         String[] result = {null};
 
         try {
@@ -195,7 +218,14 @@ public final class GoalContextResolver {
                     // platforms when the user types @orderService but the file is OrderService.java.
                     if (file.getFileName().toString().equalsIgnoreCase(fileName)) {
                         try {
-                            byte[] bytes = Files.readAllBytes(file);
+                            // SI-2 / A3: resolve symlinks before reading — a symlink inside the project
+                            // could point to a sensitive file outside (e.g. /etc/passwd).
+                            Path realPath = file.toRealPath();
+                            if (!realPath.startsWith(root)) {
+                                log.warn("GoalContextResolver: symlink escape rejected: {} → {}", file, realPath);
+                                return FileVisitResult.CONTINUE;
+                            }
+                            byte[] bytes = Files.readAllBytes(realPath);
                             String text = new String(bytes, StandardCharsets.UTF_8);
                             result[0] = text.length() > MAX_FILE_CHARS
                                     ? text.substring(0, MAX_FILE_CHARS) + "\n... [content truncated]"

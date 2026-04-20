@@ -236,4 +236,53 @@ class GoalContextResolverTest {
         // The injected content must still be present but with the escaped form
         assertThat(result).contains("[escaped]");
     }
+
+    // -------------------------------------------------------------------------
+    // SEC-C: Symlink escape prevention (SI-2 / A3)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void atReference_symlinkPointingOutsideProject_contentNotInjected() throws IOException {
+        // Create a sensitive file OUTSIDE the project temp directory
+        Path outsideFile = tempDir.getParent().resolve("secret_outside.java");
+        Files.writeString(outsideFile, "TOP_SECRET_OUTSIDE_CONTENT");
+        try {
+            // Create a symlink INSIDE the project pointing to the outside file
+            Path symlink = tempDir.resolve("SecretClass.java");
+            Files.createSymbolicLink(symlink, outsideFile);
+
+            Project project = mockProject(tempDir.toString());
+            String goal = "Refactor @SecretClass";
+
+            String result = GoalContextResolver.resolve(goal, project);
+
+            // The outside content must NOT appear in the resolved goal
+            assertThat(result).doesNotContain("TOP_SECRET_OUTSIDE_CONTENT");
+            // Goal returned unchanged — the reference was silently skipped
+            assertThat(result).isEqualTo(goal);
+        } finally {
+            Files.deleteIfExists(outsideFile);
+        }
+    }
+
+    @Test
+    void atReference_symlinkPointingOutsideProject_findContainingPath_contentNotInjected() throws IOException {
+        // Same attack via the broader "stem-contains" fallback (findContaining)
+        Path outsideFile = tempDir.getParent().resolve("MyServiceImpl_outside.java");
+        Files.writeString(outsideFile, "SECRET_IMPL_CONTENT");
+        try {
+            Path symlink = tempDir.resolve("MyServiceImpl.java");
+            Files.createSymbolicLink(symlink, outsideFile);
+
+            Project project = mockProject(tempDir.toString());
+            // @MyService triggers the Impl fallback, which uses findContaining
+            String goal = "Refactor @MyService";
+
+            String result = GoalContextResolver.resolve(goal, project);
+
+            assertThat(result).doesNotContain("SECRET_IMPL_CONTENT");
+        } finally {
+            Files.deleteIfExists(outsideFile);
+        }
+    }
 }
