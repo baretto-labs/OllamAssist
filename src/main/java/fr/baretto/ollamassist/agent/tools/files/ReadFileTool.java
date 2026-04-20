@@ -9,9 +9,12 @@ import fr.baretto.ollamassist.agent.tools.ToolResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 @Slf4j
@@ -37,7 +40,15 @@ public final class ReadFileTool implements AgentTool {
             return ToolResult.failure("Parameter 'path' is required");
         }
 
-        Path absolutePath = resolveAbsolute(path);
+        Path absolutePath;
+        try {
+            absolutePath = FilePathGuard.resolveConfined(path, project);
+        } catch (FilePathGuard.PathTraversalException e) {
+            log.warn("Path traversal attempt blocked: {}", e.getMessage());
+            return ToolResult.failure(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ToolResult.failure(e.getMessage());
+        }
         VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(absolutePath.toString());
 
         if (file == null || !file.exists()) {
@@ -52,7 +63,7 @@ public final class ReadFileTool implements AgentTool {
         }
 
         try {
-            String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+            String content = decodeWithAutoDetect(file.contentsToByteArray());
             String secretLabel = SecretDetector.detect(content);
             if (secretLabel != null) {
                 log.warn("Blocked FILE_READ of '{}': possible secret detected ({})", path, secretLabel);
@@ -65,15 +76,22 @@ public final class ReadFileTool implements AgentTool {
         }
     }
 
-    private Path resolveAbsolute(String path) {
-        Path p = Paths.get(path);
-        if (p.isAbsolute()) {
-            return p.normalize();
+    /**
+     * Decodes {@code bytes} to a String, trying UTF-8 first (strict mode).
+     * Falls back to ISO-8859-1 when the bytes are not valid UTF-8 (Q-1).
+     *
+     * <p>ISO-8859-1 is used as the fallback because it can decode any byte sequence
+     * without error (every byte maps to a code point). This covers legacy files
+     * encoded in Latin-1 or any Windows-125x code page.
+     */
+    static String decodeWithAutoDetect(byte[] bytes) {
+        CharsetDecoder utf8 = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        try {
+            return utf8.decode(ByteBuffer.wrap(bytes)).toString();
+        } catch (CharacterCodingException e) {
+            return new String(bytes, StandardCharsets.ISO_8859_1);
         }
-        String base = project.getBasePath();
-        if (base == null) {
-            throw new IllegalStateException("Project base path is not available");
-        }
-        return Paths.get(base, path).normalize();
     }
 }

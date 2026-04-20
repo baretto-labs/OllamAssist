@@ -35,8 +35,12 @@ public interface CriticAgent {
             }
 
             The "status" field MUST be exactly one of: "OK", "ADAPT", "ABORT" (uppercase).
-            When status is ADAPT, revisedPhases must contain the replacement phases.
+            When status is ADAPT, revisedPhases must contain the replacement phases (non-empty array).
             When status is OK or ABORT, revisedPhases must be an empty array [].
+
+            IMPORTANT: An ADAPT response with an empty revisedPhases array is treated as ABORT
+            by the orchestrator — there is no revised plan to execute. If you cannot produce
+            revised phases, use ABORT instead and explain why in "reasoning".
             """)
     CriticDecision evaluate(@UserMessage String prompt);
 }

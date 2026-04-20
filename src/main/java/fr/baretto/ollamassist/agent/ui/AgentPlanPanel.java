@@ -2,7 +2,9 @@ package fr.baretto.ollamassist.agent.ui;
 
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
@@ -26,7 +28,9 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.function.Consumer;
 
@@ -78,11 +82,19 @@ public class AgentPlanPanel extends JPanel {
     private AgentPlan currentPlan;
     private final List<PhaseRow> phaseRows = new ArrayList<>();
     private AutoValidateMode autoValidateMode = loadModeFromSettings();
+    @Nullable private final Project project;
+    /** Tracks whether the last execution wrote any files (enables the Undo button). */
+    private boolean executionHadWrites = false;
 
     public AgentPlanPanel(Consumer<AgentPlan> onValidate, Runnable onCancel) {
+        this(onValidate, onCancel, null);
+    }
+
+    public AgentPlanPanel(Consumer<AgentPlan> onValidate, Runnable onCancel, @Nullable Project project) {
         super(new BorderLayout(0, 8));
         this.onValidate = onValidate;
         this.onCancel = onCancel;
+        this.project = project;
         setBorder(PANEL_BORDER);
         setOpaque(false);
         buildLayout();
@@ -96,7 +108,10 @@ public class AgentPlanPanel extends JPanel {
     public void handleEvent(AgentProgressEvent event) {
         SwingUtilities.invokeLater(() -> {
             switch (event.getType()) {
-                case PLANNING -> showPlanning();
+                case PLANNING -> {
+                    executionHadWrites = false;
+                    showPlanning();
+                }
                 case PLAN_READY -> showPlan(event.getPlan());
                 case STEP_STARTED -> {
                     int completed = (int) phaseRows.stream()
@@ -104,17 +119,46 @@ public class AgentPlanPanel extends JPanel {
                             .filter(sr -> sr.status == StepStatus.SUCCESS || sr.status == StepStatus.FAILED)
                             .count();
                     int total = phaseRows.stream().mapToInt(r -> r.stepRows.size()).sum();
-                    String progress = total > 0 ? "Running — step " + (completed + 1) + "/" + total : "Running...";
+                    // Find which phase contains the running step to display "phase Y/Z" (U-4)
+                    int phaseIdx = -1;
+                    Step runningStep = event.getStep();
+                    if (runningStep != null) {
+                        for (int i = 0; i < phaseRows.size(); i++) {
+                            boolean containsStep = phaseRows.get(i).stepRows.stream()
+                                    .anyMatch(sr -> sr.step.getId().equals(runningStep.getId()));
+                            if (containsStep) { phaseIdx = i + 1; break; }
+                        }
+                    }
+                    String progress;
+                    if (total > 0) {
+                        progress = "Running — step " + (completed + 1) + "/" + total;
+                        if (phaseIdx > 0) {
+                            progress += " · phase " + phaseIdx + "/" + phaseRows.size();
+                        }
+                    } else {
+                        progress = "Running...";
+                    }
                     setStatus(IconUtils.OLLAMASSIST_THINKING_ICON, progress);
                     updateStep(event.getStep(), StepStatus.RUNNING);
                     showCancelButton();
                 }
-                case STEP_COMPLETED -> updateStep(event.getStep(), StepStatus.SUCCESS, event.getOutput());
+                case STEP_COMPLETED -> {
+                    updateStep(event.getStep(), StepStatus.SUCCESS, event.getOutput());
+                    if (event.getStep() != null && isWriteToolId(event.getStep().getToolId())) {
+                        executionHadWrites = true;
+                    }
+                }
                 case STEP_FAILED -> updateStep(event.getStep(), StepStatus.FAILED, event.getOutput());
                 case CRITIC_THINKING -> setStatus(IconUtils.OLLAMASSIST_THINKING_ICON, event.getMessage());
                 case PLAN_ADAPTED -> adaptPlan(event.getPlan());
-                case COMPLETED -> showCompleted(event.getMessage());
-                case ABORTED -> showAborted(event.getMessage());
+                case COMPLETED -> {
+                    showCompleted(event.getMessage());
+                    showUndoButtonIfNeeded();
+                }
+                case ABORTED -> {
+                    showAborted(event.getMessage());
+                    showUndoButtonIfNeeded();
+                }
             }
         });
     }
@@ -211,6 +255,13 @@ public class AgentPlanPanel extends JPanel {
         this.currentPlan = revisedPlan;
         setStatus(AllIcons.Actions.Refresh, "Plan adapted — " + revisedPlan.totalSteps() + " remaining step(s)");
 
+        // Snapshot collapse/expand state before rebuilding so it is preserved across ADAPT (U-5).
+        // Key = phase description (stable across ADAPT revisions of the same phase).
+        Map<String, Boolean> collapseSnapshot = new HashMap<>();
+        for (PhaseRow r : phaseRows) {
+            collapseSnapshot.put(r.phase.getDescription(), r.collapsed);
+        }
+
         // Rebuild only the remaining (non-completed) phases
         List<Phase> remaining = revisedPlan.getPhases();
         List<PhaseRow> completed = phaseRows.stream()
@@ -226,6 +277,11 @@ public class AgentPlanPanel extends JPanel {
         }
         for (Phase phase : remaining) {
             PhaseRow row = new PhaseRow(phase, this::onStepEdited, this::onStepDeleted);
+            // Restore collapse state if this phase was already visible before the ADAPT (U-5).
+            Boolean wasCollapsed = collapseSnapshot.get(phase.getDescription());
+            if (wasCollapsed != null && wasCollapsed != row.collapsed) {
+                row.toggleCollapse();
+            }
             phaseRows.add(row);
             phasesContainer.add(row.panel);
         }
@@ -243,6 +299,37 @@ public class AgentPlanPanel extends JPanel {
         setStatus(IconUtils.ERROR, message);
         actionsPanel.setVisible(false);
         revalidatePanel();
+    }
+
+    /** Shows the "Undo last execution" button if the execution wrote or deleted files. */
+    private void showUndoButtonIfNeeded() {
+        if (!executionHadWrites || project == null) return;
+        UndoManager undoManager = UndoManager.getInstance(project);
+        if (undoManager == null || !undoManager.isUndoAvailable(null)) return;
+        actionsPanel.removeAll();
+        actionsPanel.setOpaque(false);
+        JButton undoBtn = new JButton("Undo execution", AllIcons.Actions.Rollback);
+        undoBtn.setFocusPainted(false);
+        undoBtn.setFont(FontUtils.getSmallFont());
+        undoBtn.setToolTipText("Undo all file writes and deletes from this agent execution (Ctrl+Z also works)");
+        undoBtn.addActionListener(e -> {
+            undoBtn.setEnabled(false);
+            // Undo all agent write commands that share the same groupId (correlationId).
+            // Since WriteCommandAction was called with the correlationId as groupId, IntelliJ
+            // merges them into one undo entry — a single undo call reverses the entire execution.
+            if (undoManager.isUndoAvailable(null)) {
+                undoManager.undo(null);
+            }
+            actionsPanel.setVisible(false);
+            revalidatePanel();
+        });
+        actionsPanel.add(undoBtn);
+        actionsPanel.setVisible(true);
+        revalidatePanel();
+    }
+
+    private static boolean isWriteToolId(String toolId) {
+        return "FILE_WRITE".equals(toolId) || "FILE_EDIT".equals(toolId) || "FILE_DELETE".equals(toolId);
     }
 
     private void showCancelButton() {
@@ -420,12 +507,26 @@ public class AgentPlanPanel extends JPanel {
 
     private void triggerValidation() {
         actionsPanel.setVisible(false);
+        // Lock edit/delete buttons immediately — before execution starts asynchronously.
+        // Without this, there is a race window between this call and the first STEP_STARTED
+        // event (which hides buttons in setStatus()), during which the user could corrupt
+        // the running plan (U-2).
+        lockStepEditButtons();
         // Status will be updated to "Running — step 1/N" as soon as the first STEP_STARTED arrives.
         // Show a neutral "Queued" message in the interim so the label doesn't linger on "Plan ready".
         setStatus(IconUtils.OLLAMASSIST_THINKING_ICON, "Queued for execution...");
         revalidatePanel();
         if (currentPlan != null) {
             onValidate.accept(currentPlan);
+        }
+    }
+
+    /** Hides all edit/delete buttons across all step rows immediately. */
+    private void lockStepEditButtons() {
+        for (PhaseRow phaseRow : phaseRows) {
+            for (StepRow stepRow : phaseRow.stepRows) {
+                stepRow.lockEditButtons();
+            }
         }
     }
 
@@ -655,7 +756,6 @@ public class AgentPlanPanel extends JPanel {
             textArea.setBackground(anchor.getBackground());
 
             JBScrollPane scrollPane = new JBScrollPane(textArea);
-            scrollPane.setPreferredSize(new Dimension(500, 270));
 
             JButton copyBtn = new JButton("Copy");
             copyBtn.setFont(FontUtils.getSmallFont());
@@ -674,7 +774,7 @@ public class AgentPlanPanel extends JPanel {
             JPanel wrapper = new JPanel(new BorderLayout());
             wrapper.add(scrollPane, BorderLayout.CENTER);
             wrapper.add(toolbar, BorderLayout.SOUTH);
-            wrapper.setPreferredSize(new Dimension(500, 300));
+            wrapper.setPreferredSize(new Dimension(600, 350));
 
             JBPopupFactory.getInstance()
                     .createComponentPopupBuilder(wrapper, textArea)
@@ -684,6 +784,17 @@ public class AgentPlanPanel extends JPanel {
                     .setRequestFocus(true)
                     .createPopup()
                     .showUnderneathOf(anchor);
+        }
+
+        /**
+         * Hides edit/delete buttons immediately. Called at execution start to close the race
+         * window between triggerValidation() and the first STEP_STARTED event (U-2).
+         */
+        void lockEditButtons() {
+            JPanel mainRow = (JPanel) panel.getComponent(0);
+            for (Component c : mainRow.getComponents()) {
+                if (c instanceof JButton) c.setVisible(false);
+            }
         }
 
         /**
@@ -704,11 +815,17 @@ public class AgentPlanPanel extends JPanel {
             retryBtn.addActionListener(e -> {
                 retryBtn.setEnabled(false);
                 skipBtn.setEnabled(false);
+                // Show spinner again so the user knows a retry is in progress (U-9)
+                iconLabel.setIcon(StepStatus.RUNNING.icon());
+                textLabel.setForeground(JBColor.GRAY);
                 onDecision.accept(StepRetryDecision.RETRY);
             });
             skipBtn.addActionListener(e -> {
                 skipBtn.setEnabled(false);
                 retryBtn.setEnabled(false);
+                // Show "skipped" state visually (U-9)
+                iconLabel.setIcon(com.intellij.icons.AllIcons.Actions.Forward);
+                textLabel.setForeground(JBColor.GRAY);
                 onDecision.accept(StepRetryDecision.SKIP);
             });
 

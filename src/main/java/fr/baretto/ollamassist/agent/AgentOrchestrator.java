@@ -54,6 +54,59 @@ public final class AgentOrchestrator implements Disposable {
     }
 
     // -------------------------------------------------------------------------
+    // Model compatibility check
+    // -------------------------------------------------------------------------
+
+    /**
+     * Sends a minimal JSON prompt to the configured planner model and returns {@code null} if
+     * the model responds with valid JSON, or an error message string if it does not.
+     *
+     * <p>Runs on the calling thread (must be invoked from a background thread).
+     * Timeout: 15 seconds.
+     */
+    @org.jetbrains.annotations.Nullable
+    public String checkModelCompatibility() {
+        OllamaSettings settings;
+        try {
+            settings = OllamaSettings.getInstance();
+        } catch (Exception e) {
+            return "Settings unavailable: " + e.getMessage();
+        }
+        try {
+            dev.langchain4j.model.ollama.OllamaChatModel testModel =
+                    dev.langchain4j.model.ollama.OllamaChatModel.builder()
+                            .baseUrl(settings.getChatOllamaUrl())
+                            .modelName(settings.getAgentPlannerModelName())
+                            .responseFormat(dev.langchain4j.model.chat.request.ResponseFormat.JSON)
+                            .temperature(0.0)
+                            .timeout(java.time.Duration.ofSeconds(15))
+                            .build();
+            String response = CompletableFuture
+                    .supplyAsync(() -> testModel.chat(
+                            "Reply with exactly this JSON and nothing else: {\"compatible\":true}"))
+                    .orTimeout(15, TimeUnit.SECONDS)
+                    .join();
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.readTree(response); // throws if not valid JSON
+            return null; // compatible
+        } catch (java.util.concurrent.CompletionException ce) {
+            Throwable cause = ce.getCause() != null ? ce.getCause() : ce;
+            if (cause instanceof TimeoutException) {
+                return "Model did not respond within 15s — check that Ollama is running and the model '"
+                        + settings.getAgentPlannerModelName() + "' is loaded.";
+            }
+            return "Cannot reach model '" + settings.getAgentPlannerModelName()
+                    + "': " + cause.getMessage();
+        } catch (Exception e) {
+            return "Model '" + settings.getAgentPlannerModelName()
+                    + "' does not support structured JSON output. "
+                    + "Agent mode requires a model with reliable JSON generation "
+                    + "(e.g. qwen2.5:14b, mistral-nemo, deepseek-coder:33b). "
+                    + "Error: " + e.getMessage();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Planning
     // -------------------------------------------------------------------------
 
@@ -112,6 +165,15 @@ public final class AgentOrchestrator implements Disposable {
         }
     }
 
+    private long globalTimeoutSeconds() {
+        try {
+            int minutes = OllamaSettings.getInstance().getAgentGlobalTimeoutMinutes();
+            return minutes > 0 ? (long) minutes * 60 : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     @TestOnly
     CompletableFuture<AgentPlan> plan(String userGoal, PlannerAgent agent) {
         return CompletableFuture.supplyAsync(() -> {
@@ -141,7 +203,17 @@ public final class AgentOrchestrator implements Disposable {
     // -------------------------------------------------------------------------
 
     public CompletableFuture<Void> execute(AgentPlan plan) {
-        return executeGuarded(plan, getOrCreateToolDispatcher(), getOrCreateCriticAgent());
+        // Capture both dispatcher and critic inside a single synchronized block so that
+        // a concurrent invalidateAgents() call (triggered by ChatModelModifiedNotifier) cannot
+        // null them out between the two acquisitions, which would cause execution to start with
+        // a dispatcher and a critic built against different (possibly mismatched) model configs.
+        final ToolDispatcher dispatcher;
+        final CriticAgent critic;
+        synchronized (this) {
+            dispatcher = getOrCreateToolDispatcher();
+            critic = getOrCreateCriticAgent();
+        }
+        return executeGuarded(plan, dispatcher, critic);
     }
 
     @TestOnly
@@ -169,7 +241,9 @@ public final class AgentOrchestrator implements Disposable {
     /** Maximum chars kept for a single step output injected into the Critic or next step params. */
     private static final int MAX_STEP_OUTPUT_CHARS = 4_096;
     /** Maximum total chars accumulated in the execution log before older entries are trimmed. */
-    private static final int MAX_EXECUTION_LOG_CHARS = 100_000;
+    static final int MAX_EXECUTION_LOG_CHARS = 100_000;
+    /** Marker inserted at the top of the log when older entries are dropped. */
+    private static final String TRIM_MARKER = "[earlier history trimmed]\n";
 
     @TestOnly
     CompletableFuture<Void> execute(AgentPlan plan, ToolDispatcher dispatcher, CriticAgent critic) {
@@ -198,8 +272,13 @@ public final class AgentOrchestrator implements Disposable {
         executionCancelled = false;
         dispatcher.resetRateLimits();
         String correlationId = UUID.randomUUID().toString().substring(0, 8);
-        log.debug("Starting execution correlationId={} paranoid={} goal='{}'", correlationId, paranoidMode, plan.getGoal());
-        return CompletableFuture.runAsync(() -> {
+        // Compute the original destructive count BEFORE execution starts.
+        // Passed to validateRevisedPhases() so the Critic cannot silently escalate blast radius.
+        final long originalDestructiveCount = countDestructiveSteps(plan.getPhases());
+        log.debug("Starting execution correlationId={} paranoid={} destructiveSteps={} goal='{}'",
+                correlationId, paranoidMode, originalDestructiveCount, plan.getGoal());
+        long globalTimeout = globalTimeoutSeconds();
+        CompletableFuture<Void> executionFuture = CompletableFuture.runAsync(() -> {
             List<Phase> remainingPhases = new ArrayList<>(plan.getPhases());
             String lastStepOutput = "";
             int adaptationCount = 0;
@@ -250,9 +329,11 @@ public final class AgentOrchestrator implements Disposable {
                                     publishProgress(AgentProgressEvent.aborted(stepDecision.getReasoning()));
                                     return;
                                 }
+                                log.debug("Paranoid Critic step decision for step '{}': status={} reasoning='{}'",
+                                        step.getDescription(), stepDecision.getStatus(), stepDecision.getReasoning());
                                 if (stepDecision.getStatus() == CriticDecision.Status.ADAPT && !stepDecision.getRevisedPhases().isEmpty()) {
                                     List<Phase> revisedFromStep = stepDecision.getRevisedPhases();
-                                    String stepValidationError = validateRevisedPhases(revisedFromStep, plan.getGoal());
+                                    String stepValidationError = validateRevisedPhases(revisedFromStep, plan.getGoal(), originalDestructiveCount);
                                     if (stepValidationError != null) {
                                         log.error("Paranoid Critic ADAPT rejected — invalid revised phases: {}", stepValidationError);
                                         publishProgress(AgentProgressEvent.aborted(
@@ -304,13 +385,23 @@ public final class AgentOrchestrator implements Disposable {
                 if (decision == null) return; // aborted by Critic exception
 
                 switch (decision.getStatus()) {
-                    case OK -> { /* continue with remaining phases */ }
+                    case OK -> {
+                        // Phase succeeded — save a checkpoint so we can resume from here on crash (A-3)
+                        saveCheckpoint(correlationId, plan.getGoal(), plan, remainingPhases);
+                    }
                     case ADAPT -> {
                         List<Phase> revised = decision.getRevisedPhases();
                         if (revised.isEmpty()) {
-                            log.warn("Critic returned ADAPT but provided no revised phases — treating as OK");
+                            // An ADAPT with no revised phases is an ambiguous / malformed Critic response.
+                            // Treat it as ABORT rather than silently continuing — this makes the agent
+                            // stop and surface the issue rather than proceeding on an undefined basis.
+                            log.warn("Critic returned ADAPT but provided no revised phases — aborting execution");
+                            publishProgress(AgentProgressEvent.aborted(
+                                    "Critic requested plan adaptation but provided no revised phases. "
+                                    + "Reasoning: " + decision.getReasoning()));
+                            return;
                         } else {
-                            String validationError = validateRevisedPhases(revised, plan.getGoal());
+                            String validationError = validateRevisedPhases(revised, plan.getGoal(), originalDestructiveCount);
                             if (validationError != null) {
                                 log.error("Critic ADAPT rejected — invalid revised phases: {}", validationError);
                                 publishProgress(AgentProgressEvent.aborted(
@@ -330,6 +421,7 @@ public final class AgentOrchestrator implements Disposable {
                     }
                     case ABORT -> {
                         recordMemory(correlationId, plan.getGoal(), "ABORTED", decision.getReasoning());
+                        clearCheckpoint();
                         publishProgress(AgentProgressEvent.aborted(decision.getReasoning()));
                         return;
                     }
@@ -337,8 +429,21 @@ public final class AgentOrchestrator implements Disposable {
             }
 
             recordMemory(correlationId, plan.getGoal(), "COMPLETED", "All phases succeeded.");
+            clearCheckpoint();
             publishProgress(AgentProgressEvent.completed(completedStepCount));
         });
+        if (globalTimeout > 0) {
+            executionFuture = executionFuture.orTimeout(globalTimeout, TimeUnit.SECONDS)
+                    .exceptionally(ex -> {
+                        if (ex instanceof TimeoutException || (ex.getCause() instanceof TimeoutException)) {
+                            log.warn("Global execution timeout reached after {}s for correlationId={}", globalTimeout, correlationId);
+                            publishProgress(AgentProgressEvent.aborted(
+                                    "Execution aborted: global timeout of " + (globalTimeout / 60) + " minute(s) reached."));
+                        }
+                        return null;
+                    });
+        }
+        return executionFuture;
     }
 
     private void recordMemory(String correlationId, String goal, String status, String reason) {
@@ -346,6 +451,25 @@ public final class AgentOrchestrator implements Disposable {
         if (memory != null) {
             memory.record(correlationId, goal, status, reason);
         }
+    }
+
+    /**
+     * Saves the current execution checkpoint (remaining phases) so the execution can be
+     * resumed from this point if the IDE or agent crashes (A-3).
+     * No-op when the checkpoint service is unavailable.
+     */
+    private void saveCheckpoint(String correlationId, String goal, AgentPlan plan,
+                                List<Phase> remainingPhases) {
+        AgentCheckpointService ckpt = project.getService(AgentCheckpointService.class);
+        if (ckpt == null) return;
+        int nextIndex = plan.getPhases().size() - remainingPhases.size();
+        ckpt.save(correlationId, goal, plan, nextIndex);
+    }
+
+    /** Deletes any existing checkpoint for this execution. */
+    private void clearCheckpoint() {
+        AgentCheckpointService ckpt = project.getService(AgentCheckpointService.class);
+        if (ckpt != null) ckpt.clear();
     }
 
     // -------------------------------------------------------------------------
@@ -384,31 +508,53 @@ public final class AgentOrchestrator implements Disposable {
     }
 
     /**
-     * Truncates a step output to {@link #MAX_STEP_OUTPUT_CHARS} to prevent unbounded memory
-     * growth and Critic context overflow across many steps.
+     * Truncates a step output to {@link #MAX_STEP_OUTPUT_CHARS} using a first-60% + last-40%
+     * strategy. Keeping both ends means the Critic always sees:
+     * <ul>
+     *   <li>the beginning of the output (context / operation description), and</li>
+     *   <li>the end of the output (where error root causes and stack traces typically appear).</li>
+     * </ul>
+     * A naive head-only truncation would silently discard error details exactly when they matter most.
      */
     private static String truncateStepOutput(@org.jetbrains.annotations.Nullable String output) {
         if (output == null) return "";
         if (output.length() <= MAX_STEP_OUTPUT_CHARS) return output;
-        return output.substring(0, MAX_STEP_OUTPUT_CHARS) + "... [output truncated]";
+        int firstPart = (int) (MAX_STEP_OUTPUT_CHARS * 0.6);
+        int lastPart = MAX_STEP_OUTPUT_CHARS - firstPart;
+        int omitted = output.length() - MAX_STEP_OUTPUT_CHARS;
+        return output.substring(0, firstPart)
+                + "\n... [" + omitted + " chars omitted] ...\n"
+                + output.substring(output.length() - lastPart);
     }
 
     /**
      * Trims the execution log when it exceeds {@link #MAX_EXECUTION_LOG_CHARS}, keeping the most
      * recent entries. Drops whole lines from the front to avoid splitting mid-entry.
+     *
+     * <p>The marker {@value #TRIM_MARKER} is accounted for in the budget so that after this
+     * method returns, {@code log.length() <= MAX_EXECUTION_LOG_CHARS} is always true.
+     * A second immediate call with no new content added must be a no-op.
      */
-    private static void trimExecutionLog(StringBuilder log) {
+    static void trimExecutionLog(StringBuilder log) {
         if (log.length() <= MAX_EXECUTION_LOG_CHARS) return;
-        int keepFrom = log.length() - MAX_EXECUTION_LOG_CHARS;
-        // Advance to the next newline so we don't cut a line mid-entry
+        // Reserve room for the marker so the post-insert invariant holds.
+        int keepChars = MAX_EXECUTION_LOG_CHARS - TRIM_MARKER.length();
+        int keepFrom = log.length() - keepChars;
+        // Advance to the next newline so we don't cut a line mid-entry.
+        // If the newline adjustment pushes keepFrom past the end, clamp it.
         int nl = log.indexOf("\n", keepFrom);
         if (nl > 0 && nl < log.length() - 1) keepFrom = nl + 1;
         log.delete(0, keepFrom);
-        log.insert(0, "[earlier history trimmed]\n");
+        log.insert(0, TRIM_MARKER);
+        // Post-condition: log.length() <= MAX_EXECUTION_LOG_CHARS
     }
 
     /** Maximum chars of tool output injected into a single Critic prompt (prevents context overflow). */
     static final int MAX_CRITIC_CONTEXT_CHARS = 3_000;
+
+    /** Delimiter wrapping the execution data block in the Critic prompt (SI-4 / A4). */
+    static final String EXEC_LOG_DELIMITER_START = "<<EXECUTION_LOG>>";
+    static final String EXEC_LOG_DELIMITER_END   = "<</EXECUTION_LOG>>";
 
     private String buildCriticPrompt(String goal, Phase completedPhase, String phaseResults,
                                       String fullExecutionLog, List<Phase> remaining, boolean phaseFailed) {
@@ -416,13 +562,21 @@ public final class AgentOrchestrator implements Disposable {
         StringBuilder prompt = new StringBuilder();
         prompt.append("Goal: ").append(PromptSanitizer.sanitizeGoal(goal)).append("\n\n");
 
+        // Wrap execution data in explicit delimiters so the LLM cannot interpret
+        // tool output or phase headers as instructions (SI-4 / Rule A4).
         if (fullExecutionLog.length() > phaseResults.length()) {
             // There are results from previous phases — include them for context
             prompt.append("Execution history (all phases so far):\n")
-                    .append(truncateCriticContext(fullExecutionLog)).append("\n");
+                    .append(EXEC_LOG_DELIMITER_START).append("\n")
+                    .append(truncateCriticContext(fullExecutionLog)).append("\n")
+                    .append(EXEC_LOG_DELIMITER_END).append("\n");
         } else {
-            prompt.append("Current phase ").append(phaseStatus).append(": ").append(completedPhase.getDescription()).append("\n");
-            prompt.append("Step results:\n").append(truncateCriticContext(phaseResults)).append("\n");
+            prompt.append("Current phase ").append(phaseStatus).append(": ")
+                    .append(completedPhase.getDescription()).append("\n");
+            prompt.append("Step results:\n")
+                    .append(EXEC_LOG_DELIMITER_START).append("\n")
+                    .append(truncateCriticContext(phaseResults)).append("\n")
+                    .append(EXEC_LOG_DELIMITER_END).append("\n");
         }
 
         prompt.append("Remaining phases: ").append(remaining.size()).append("\n\n");
@@ -447,19 +601,41 @@ public final class AgentOrchestrator implements Disposable {
 
     /**
      * Validates revised phases proposed by the Critic before accepting them.
-     * Reuses the same rules as {@link #validatePlan} (unknown toolIds, blast-radius guards).
+     * Applies the same rules as {@link #validatePlan} (unknown toolIds, blast-radius guards)
+     * PLUS an additional check: the revised plan must not introduce more destructive operations
+     * than were present in the original plan. This prevents a confused or adversarial Critic
+     * from escalating the blast radius by adding FILE_DELETE / FILE_WRITE steps that the
+     * user never agreed to.
      *
+     * @param originalDestructiveCount number of destructive steps in the original plan (for comparison)
      * @return {@code null} if valid, or an error message if invalid
      */
     @org.jetbrains.annotations.Nullable
-    private String validateRevisedPhases(List<Phase> phases, String goal) {
+    private String validateRevisedPhases(List<Phase> phases, String goal, long originalDestructiveCount) {
         if (phases == null || phases.isEmpty()) return null;
         try {
             validatePlan(new AgentPlan(goal, "critic revision", phases), goal);
-            return null;
         } catch (IllegalStateException e) {
             return e.getMessage();
         }
+        long revisedDestructiveCount = countDestructiveSteps(phases);
+        if (revisedDestructiveCount > originalDestructiveCount) {
+            return "Revised plan contains " + revisedDestructiveCount
+                    + " destructive operation(s) but the original plan only had " + originalDestructiveCount
+                    + ". Critic cannot escalate blast radius — user must validate the revised plan manually.";
+        }
+        return null;
+    }
+
+    /** Returns the number of steps using write/delete/run tools in the given phases. */
+    private static long countDestructiveSteps(List<Phase> phases) {
+        return phases.stream()
+                .flatMap(p -> p.getSteps().stream())
+                .filter(s -> "FILE_DELETE".equals(s.getToolId())
+                        || "FILE_WRITE".equals(s.getToolId())
+                        || "FILE_EDIT".equals(s.getToolId())
+                        || "RUN_COMMAND".equals(s.getToolId()))
+                .count();
     }
 
     /** Maximum FILE_DELETE steps allowed in a single plan (G3 blast-radius guard). */
@@ -596,7 +772,10 @@ public final class AgentOrchestrator implements Disposable {
     private synchronized void invalidateAgents() {
         plannerAgent = null;
         criticAgent = null;
-        toolDispatcher = null;
+        if (toolDispatcher != null) {
+            toolDispatcher.dispose();
+            toolDispatcher = null;
+        }
         closeModel(plannerModel);
         closeModel(criticModel);
         plannerModel = null;
@@ -623,12 +802,17 @@ public final class AgentOrchestrator implements Disposable {
     @Override
     public void dispose() {
         cancelExecution();
-        plannerAgent = null;
-        criticAgent = null;
-        toolDispatcher = null;
-        closeModel(plannerModel);
-        closeModel(criticModel);
-        plannerModel = null;
-        criticModel = null;
+        synchronized (this) {
+            plannerAgent = null;
+            criticAgent = null;
+            if (toolDispatcher != null) {
+                toolDispatcher.dispose();
+                toolDispatcher = null;
+            }
+            closeModel(plannerModel);
+            closeModel(criticModel);
+            plannerModel = null;
+            criticModel = null;
+        }
     }
 }

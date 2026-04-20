@@ -170,6 +170,79 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         myState.approvalTimeoutMinutes = Math.max(1, Math.min(minutes, 60));
     }
 
+    public boolean isAgentParanoidMode() {
+        return myState.agentParanoidMode;
+    }
+
+    public void setAgentParanoidMode(boolean paranoidMode) {
+        myState.agentParanoidMode = paranoidMode;
+    }
+
+    /**
+     * Maximum wall-clock seconds for a single tool execution (safety net against hung tools).
+     * RunCommandTool has its own finer-grained timeout; this is the outer guard.
+     * Default: 120s.
+     */
+    public int getAgentToolTimeoutSeconds() {
+        return myState.agentToolTimeoutSeconds > 0 ? myState.agentToolTimeoutSeconds : 120;
+    }
+
+    public void setAgentToolTimeoutSeconds(int seconds) {
+        myState.agentToolTimeoutSeconds = Math.max(10, Math.min(seconds, 3600));
+    }
+
+    /**
+     * Model name used by the PlannerAgent.
+     * Empty string means "use chatModelName" (backward-compatible default).
+     */
+    public String getAgentPlannerModelName() {
+        String name = myState.agentPlannerModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentPlannerModelName(String name) {
+        myState.agentPlannerModelName = name == null ? "" : name.trim();
+    }
+
+    /**
+     * Model name used by the CriticAgent.
+     * Empty string means "use chatModelName" (backward-compatible default).
+     */
+    public String getAgentCriticModelName() {
+        String name = myState.agentCriticModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentCriticModelName(String name) {
+        myState.agentCriticModelName = name == null ? "" : name.trim();
+    }
+
+    /**
+     * Auto-validate mode for the agent plan panel.
+     * Values: "MANUAL" | "SMART" | "FULL_AUTO". Default: "MANUAL".
+     */
+    public String getAgentAutoValidateMode() {
+        String mode = myState.agentAutoValidateMode;
+        return (mode == null || mode.isBlank()) ? "MANUAL" : mode;
+    }
+
+    public void setAgentAutoValidateMode(String mode) {
+        myState.agentAutoValidateMode = mode;
+    }
+
+    /**
+     * Wall-clock timeout for the entire agent execution, in minutes.
+     * 0 means disabled (no global timeout).
+     * Default: 0.
+     */
+    public int getAgentGlobalTimeoutMinutes() {
+        return myState.agentGlobalTimeoutMinutes; // 0 = disabled
+    }
+
+    public void setAgentGlobalTimeoutMinutes(int minutes) {
+        myState.agentGlobalTimeoutMinutes = Math.max(0, Math.min(minutes, 120));
+    }
+
     @Getter
     public static class State {
         public String chatOllamaUrl = DEFAULT_URL;
@@ -185,5 +258,16 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public int agentPlanTimeoutSeconds = 0;
         public int runCommandTimeoutSeconds = 0;
         public int approvalTimeoutMinutes = 0;
+        // Agent paranoid mode — triggers Critic after every step (not just per phase)
+        public boolean agentParanoidMode = false;
+        // Per-tool execution timeout (outer safety net — 0 = use default 120s)
+        public int agentToolTimeoutSeconds = 0;
+        // Separate model names for PlannerAgent and CriticAgent (empty = use chatModelName)
+        public String agentPlannerModelName = "";
+        public String agentCriticModelName = "";
+        // Auto-validate mode: MANUAL | SMART | FULL_AUTO
+        public String agentAutoValidateMode = "MANUAL";
+        // Global wall-clock timeout for the entire agent execution (0 = disabled)
+        public int agentGlobalTimeoutMinutes = 0;
     }
 }

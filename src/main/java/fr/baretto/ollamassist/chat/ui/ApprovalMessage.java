@@ -61,13 +61,16 @@ public class ApprovalMessage extends JPanel {
         pathLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 10, 0));
         contentPanel.add(pathLabel);
 
-        // Code preview
-        String previewContent = content.length() > 1000
-            ? content.substring(0, 1000) + TRUNCATION_SUFFIX
+        // Code preview — 5 000 chars to avoid blind approval on long diffs (U-3)
+        String previewContent = content.length() > 5000
+            ? content.substring(0, 5000) + TRUNCATION_SUFFIX
             : content;
 
         RSyntaxTextArea codeArea = new RSyntaxTextArea(previewContent);
-        codeArea.setSyntaxEditingStyle(detectSyntaxStyle(filePath));
+        // Diff content (produced by EditFileTool.buildDiff) must not be highlighted as source code.
+        // Applying Java/Python syntax to "--- BEFORE:" / "+++ AFTER:" markers looks wrong.
+        String syntaxStyle = isDiffContent(previewContent) ? SyntaxConstants.SYNTAX_STYLE_NONE : detectSyntaxStyle(filePath);
+        codeArea.setSyntaxEditingStyle(syntaxStyle);
         codeArea.setCodeFoldingEnabled(true);
         codeArea.setEditable(false);
         codeArea.setRows(Math.min(20, previewContent.split("\n").length));
@@ -132,6 +135,11 @@ public class ApprovalMessage extends JPanel {
 
         // Notify decision
         onDecision.accept(approved);
+    }
+
+    /** Returns true if the content looks like a buildDiff() output rather than raw source code. */
+    static boolean isDiffContent(String content) {
+        return content.contains("--- BEFORE:") || content.contains("+++ AFTER:");
     }
 
     private String detectSyntaxStyle(String filePath) {

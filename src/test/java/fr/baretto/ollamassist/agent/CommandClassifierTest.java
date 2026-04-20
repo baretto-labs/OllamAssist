@@ -248,4 +248,35 @@ class CommandClassifierTest {
         // Baseline: no redirection → still READ_ONLY
         assertThat(CommandClassifier.classify("cat src/Main.java")).isEqualTo(CommandTier.READ_ONLY);
     }
+
+    // -------------------------------------------------------------------------
+    // S-5: pipes to non-interpreter commands must stay READ_ONLY (not DESTRUCTIVE)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void grepPipedToGrep_isReadOnly() {
+        // grep foo | grep bar — two read-only commands; must NOT be DESTRUCTIVE
+        assertThat(CommandClassifier.classify("grep foo | grep bar")).isEqualTo(CommandTier.READ_ONLY);
+    }
+
+    @Test
+    void findPipedToWc_isReadOnly() {
+        assertThat(CommandClassifier.classify("find . -name '*.java' | wc -l")).isEqualTo(CommandTier.READ_ONLY);
+    }
+
+    @Test
+    void grepPipedToSort_isReadOnly() {
+        assertThat(CommandClassifier.classify("grep -r 'TODO' src/ | sort -u")).isEqualTo(CommandTier.READ_ONLY);
+    }
+
+    @Test
+    void catPipedToGrepPipedToHead_isReadOnly() {
+        assertThat(CommandClassifier.classify("cat file.txt | grep pattern | head -20")).isEqualTo(CommandTier.READ_ONLY);
+    }
+
+    @Test
+    void grepPipedToBash_isDestructive() {
+        // Pipe to interpreter IS still DESTRUCTIVE — this must not be affected by S-5 fix
+        assertThat(CommandClassifier.classify("grep -r '' . | bash")).isEqualTo(CommandTier.DESTRUCTIVE);
+    }
 }

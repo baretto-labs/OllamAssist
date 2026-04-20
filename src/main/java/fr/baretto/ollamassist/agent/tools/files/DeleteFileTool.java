@@ -1,6 +1,6 @@
 package fr.baretto.ollamassist.agent.tools.files;
 
-import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -11,8 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public final class DeleteFileTool implements AgentTool {
@@ -37,7 +37,15 @@ public final class DeleteFileTool implements AgentTool {
             return ToolResult.failure("Parameter 'path' is required");
         }
 
-        Path absolutePath = resolveAbsolute(path);
+        Path absolutePath;
+        try {
+            absolutePath = FilePathGuard.resolveConfined(path, project);
+        } catch (FilePathGuard.PathTraversalException e) {
+            log.warn("Path traversal attempt blocked: {}", e.getMessage());
+            return ToolResult.failure(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ToolResult.failure(e.getMessage());
+        }
         VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByPath(absolutePath.toString());
 
         if (file == null || !file.exists()) {
@@ -53,32 +61,24 @@ public final class DeleteFileTool implements AgentTool {
             return ToolResult.failure("User rejected file deletion: " + path);
         }
 
+        String groupId = (String) params.get("__correlationId");
+        AtomicReference<ToolResult> result = new AtomicReference<>();
         try {
-            return WriteAction.computeAndWait(() -> {
+            WriteCommandAction.runWriteCommandAction(project, "Agent: delete " + path, groupId, () -> {
                 try {
                     file.delete(this);
                     log.info("File deleted: {}", path);
-                    return ToolResult.success("File deleted: " + path);
+                    result.set(ToolResult.success("File deleted: " + path));
                 } catch (IOException e) {
                     log.error("Failed to delete file: {}", path, e);
-                    return ToolResult.failure("Failed to delete file: " + e.getMessage());
+                    result.set(ToolResult.failure("Failed to delete file: " + e.getMessage()));
                 }
             });
         } catch (Exception e) {
-            log.error("WriteAction failed for delete: {}", path, e);
+            log.error("WriteCommandAction failed for delete: {}", path, e);
             return ToolResult.failure("Delete action failed: " + e.getMessage());
         }
+        return result.get() != null ? result.get() : ToolResult.failure("Write command action produced no result");
     }
 
-    private Path resolveAbsolute(String path) {
-        Path p = Paths.get(path);
-        if (p.isAbsolute()) {
-            return p.normalize();
-        }
-        String base = project.getBasePath();
-        if (base == null) {
-            throw new IllegalStateException("Project base path is not available");
-        }
-        return Paths.get(base, path).normalize();
-    }
 }

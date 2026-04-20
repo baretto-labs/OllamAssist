@@ -69,7 +69,12 @@ public final class RunCommandTool implements AgentTool {
         }
 
         String workingDirParam = (String) params.get("workingDir");
-        File workingDir = resolveWorkingDir(workingDirParam);
+        File workingDir;
+        try {
+            workingDir = resolveWorkingDir(workingDirParam);
+        } catch (WorkingDirEscapeException e) {
+            return ToolResult.failure(e.getMessage());
+        }
 
         CommandTier tier = CommandClassifier.classify(command);
         log.debug("RUN_COMMAND tier={} command={}", tier, command);
@@ -147,7 +152,22 @@ public final class RunCommandTool implements AgentTool {
         }
     }
 
-    private File resolveWorkingDir(String workingDirParam) {
+    /**
+     * Thrown when the requested working directory resolves outside the project root.
+     * Callers convert this to a {@link ToolResult#failure} so the agent knows the
+     * path was rejected rather than silently running in the wrong directory.
+     */
+    static final class WorkingDirEscapeException extends Exception {
+        WorkingDirEscapeException(String message) { super(message); }
+    }
+
+    /**
+     * Resolves and validates the working directory.
+     *
+     * @throws WorkingDirEscapeException if the path resolves outside the project root
+     *                                   (path traversal or non-existent directory)
+     */
+    private File resolveWorkingDir(String workingDirParam) throws WorkingDirEscapeException {
         String base = project.getBasePath();
         File projectRoot = base != null ? new File(base) : new File(".");
 
@@ -164,22 +184,33 @@ public final class RunCommandTool implements AgentTool {
             java.nio.file.Path resolved = candidate.toPath().toRealPath();
             java.nio.file.Path root = projectRoot.toPath().toRealPath();
 
-            // Reject paths that escape the project root (even via symlinks)
+            // Reject paths that escape the project root (even via symlinks) — fail explicitly
+            // rather than silently falling back to projectRoot. A silent fallback would cause the
+            // agent to think it ran in the requested subdirectory when it actually ran elsewhere.
             if (!resolved.startsWith(root)) {
-                log.warn("workingDir '{}' resolves outside project root — falling back to project root", workingDirParam);
-                return projectRoot;
+                throw new WorkingDirEscapeException(
+                        "workingDir '" + workingDirParam + "' resolves outside the project root and cannot be used. "
+                        + "Use a path relative to the project root (e.g. 'src/main/java').");
             }
 
             File resolvedFile = resolved.toFile();
             if (resolvedFile.isDirectory()) {
                 return resolvedFile;
             }
+            // Path exists but is not a directory
+            throw new WorkingDirEscapeException(
+                    "workingDir '" + workingDirParam + "' exists but is not a directory.");
+
+        } catch (WorkingDirEscapeException e) {
+            throw e;
         } catch (java.nio.file.NoSuchFileException e) {
-            log.warn("workingDir '{}' does not exist — falling back to project root", workingDirParam);
+            throw new WorkingDirEscapeException(
+                    "workingDir '" + workingDirParam + "' does not exist. "
+                    + "Create the directory first or omit workingDir to use the project root.");
         } catch (Exception e) {
             log.warn("Failed to resolve workingDir '{}': {}", workingDirParam, e.getMessage());
+            throw new WorkingDirEscapeException(
+                    "Cannot resolve workingDir '" + workingDirParam + "': " + e.getMessage());
         }
-
-        return projectRoot;
     }
 }

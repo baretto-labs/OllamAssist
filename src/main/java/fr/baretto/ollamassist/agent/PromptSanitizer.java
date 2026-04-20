@@ -68,7 +68,13 @@ public final class PromptSanitizer {
     private static String stripControlChars(String s) {
         // Remove null bytes, BOM, and other non-printable ASCII control chars
         // but keep \n, \r, \t which are legitimate in code
-        return s.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", "");
+        s = s.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", "");
+        // Strip Unicode bidirectional control characters (RTLO, LRO, PDF, etc.) and
+        // zero-width characters (ZWSP, BOM). These are used in bidi prompt injection
+        // attacks where the display order of text differs from its byte order, making
+        // injected instructions visually invisible or disguised in the IDE.
+        s = s.replaceAll("[\\u200B\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]", "");
+        return s;
     }
 
     private static String truncate(String s) {

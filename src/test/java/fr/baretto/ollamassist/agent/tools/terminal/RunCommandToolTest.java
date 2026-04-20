@@ -64,10 +64,10 @@ class RunCommandToolTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void readOnlyCommand_executesWithoutApproval() {
-        ToolResult result = tool.execute(Map.of("command", "echo hello"));
+        // git status is READ_ONLY — no approval needed
+        ToolResult result = tool.execute(Map.of("command", "git status"));
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).contains("hello");
+        // git status may succeed or fail depending on working directory — the point is no approval was requested
         verifyNoInteractions(mockApprovalHelper);
     }
 

@@ -13,8 +13,26 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public final class ToolRegistry {
+
+    /** All valid tool IDs supported by this registry. Used for plan validation. */
+    public static final Set<String> KNOWN_TOOL_IDS = Set.of(
+            "FILE_READ", "FILE_WRITE", "FILE_EDIT", "FILE_DELETE", "FILE_FIND",
+            "CODE_SEARCH", "RUN_COMMAND", "GIT_STATUS", "GIT_DIFF",
+            "OPEN_IN_EDITOR", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE"
+    );
+
+    /**
+     * Tools that only read state and never modify files, run commands, or open editors.
+     * Used by Smart auto-validate mode: plans composed exclusively of these tools
+     * are auto-approved without requiring manual user validation.
+     */
+    public static final Set<String> READ_ONLY_TOOL_IDS = Set.of(
+            "FILE_READ", "FILE_FIND", "CODE_SEARCH",
+            "GIT_STATUS", "GIT_DIFF", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE"
+    );
 
     private final Map<String, AgentTool> tools = new HashMap<>();
 

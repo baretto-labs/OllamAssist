@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.setting;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBTabbedPane;
 import fr.baretto.ollamassist.setting.panels.ActionsConfigPanel;
+import fr.baretto.ollamassist.setting.panels.AgentConfigPanel;
 import fr.baretto.ollamassist.setting.panels.OllamaConfigPanel;
 import fr.baretto.ollamassist.setting.panels.PromptConfigPanel;
 import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
@@ -25,6 +26,7 @@ public class ConfigurationPanel extends JPanel {
     private final transient ActionsConfigPanel actionsPanel;
     private final transient PromptConfigPanel promptPanel;
     private final transient UIConfigPanel uiPanel;
+    private final transient AgentConfigPanel agentPanel;
     private final transient Project project;
     private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
@@ -38,6 +40,7 @@ public class ConfigurationPanel extends JPanel {
         actionsPanel = new ActionsConfigPanel();
         promptPanel = new PromptConfigPanel();
         uiPanel = new UIConfigPanel();
+        agentPanel = new AgentConfigPanel(project);
 
         // Create tabbed pane
         JBTabbedPane tabbedPane = new JBTabbedPane();
@@ -46,6 +49,7 @@ public class ConfigurationPanel extends JPanel {
         tabbedPane.addTab("Actions", actionsPanel);
         tabbedPane.addTab("Prompts", promptPanel);
         tabbedPane.addTab("UI", uiPanel);
+        tabbedPane.addTab("Agent", agentPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -112,6 +116,9 @@ public class ConfigurationPanel extends JPanel {
         // Prompt panel listeners
         promptPanel.getChatSystemPromptArea().getDocument().addDocumentListener(documentListener);
         promptPanel.getRefactorUserPromptArea().getDocument().addDocumentListener(documentListener);
+
+        // Agent panel listeners
+        agentPanel.getParanoidModeCheckbox().addItemListener(e -> notifyChangeListeners());
     }
 
     // Delegation methods to sub-panels for backward compatibility with SettingsBindingHelper
@@ -259,5 +266,54 @@ public class ConfigurationPanel extends JPanel {
 
     public void resetUISettings() {
         uiPanel.resetSettings();
+    }
+
+    // Agent settings delegation
+    public int getAgentPlanTimeoutSeconds() {
+        return agentPanel.getAgentPlanTimeoutSeconds();
+    }
+
+    public void setAgentPlanTimeoutSeconds(int seconds) {
+        agentPanel.setAgentPlanTimeoutSeconds(seconds);
+    }
+
+    public int getRunCommandTimeoutSeconds() {
+        return agentPanel.getRunCommandTimeoutSeconds();
+    }
+
+    public void setRunCommandTimeoutSeconds(int seconds) {
+        agentPanel.setRunCommandTimeoutSeconds(seconds);
+    }
+
+    public int getApprovalTimeoutMinutes() {
+        return agentPanel.getApprovalTimeoutMinutes();
+    }
+
+    public void setApprovalTimeoutMinutes(int minutes) {
+        agentPanel.setApprovalTimeoutMinutes(minutes);
+    }
+
+    public int getAgentToolTimeoutSeconds() {
+        return agentPanel.getAgentToolTimeoutSeconds();
+    }
+
+    public void setAgentToolTimeoutSeconds(int seconds) {
+        agentPanel.setAgentToolTimeoutSeconds(seconds);
+    }
+
+    public int getAgentGlobalTimeoutMinutes() {
+        return agentPanel.getAgentGlobalTimeoutMinutes();
+    }
+
+    public void setAgentGlobalTimeoutMinutes(int minutes) {
+        agentPanel.setAgentGlobalTimeoutMinutes(minutes);
+    }
+
+    public boolean isAgentParanoidMode() {
+        return agentPanel.isParanoidMode();
+    }
+
+    public void setAgentParanoidMode(boolean value) {
+        agentPanel.setParanoidMode(value);
     }
 }

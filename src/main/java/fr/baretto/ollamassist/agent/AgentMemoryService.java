@@ -75,18 +75,34 @@ public final class AgentMemoryService {
     /**
      * Records a completed or aborted execution.
      *
-     * @param goal   the user's original goal
-     * @param status {@code "COMPLETED"} or {@code "ABORTED"}
-     * @param reason brief outcome summary (Critic reasoning or error message)
+     * @param correlationId execution correlation ID linking this record to audit log entries
+     * @param goal          the user's original goal
+     * @param status        {@code "COMPLETED"} or {@code "ABORTED"}
+     * @param reason        brief outcome summary (Critic reasoning or error message)
      */
-    public synchronized void record(String goal, String status, String reason) {
+    public synchronized void record(String correlationId, String goal, String status, String reason) {
         if (memoryPath == null) return;
         List<ExecutionRecord> records = load();
-        records.add(0, new ExecutionRecord(Instant.now().toString(), goal, status, truncate(reason, 200)));
+        records.add(0, new ExecutionRecord(Instant.now().toString(), correlationId, goal, status, truncate(reason, 200)));
         if (records.size() > MAX_RECORDS) {
             records = records.subList(0, MAX_RECORDS);
         }
         save(records);
+    }
+
+    /**
+     * Deletes the agent memory file and its HMAC signature.
+     * Safe to call at any time; idempotent if no memory exists.
+     */
+    public synchronized void clearMemory() {
+        if (memoryPath == null) return;
+        try {
+            Files.deleteIfExists(memoryPath);
+            Files.deleteIfExists(hmacPath);
+            log.info("Agent memory cleared");
+        } catch (IOException e) {
+            log.warn("Failed to clear agent memory: {}", e.getMessage());
+        }
     }
 
     /**
@@ -174,19 +190,25 @@ public final class AgentMemoryService {
     }
 
     private boolean verifyHmac(byte[] content) {
-        if (hmacPath == null || !Files.exists(hmacPath)) {
-            // No signature file: treat as first-run (trust the file, but sign on next save)
-            return true;
+        if (hmacPath == null) return true; // no path configured — in-memory only, no verification needed
+        if (!Files.exists(hmacPath)) {
+            // HMAC file absent while memory file exists — treat as tampered (fail-closed)
+            log.warn("Agent memory HMAC file missing — rejecting memory file to prevent injection.");
+            return false;
         }
         try {
             byte[] key = loadOrGenerateKey();
-            if (key == null) return true; // key unavailable — skip verification
+            if (key == null) {
+                // Cannot read or generate key — fail-closed
+                log.warn("Agent memory HMAC key unavailable — rejecting memory file.");
+                return false;
+            }
             String storedHex = Files.readString(hmacPath, StandardCharsets.UTF_8).strip();
             String computedHex = computeHmac(content, key);
             return computedHex.equals(storedHex);
         } catch (Exception e) {
-            log.debug("HMAC verification error: {}", e.getMessage());
-            return true; // fail-open in degraded key state
+            log.warn("HMAC verification error — rejecting memory file: {}", e.getMessage());
+            return false; // fail-closed in degraded key state
         }
     }
 
@@ -210,29 +232,43 @@ public final class AgentMemoryService {
 
     // -------------------------------------------------------------------------
 
-    private static String truncate(String s, int maxChars) {
+    /**
+     * Truncates {@code s} to at most {@code maxChars} Unicode code points.
+     *
+     * <p>Using {@code codePointCount} / {@code offsetByCodePoints} instead of
+     * {@code String.length()} / {@code substring} prevents splitting a UTF-16
+     * surrogate pair at the boundary (Q-3).
+     */
+    static String truncate(String s, int maxChars) {
         if (s == null) return "";
-        return s.length() <= maxChars ? s : s.substring(0, maxChars) + "…";
+        if (s.codePointCount(0, s.length()) <= maxChars) return s;
+        int byteOffset = s.offsetByCodePoints(0, maxChars);
+        return s.substring(0, byteOffset) + "…";
     }
 
     // -------------------------------------------------------------------------
     // Record type
     // -------------------------------------------------------------------------
 
+    /**
+     * Immutable record of a single agent execution stored in the memory file.
+     *
+     * <p>Uses a Java record for immutability. Jackson serialises records natively
+     * (since Jackson 2.12). The {@code @JsonIgnoreProperties} annotation ensures that
+     * any extra fields added in a future version of the memory format are silently ignored
+     * rather than causing a deserialisation failure.
+     */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static final class ExecutionRecord {
-        public String timestamp;
-        public String goal;
-        public String status;
-        public String reason;
-
-        public ExecutionRecord() {}
-
-        public ExecutionRecord(String timestamp, String goal, String status, String reason) {
-            this.timestamp = timestamp;
-            this.goal = goal;
-            this.status = status;
-            this.reason = reason;
+    public record ExecutionRecord(
+            @com.fasterxml.jackson.annotation.JsonProperty("timestamp")  String timestamp,
+            @com.fasterxml.jackson.annotation.JsonProperty("correlationId") String correlationId,
+            @com.fasterxml.jackson.annotation.JsonProperty("goal")       String goal,
+            @com.fasterxml.jackson.annotation.JsonProperty("status")     String status,
+            @com.fasterxml.jackson.annotation.JsonProperty("reason")     String reason
+    ) {
+        /** No-arg constructor required by Jackson for deserialisation. */
+        public ExecutionRecord() {
+            this(null, null, null, null, null);
         }
     }
 }

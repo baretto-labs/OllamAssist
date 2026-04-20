@@ -122,4 +122,82 @@ class StepParamResolverTest {
 
         assertThat(result.get("path")).isEqualTo("src/main/Single.java");
     }
+
+    // --- Named variable ({{var.NAME}}) tests ---
+
+    @Test
+    void varPlaceholder_resolved_fromVariablesMap() {
+        Map<String, Object> params = Map.of("path", "{{var.targetPath}}");
+        Map<String, String> variables = Map.of("targetPath", "src/main/java/Foo.java");
+
+        Map<String, Object> result = StepParamResolver.resolve(params, "", variables);
+
+        assertThat(result.get("path")).isEqualTo("src/main/java/Foo.java");
+    }
+
+    @Test
+    void varPlaceholder_unknownVariable_throwsException() {
+        Map<String, Object> params = Map.of("path", "{{var.missingVar}}");
+        Map<String, String> variables = Map.of("otherVar", "some/path.java");
+
+        assertThatThrownBy(() -> StepParamResolver.resolve(params, "", variables))
+                .isInstanceOf(StepParamResolver.UnresolvablePlaceholderException.class)
+                .hasMessageContaining("missingVar")
+                .hasMessageContaining("otherVar");
+    }
+
+    @Test
+    void varPlaceholder_emptyVariablesMap_throwsException() {
+        Map<String, Object> params = Map.of("path", "{{var.targetPath}}");
+
+        assertThatThrownBy(() -> StepParamResolver.resolve(params, "", Map.of()))
+                .isInstanceOf(StepParamResolver.UnresolvablePlaceholderException.class)
+                .hasMessageContaining("targetPath");
+    }
+
+    @Test
+    void varPlaceholder_multipleVarsInOneParam_allResolved() {
+        Map<String, Object> params = Map.of("content", "file={{var.filePath}} method={{var.methodName}}");
+        Map<String, String> variables = Map.of(
+                "filePath", "src/Foo.java",
+                "methodName", "doSomething"
+        );
+
+        Map<String, Object> result = StepParamResolver.resolve(params, "", variables);
+
+        assertThat(result.get("content")).isEqualTo("file=src/Foo.java method=doSomething");
+    }
+
+    @Test
+    void varPlaceholder_mixedWithPrevOutput_bothResolved() {
+        Map<String, Object> params = Map.of(
+                "path", "{{var.baseDir}}/{{prev_output_first_line}}"
+        );
+        Map<String, String> variables = Map.of("baseDir", "src/main/java");
+
+        Map<String, Object> result = StepParamResolver.resolve(params, "Foo.java\nBar.java", variables);
+
+        assertThat(result.get("path")).isEqualTo("src/main/java/Foo.java");
+    }
+
+    @Test
+    void varPlaceholder_noPrevOutputNeeded_noException() {
+        Map<String, Object> params = Map.of("path", "{{var.storedPath}}");
+        Map<String, String> variables = Map.of("storedPath", "src/Service.java");
+
+        // No prev_output placeholder → previous output being blank should not throw
+        Map<String, Object> result = StepParamResolver.resolve(params, "", variables);
+
+        assertThat(result.get("path")).isEqualTo("src/Service.java");
+    }
+
+    @Test
+    void noVariablesParam_twoArgOverload_varPlaceholderThrows() {
+        Map<String, Object> params = Map.of("path", "{{var.someVar}}");
+
+        // The 2-arg overload passes an empty variables map — missing var must throw
+        assertThatThrownBy(() -> StepParamResolver.resolve(params, "prev output"))
+                .isInstanceOf(StepParamResolver.UnresolvablePlaceholderException.class)
+                .hasMessageContaining("someVar");
+    }
 }

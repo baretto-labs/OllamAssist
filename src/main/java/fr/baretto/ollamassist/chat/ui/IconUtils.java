@@ -48,6 +48,8 @@ public class IconUtils {
     public static final Icon WEB_SEARCH_ENABLED =  load("/icons/web_search_enabled.svg");
     public static final Icon RAG_SEARCH_DISABLED =  load("/icons/rag_search_disabled.svg");
     public static final Icon RAG_SEARCH_ENABLED =  load("/icons/rag_search_enabled.svg");
+    public static final Icon AGENT_DISABLED = load("/icons/agent_disabled.svg");
+    public static final Icon AGENT_ENABLED = load("/icons/agent_enabled.svg");
     public static final Icon STOP = AllIcons.Run.Stop;
 
     public static Icon load(String path) {

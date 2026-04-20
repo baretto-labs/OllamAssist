@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,6 +43,24 @@ public final class GitDiffTool implements AgentTool {
         return "GIT_DIFF";
     }
 
+    /**
+     * Whitelist of safe git-diff arguments.
+     * ProcessBuilder does not invoke a shell, but git itself interprets certain flag patterns
+     * (e.g. {@code --format=}, ref expressions). Restricting to known-safe values prevents
+     * an agent from injecting unexpected git behaviour.
+     */
+    private static final java.util.Set<String> ALLOWED_DIFF_FLAGS = Set.of(
+            "--cached", "--staged", "--stat", "--name-only", "--name-status",
+            "--no-color", "--color=never", "--diff-filter=M", "--diff-filter=A",
+            "--diff-filter=D", "ORIG_HEAD", "MERGE_HEAD"
+    );
+
+    private static boolean isAllowedGitDiffArg(String arg) {
+        if (ALLOWED_DIFF_FLAGS.contains(arg)) return true;
+        // Allow HEAD, HEAD~1, HEAD~2, … HEAD~99
+        return arg.equals("HEAD") || arg.matches("HEAD~[1-9][0-9]?");
+    }
+
     @Override
     public ToolResult execute(Map<String, Object> params) {
         String basePath = project.getBasePath();
@@ -53,8 +72,14 @@ public final class GitDiffTool implements AgentTool {
 
         String args = (String) params.get("args");
         if (args != null && !args.isBlank()) {
-            // Split on whitespace — simple but sufficient for the expected args
-            command.addAll(List.of(args.trim().split("\\s+")));
+            for (String arg : args.trim().split("\\s+")) {
+                if (!isAllowedGitDiffArg(arg)) {
+                    return ToolResult.failure("Git diff argument not allowed: '" + arg
+                            + "'. Allowed: --cached/--staged/--stat/--name-only/--name-status"
+                            + "/--no-color/HEAD/HEAD~N/ORIG_HEAD/MERGE_HEAD");
+                }
+                command.add(arg);
+            }
         }
 
         String path = (String) params.get("path");

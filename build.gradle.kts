@@ -14,8 +14,8 @@ repositories {
         defaultRepositories()
     }
 }
-val langchain4jEasyRag = "1.8.0-beta15"
-val langchain4jVersion = "1.9.1"
+val langchain4jEasyRag = "1.12.2-beta22"
+val langchain4jVersion = "1.12.2"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"

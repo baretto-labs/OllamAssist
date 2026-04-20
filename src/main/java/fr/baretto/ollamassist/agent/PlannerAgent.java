@@ -15,10 +15,14 @@ public interface PlannerAgent {
                                Glob examples: "**/*.java", "**/MyClass.java", "src/**/*.xml"
             - FILE_READ      : read a file's content.        Params: {"path": "string"}
             - FILE_WRITE     : create a new file.            Params: {"path": "string", "content": "string"}
-            - FILE_EDIT      : edit an existing file.        Params: {"path": "string", "search": "string", "replace": "string"}
+            - FILE_EDIT      : edit an existing file.        Params: {"path": "string", "search": "string", "replace": "string", "replaceAll": false}
+                               replaceAll defaults to false → only the FIRST occurrence of 'search' is replaced.
+                               Set replaceAll=true only when you explicitly need to replace every occurrence (e.g. renaming a symbol throughout the file).
             - FILE_DELETE    : delete a file.                Params: {"path": "string"}
             - CODE_SEARCH    : search text in the codebase.  Params: {"query": "string"}
             - RUN_COMMAND    : execute a terminal command.   Params: {"command": "string"}
+                               Output is truncated to 8 KB. Avoid commands that produce large output (e.g. cat on big files);
+                               use FILE_READ instead. For build output, prefer targeted flags (e.g. --quiet, --info).
             - OPEN_IN_EDITOR : open a file in the IDE.       Params: {"path": "string"}
             - GET_CURRENT_FILE: get the currently open file. Params: {}
             - SEARCH_KNOWLEDGE: search project knowledge base. Params: {"query": "string"}
@@ -44,9 +48,16 @@ public interface PlannerAgent {
                ALWAYS start with FILE_FIND to locate the exact file first.
                Pattern for a class named "Foo": {"pattern": "**/Foo.java"}
 
-            2. Use {{prev_output_first_line}} to pass the result of FILE_FIND to the next step.
-               This is replaced at runtime with the first file path returned by the previous step.
-               Use {{prev_output}} to pass the full output of any previous step.
+            2. Reference the output of the IMMEDIATELY preceding step:
+               - {{prev_output_first_line}} → first file path from FILE_FIND (most common)
+               - {{prev_output}} → full output of the previous step
+
+               Reference the output of ANY earlier step by name using outputVar:
+               - Declare on a step: "outputVar": "myVarName"
+               - Reference later: {{var.myVarName}}
+               Use outputVar when you need to access the result of a step more than one position back,
+               or when two parallel steps both need the same earlier result.
+               Example: FILE_FIND with "outputVar": "targetPath", then two later steps both use "{{var.targetPath}}".
 
             3. Use CODE_SEARCH when you know code content (method name, annotation, string literal)
                but not which file contains it.
@@ -92,7 +103,8 @@ public interface PlannerAgent {
             - All toolIds are from the list above (FILE_FIND, FILE_READ, FILE_EDIT, etc.)
             - No step uses a hardcoded path without a preceding FILE_FIND
             - FILE_READ precedes FILE_EDIT when the file content is needed for the search string
-            - Placeholders use exact syntax: {{prev_output}} or {{prev_output_first_line}}
+            - Placeholders use exact syntax: {{prev_output}}, {{prev_output_first_line}}, or {{var.NAME}}
+            - outputVar names are unique within a plan (no two steps declare the same name)
             - Each phase has at least one step
 
             Return ONLY a JSON object — no markdown, no text outside JSON:

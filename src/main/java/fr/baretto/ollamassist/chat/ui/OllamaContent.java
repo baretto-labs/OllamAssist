@@ -12,6 +12,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
+import fr.baretto.ollamassist.agent.AgentOrchestrator;
+import fr.baretto.ollamassist.agent.AgentProgressEvent;
+import fr.baretto.ollamassist.agent.AgentProgressNotifier;
+import fr.baretto.ollamassist.agent.ui.AgentPlanPanel;
 import fr.baretto.ollamassist.chat.rag.ContextRetriever;
 import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.chat.service.OllamaService;
@@ -23,10 +27,13 @@ import fr.baretto.ollamassist.component.PromptPanel;
 import fr.baretto.ollamassist.component.WorkspaceFileSelector;
 import fr.baretto.ollamassist.conversation.ConversationMessage;
 import fr.baretto.ollamassist.conversation.ConversationService;
+import fr.baretto.ollamassist.agent.StepRetryDecision;
 import fr.baretto.ollamassist.events.ConversationSwitchedNotifier;
 import fr.baretto.ollamassist.events.FileApprovalNotifier;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
+import fr.baretto.ollamassist.events.NewAgentRequestNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
+import fr.baretto.ollamassist.events.StepRetryNotifier;
 import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
@@ -64,6 +71,7 @@ public class OllamaContent {
     private final MessagesPanel outputPanel = new MessagesPanel();
     private boolean isAvailable = false;
     private volatile ChatThread currentChatThread;
+    private volatile AgentPlanPanel currentAgentPlanPanel;
 
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
@@ -80,7 +88,7 @@ public class OllamaContent {
                 .connect();
 
         subscribe(connection);
-        promptInput.addStopActionListener(e -> stopGeneration());
+        promptInput.addStopActionListener(e -> stopAll());
         Disposer.register(toolWindow.getDisposable(), connection);
     }
 
@@ -102,6 +110,10 @@ public class OllamaContent {
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             synchronized (this) {
+                if (currentAgentPlanPanel != null) {
+                    log.warn("Chat message received while agent is running — ignoring. Cancel the agent first.");
+                    return;
+                }
                 if (currentChatThread != null) {
                     currentChatThread.stop();
                 }
@@ -149,6 +161,17 @@ public class OllamaContent {
                 approved -> request.getResponseFuture().complete(approved)
             ));
 
+        connection.subscribe(StepRetryNotifier.TOPIC, (StepRetryNotifier) request -> {
+            AgentPlanPanel panel = currentAgentPlanPanel;
+            if (panel != null) {
+                panel.showRetryButtons(request.getStep(),
+                        decision -> request.getResponseFuture().complete(decision));
+            } else {
+                // No UI panel available — default to stopping the phase
+                request.getResponseFuture().complete(StepRetryDecision.ABORT_PHASE);
+            }
+        });
+
         connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
             log.info("Stopping LLM streaming silently due to file action completion");
             if (currentChatThread != null) {
@@ -156,6 +179,55 @@ public class OllamaContent {
                 outputPanel.stopMessageSilently(); // Stop without "interrupted" message
             }
             promptInput.toggleGenerationState(false);
+        });
+
+        connection.subscribe(NewAgentRequestNotifier.TOPIC, (NewAgentRequestNotifier) goal -> {
+            synchronized (this) {
+                if (currentAgentPlanPanel != null) {
+                    log.warn("Agent request received while another agent is already running — ignoring.");
+                    SwingUtilities.invokeLater(() ->
+                            outputPanel.addInfoMessage("An agent is already running — cancel it before starting a new task."));
+                    return;
+                }
+            }
+            context.project().getService(ConversationService.class)
+                    .addMessage(ConversationMessage.user("[Agent] " + goal));
+            outputPanel.addUserMessage(goal);
+            promptInput.clear();
+            promptInput.toggleGenerationState(true);
+
+            AgentOrchestrator orchestrator = context.project().getService(AgentOrchestrator.class);
+            AgentPlanPanel panel = new AgentPlanPanel(
+                    plan -> orchestrator.execute(plan).exceptionally(ex -> {
+                        log.error("Agent execution failed", ex);
+                        SwingUtilities.invokeLater(() -> promptInput.toggleGenerationState(false));
+                        return null;
+                    }),
+                    orchestrator::cancelExecution,
+                    context.project()
+            );
+            currentAgentPlanPanel = panel;
+            outputPanel.addAgentPlanPanel(panel);
+
+            orchestrator.plan(goal).exceptionally(ex -> {
+                log.error("Agent planning failed", ex);
+                SwingUtilities.invokeLater(() -> promptInput.toggleGenerationState(false));
+                return null;
+            });
+        });
+
+        connection.subscribe(AgentProgressNotifier.TOPIC, (AgentProgressNotifier) event -> {
+            AgentPlanPanel panel = currentAgentPlanPanel;
+            if (panel != null) {
+                panel.handleEvent(event);
+                AgentProgressEvent.Type type = event.getType();
+                if (type == AgentProgressEvent.Type.COMPLETED || type == AgentProgressEvent.Type.ABORTED) {
+                    currentAgentPlanPanel = null;
+                    context.project().getService(ConversationService.class)
+                            .addMessage(ConversationMessage.assistant(event.getMessage()));
+                    SwingUtilities.invokeLater(() -> promptInput.toggleGenerationState(false));
+                }
+            }
         });
 
     }
@@ -343,12 +415,27 @@ public class OllamaContent {
         return conversationPanel;
     }
 
+    private void stopAll() {
+        context.project().getService(AgentOrchestrator.class).cancelExecution();
+        // If a plan panel is alive (possibly still in the planning phase before any step runs),
+        // force-clear it so the user is not left in a zombie state where currentAgentPlanPanel != null
+        // but no cancel button is reachable inside the panel.
+        synchronized (this) {
+            AgentPlanPanel panel = currentAgentPlanPanel;
+            if (panel != null) {
+                currentAgentPlanPanel = null;
+                SwingUtilities.invokeLater(() ->
+                        panel.handleEvent(AgentProgressEvent.aborted("Cancelled by user.")));
+            }
+        }
+        stopGeneration();
+    }
+
     private void stopGeneration() {
         if (currentChatThread != null) {
             currentChatThread.stop();
             outputPanel.cancelMessage();
         }
-
         promptInput.toggleGenerationState(false);
     }
 
