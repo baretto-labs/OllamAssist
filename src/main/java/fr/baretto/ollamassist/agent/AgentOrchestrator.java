@@ -11,6 +11,7 @@ import fr.baretto.ollamassist.agent.critic.CriticDecision;
 import fr.baretto.ollamassist.agent.plan.AgentPlan;
 import fr.baretto.ollamassist.agent.plan.Phase;
 import fr.baretto.ollamassist.agent.plan.Step;
+import fr.baretto.ollamassist.agent.tools.StepParamResolver;
 import fr.baretto.ollamassist.agent.tools.ToolDispatcher;
 import fr.baretto.ollamassist.agent.tools.ToolRegistry;
 import fr.baretto.ollamassist.agent.tools.ToolResult;
@@ -674,6 +675,18 @@ public final class AgentOrchestrator implements Disposable {
                     + ". Valid tools: " + ToolRegistry.KNOWN_TOOL_IDS);
         }
 
+        // Reject plans where the very first step uses {{prev_output}} / {{prev_output_first_line}}.
+        // The first step of the first phase always runs with lastStepOutput = "" — any placeholder
+        // reference there is a guaranteed failure that aborts the execution before any work is done.
+        Step firstStep = plan.getPhases().get(0).getSteps().get(0);
+        if (stepUsesPrevOutput(firstStep)) {
+            throw new IllegalStateException(
+                    "The first step '" + firstStep.getDescription() + "' uses {{prev_output}} or "
+                    + "{{prev_output_first_line}}, but there is no previous step output at plan start. "
+                    + "Begin the plan with a step that discovers the required information first "
+                    + "(e.g. FILE_FIND or CODE_SEARCH), then reference its output in a subsequent step.");
+        }
+
         // G3: reject plans with an unusual number of destructive steps
         long deleteCount = plan.getPhases().stream()
                 .flatMap(p -> p.getSteps().stream())
@@ -684,6 +697,15 @@ public final class AgentOrchestrator implements Disposable {
                     "Plan contains " + deleteCount + " FILE_DELETE steps (max allowed: " + MAX_DELETE_STEPS + "). "
                     + "This looks unsafe — please review the plan manually.");
         }
+    }
+
+    private static boolean stepUsesPrevOutput(Step step) {
+        if (step.getParams() == null) return false;
+        return step.getParams().values().stream()
+                .filter(v -> v instanceof String)
+                .map(v -> (String) v)
+                .anyMatch(s -> s.contains(StepParamResolver.PREV_OUTPUT)
+                            || s.contains(StepParamResolver.PREV_OUTPUT_FIRST_LINE));
     }
 
     private PlannerAgent getOrCreatePlannerAgent() {

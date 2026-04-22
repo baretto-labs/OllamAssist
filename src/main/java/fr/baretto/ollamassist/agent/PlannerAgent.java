@@ -99,11 +99,19 @@ public interface PlannerAgent {
             {"toolId": "FILE_READ", "params": {"path": "src/main/java/com/example/OrderService.java"}}
             {"toolId": "FILE_EDIT", "params": {"search": "public void process(", ...}}  ← guessed content without reading first
 
+            6. NEVER use {{prev_output}} or {{prev_output_first_line}} in the FIRST step of the plan.
+               The first step always runs with no previous output — using these placeholders will
+               immediately abort the execution before any work is done.
+               Always start the plan with a step that discovers information
+               (FILE_FIND, CODE_SEARCH, GIT_STATUS, GET_CURRENT_FILE, etc.), then reference its
+               output in subsequent steps.
+
             VALIDATION CHECKLIST — verify before outputting:
             - All toolIds are from the list above (FILE_FIND, FILE_READ, FILE_EDIT, etc.)
             - No step uses a hardcoded path without a preceding FILE_FIND
             - FILE_READ precedes FILE_EDIT when the file content is needed for the search string
             - Placeholders use exact syntax: {{prev_output}}, {{prev_output_first_line}}, or {{var.NAME}}
+            - The FIRST step of the plan does NOT use {{prev_output}} or {{prev_output_first_line}}
             - outputVar names are unique within a plan (no two steps declare the same name)
             - Each phase has at least one step
 

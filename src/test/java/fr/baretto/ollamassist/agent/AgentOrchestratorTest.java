@@ -312,6 +312,52 @@ class AgentOrchestratorTest {
                 .isInstanceOf(ExecutionException.class);
     }
 
+    // -------------------------------------------------------------------------
+    // validatePlan — first step must not reference {{prev_output}}
+    // -------------------------------------------------------------------------
+
+    @Test
+    void plan_firstStepUsesPrevOutput_publishesAbortedAndThrows() {
+        Step firstStep = new Step("FILE_READ", "Read file",
+                java.util.Map.of("path", "{{prev_output_first_line}}"));
+        Phase phase = new Phase("Read phase", List.of(firstStep));
+        AgentPlan plan = new AgentPlan("goal", "reasoning", List.of(phase));
+        PlannerAgent mockAgent = mock(PlannerAgent.class);
+        when(mockAgent.plan(any())).thenReturn(plan);
+
+        assertThatThrownBy(() -> orchestrator.plan("goal", mockAgent).get())
+                .isInstanceOf(ExecutionException.class);
+
+        verify(mockNotifier).onProgress(argThat(e -> e.getType() == AgentProgressEvent.Type.ABORTED));
+    }
+
+    @Test
+    void plan_firstStepUsesPrevOutputFull_publishesAbortedAndThrows() {
+        Step firstStep = new Step("FILE_READ", "Read file",
+                java.util.Map.of("path", "{{prev_output}}"));
+        Phase phase = new Phase("Read phase", List.of(firstStep));
+        AgentPlan plan = new AgentPlan("goal", "reasoning", List.of(phase));
+        PlannerAgent mockAgent = mock(PlannerAgent.class);
+        when(mockAgent.plan(any())).thenReturn(plan);
+
+        assertThatThrownBy(() -> orchestrator.plan("goal", mockAgent).get())
+                .isInstanceOf(ExecutionException.class);
+    }
+
+    @Test
+    void plan_firstStepWithoutPrevOutput_isAccepted() throws Exception {
+        Step firstStep = new Step("FILE_FIND", "Find file",
+                java.util.Map.of("pattern", "**/Foo.java"));
+        Phase phase = new Phase("Find phase", List.of(firstStep));
+        AgentPlan plan = new AgentPlan("goal", "reasoning", List.of(phase));
+        PlannerAgent mockAgent = mock(PlannerAgent.class);
+        when(mockAgent.plan(any())).thenReturn(plan);
+
+        AgentPlan result = orchestrator.plan("goal", mockAgent).get();
+
+        assertThat(result).isSameAs(plan);
+    }
+
     // --- Model change invalidation ---
 
     @Test
