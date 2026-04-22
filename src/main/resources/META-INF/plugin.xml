@@ -270,6 +270,9 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
 
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.tools.FileCreator"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentOrchestrator"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentMemoryService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AuditLogger"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>
 

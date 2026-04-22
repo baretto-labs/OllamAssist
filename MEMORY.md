@@ -12,7 +12,6 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Active Tasks
 
-<!-- none currently -->
 
 ## Completed Tasks
 

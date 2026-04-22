@@ -80,7 +80,13 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || actionsSettings.isAutoApproveFileCreation() != configurationPanel.isAutoApproveFileCreation()
                 || actionsSettings.isToolsEnabled() != configurationPanel.isToolsEnabled()
                 || !promptSettings.getChatSystemPrompt().equals(configurationPanel.getChatSystemPrompt())
-                || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt());
+                || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt())
+                || ollamaSettings.getAgentPlanTimeoutSeconds() != configurationPanel.getAgentPlanTimeoutSeconds()
+                || ollamaSettings.getRunCommandTimeoutSeconds() != configurationPanel.getRunCommandTimeoutSeconds()
+                || ollamaSettings.getApprovalTimeoutMinutes() != configurationPanel.getApprovalTimeoutMinutes()
+                || ollamaSettings.getAgentToolTimeoutSeconds() != configurationPanel.getAgentToolTimeoutSeconds()
+                || ollamaSettings.getAgentGlobalTimeoutMinutes() != configurationPanel.getAgentGlobalTimeoutMinutes()
+                || ollamaSettings.isAgentParanoidMode() != configurationPanel.isAgentParanoidMode();
     }
 
 
@@ -121,6 +127,14 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             PromptSettings promptSettings = PromptSettings.getInstance();
             promptSettings.setChatSystemPrompt(configurationPanel.getChatSystemPrompt());
             promptSettings.setRefactorUserPrompt(configurationPanel.getRefactorUserPrompt());
+
+            // Save agent settings
+            ollamaSettings.setAgentPlanTimeoutSeconds(configurationPanel.getAgentPlanTimeoutSeconds());
+            ollamaSettings.setRunCommandTimeoutSeconds(configurationPanel.getRunCommandTimeoutSeconds());
+            ollamaSettings.setApprovalTimeoutMinutes(configurationPanel.getApprovalTimeoutMinutes());
+            ollamaSettings.setAgentToolTimeoutSeconds(configurationPanel.getAgentToolTimeoutSeconds());
+            ollamaSettings.setAgentGlobalTimeoutMinutes(configurationPanel.getAgentGlobalTimeoutMinutes());
+            ollamaSettings.setAgentParanoidMode(configurationPanel.isAgentParanoidMode());
 
             // Apply UI settings
             configurationPanel.applyUISettings();
@@ -195,6 +209,14 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         PromptSettings promptSettings = PromptSettings.getInstance();
         configurationPanel.setChatSystemPrompt(promptSettings.getChatSystemPrompt());
         configurationPanel.setRefactorUserPrompt(promptSettings.getRefactorUserPrompt());
+
+        // Load agent settings
+        configurationPanel.setAgentPlanTimeoutSeconds(ollamaSettings.getAgentPlanTimeoutSeconds());
+        configurationPanel.setRunCommandTimeoutSeconds(ollamaSettings.getRunCommandTimeoutSeconds());
+        configurationPanel.setApprovalTimeoutMinutes(ollamaSettings.getApprovalTimeoutMinutes());
+        configurationPanel.setAgentToolTimeoutSeconds(ollamaSettings.getAgentToolTimeoutSeconds());
+        configurationPanel.setAgentGlobalTimeoutMinutes(ollamaSettings.getAgentGlobalTimeoutMinutes());
+        configurationPanel.setAgentParanoidMode(ollamaSettings.isAgentParanoidMode());
     }
 
     @Override

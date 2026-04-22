@@ -12,12 +12,17 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorSettings;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
+import com.intellij.icons.AllIcons;
+import fr.baretto.ollamassist.agent.AgentOrchestrator;
+import fr.baretto.ollamassist.agent.ui.AgentHistoryPopup;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
@@ -55,10 +60,15 @@ public class PromptPanel extends JPanel implements Disposable {
     private EditorTextField editorTextField;
     private JButton sendButton;
     private ModelSelector modelSelector;
+    /** Compact label shown instead of the model selector when agent mode is active (U-6). */
+    private JLabel agentModelLabel;
     private JButton stopButton;
     private boolean isGenerating = false;
     private JToggleButton webSearchButton;
     private JToggleButton ragSearchhButton;
+    private JToggleButton agentModeButton;
+    /** History button — only shown when agent mode is active (U-7). */
+    private JButton agentHistoryButton;
     private boolean webSearchEnabled = OllamAssistSettings.getInstance().webSearchEnabled();
     private boolean ragEnabled = OllamAssistSettings.getInstance().ragEnabled();
 
@@ -137,6 +147,13 @@ public class PromptPanel extends JPanel implements Disposable {
         modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
         modelSelector.setModelLoader(this::fetchAvailableModels);
 
+        // Compact label replacing the model selector when agent mode is active (U-6).
+        // Initialized here so it is ready before createAgentModeButton() calls updateModelSelectorForAgentMode().
+        agentModelLabel = new JLabel();
+        agentModelLabel.setFont(agentModelLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        agentModelLabel.setForeground(JBColor.namedColor("Component.infoForeground", JBColor.GRAY));
+        agentModelLabel.setVisible(false);
+
         sendButton = createSubmitButton();
         stopButton = createStopButton();
         stopButton.setVisible(false);
@@ -151,6 +168,7 @@ public class PromptPanel extends JPanel implements Disposable {
 
         JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightControlPanel.setOpaque(false);
+        rightControlPanel.add(agentModelLabel);
         rightControlPanel.add(modelSelector);
         rightControlPanel.add(sendButton);
         rightControlPanel.add(stopButton);
@@ -161,8 +179,12 @@ public class PromptPanel extends JPanel implements Disposable {
             leftControlPanel.setOpaque(false);
             ragSearchhButton = createRagSearchButton();
             webSearchButton = createWebSearchButton();
+            agentModeButton = createAgentModeButton();
+            agentHistoryButton = createAgentHistoryButton();
             leftControlPanel.add(webSearchButton);
             leftControlPanel.add(ragSearchhButton);
+            leftControlPanel.add(agentModeButton);
+            leftControlPanel.add(agentHistoryButton);
             controlPanel.add(leftControlPanel, BorderLayout.WEST);
         }
 
@@ -251,6 +273,131 @@ public class PromptPanel extends JPanel implements Disposable {
         updateWebSearchButtonState(button);
 
         return button;
+    }
+
+    private static final String AGENT_PREVIEW_SHOWN_KEY = "ollamassist.agent.preview.shown";
+    private static final String AGENT_MODE_ENABLED_KEY  = "ollamassist.agent.mode.enabled";
+    private static final String AGENT_MODE_ENABLED = "Agent mode enabled — click to switch back to chat";
+    private static final String AGENT_MODE_DISABLED =
+            "<html>Switch to agent mode (Preview) — the agent plans and executes tasks autonomously.<br>"
+            + "Requires a model with reliable structured output (JSON).<br>"
+            + "<b>Recommended:</b> qwen2.5:14b+, mistral-nemo, deepseek-coder:33b<br>"
+            + "<i>llama3.1:8b and llama3.2 may produce invalid plans.</i></html>";
+
+    private JToggleButton createAgentModeButton() {
+        JToggleButton button = new JToggleButton(IconUtils.AGENT_DISABLED);
+        // Restore persisted state so the user does not have to re-enable on every IDE restart (U-1).
+        boolean persisted = PropertiesComponent.getInstance().getBoolean(AGENT_MODE_ENABLED_KEY, false);
+        button.setSelected(persisted);
+        button.setToolTipText(AGENT_MODE_DISABLED);
+        button.setPreferredSize(new Dimension(30, 30));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(false);
+        button.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        button.setMargin(JBUI.emptyInsets());
+
+        button.addActionListener(e -> {
+            // Persist the new state immediately so it survives IDE restarts.
+            PropertiesComponent.getInstance().setValue(AGENT_MODE_ENABLED_KEY, button.isSelected());
+            if (button.isSelected() && !PropertiesComponent.getInstance().getBoolean(AGENT_PREVIEW_SHOWN_KEY, false)) {
+                Messages.showInfoMessage(
+                        "Agent mode is a Preview feature.\n\n" +
+                        "The agent can read, edit and create files, run commands, and search your codebase.\n" +
+                        "Always review the plan before validating execution.\n\n" +
+                        "Model requirement: agent mode uses structured output (JSON). Your chat model must\n" +
+                        "support it reliably. Recommended: qwen2.5:14b+, mistral-nemo, deepseek-coder:33b.\n" +
+                        "Models like llama3.1:8b or llama3.2 may produce invalid plans.",
+                        "Agent Mode — Preview"
+                );
+                PropertiesComponent.getInstance().setValue(AGENT_PREVIEW_SHOWN_KEY, true);
+            }
+            if (button.isSelected() && project != null) {
+                runAgentCompatibilityCheck(project);
+            }
+            updateAgentModeButtonState(button);
+        });
+        updateAgentModeButtonState(button);
+
+        return button;
+    }
+
+    private void updateAgentModeButtonState(JToggleButton button) {
+        if (button.isSelected()) {
+            button.setIcon(IconUtils.AGENT_ENABLED);
+            button.setToolTipText(AGENT_MODE_ENABLED);
+            updateModelSelectorForAgentMode(true);
+            if (agentHistoryButton != null) agentHistoryButton.setVisible(true);
+        } else {
+            button.setIcon(IconUtils.AGENT_DISABLED);
+            button.setToolTipText(AGENT_MODE_DISABLED);
+            updateModelSelectorForAgentMode(false);
+            if (agentHistoryButton != null) agentHistoryButton.setVisible(false);
+        }
+    }
+
+    private JButton createAgentHistoryButton() {
+        JButton button = new JButton(AllIcons.Vcs.History);
+        button.setPreferredSize(new Dimension(30, 30));
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setToolTipText("View agent execution history");
+        // Only visible when agent mode is active (toggled by updateAgentModeButtonState)
+        button.setVisible(agentModeButton != null && agentModeButton.isSelected());
+        button.addActionListener(e -> {
+            if (project != null) AgentHistoryPopup.show(project);
+        });
+        return button;
+    }
+
+    /**
+     * Swaps the model selector for a compact label when agent mode is active (U-6).
+     * The selector is hidden — the agent uses its own dedicated model configured
+     * in Settings → Ollama → Agent, not the chat model shown in the selector.
+     */
+    private void updateModelSelectorForAgentMode(boolean agentActive) {
+        if (modelSelector == null) return;
+        if (agentActive) {
+            String agentModel = OllamaSettings.getInstance().getAgentPlannerModelName();
+            String displayModel = (agentModel != null && !agentModel.isBlank()) ? agentModel : "Agent model";
+            modelSelector.setVisible(false);
+            if (agentModelLabel != null) {
+                agentModelLabel.setText(displayModel);
+                agentModelLabel.setToolTipText("Agent model — configure in Settings → Ollama → Agent");
+                agentModelLabel.setVisible(true);
+            }
+        } else {
+            modelSelector.setVisible(true);
+            modelSelector.setToolTipText(null);
+            if (agentModelLabel != null) agentModelLabel.setVisible(false);
+        }
+    }
+
+    /**
+     * Fires a background model compatibility check (Item 3 — Phase 4).
+     * Shows a warning dialog on the EDT if the model does not support structured JSON output.
+     * The check is non-blocking — it does not delay the UI toggle.
+     */
+    private void runAgentCompatibilityCheck(Project project) {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            AgentOrchestrator orchestrator = project.getService(AgentOrchestrator.class);
+            if (orchestrator == null) return;
+            String error = orchestrator.checkModelCompatibility();
+            if (error != null) {
+                ApplicationManager.getApplication().invokeLater(() ->
+                        Messages.showWarningDialog(
+                                "Agent model compatibility check failed:\n\n" + error
+                                + "\n\nYou can change the agent model in Settings → OllamAssist → Agent.",
+                                "Agent Model Warning"
+                        )
+                );
+            }
+        });
+    }
+
+    public boolean isAgentMode() {
+        return agentModeButton != null && agentModeButton.isSelected();
     }
 
     private void updateWebSearchButtonState(JToggleButton button) {

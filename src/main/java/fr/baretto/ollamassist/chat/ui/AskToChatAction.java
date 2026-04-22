@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.ui;
 
 import fr.baretto.ollamassist.component.PromptPanel;
+import fr.baretto.ollamassist.events.NewAgentRequestNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,8 +24,15 @@ public class AskToChatAction implements ActionListener {
         if (userMessage.isEmpty()) {
             return;
         }
-        context.project().getMessageBus()
-                .syncPublisher(NewUserMessageNotifier.TOPIC)
-                .newUserMessage(userMessage);
+        if (promptPanel.isAgentMode()) {
+            log.debug("Agent mode — routing to AgentOrchestrator");
+            context.project().getMessageBus()
+                    .syncPublisher(NewAgentRequestNotifier.TOPIC)
+                    .newAgentRequest(userMessage);
+        } else {
+            context.project().getMessageBus()
+                    .syncPublisher(NewUserMessageNotifier.TOPIC)
+                    .newUserMessage(userMessage);
+        }
     }
 }
