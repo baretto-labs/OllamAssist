@@ -140,7 +140,7 @@ public final class RunCommandTool implements AgentTool {
                 return ToolResult.failure("Command exited with code " + exitCode + ":\n" + result);
             }
 
-            log.info("RUN_COMMAND success: {}", command);
+            log.debug("RUN_COMMAND success: {}", command);
             return ToolResult.success(result.isEmpty() ? "(no output)" : result);
 
         } catch (InterruptedException e) {

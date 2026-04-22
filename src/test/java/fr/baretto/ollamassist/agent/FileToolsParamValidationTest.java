@@ -9,7 +9,10 @@ import fr.baretto.ollamassist.agent.tools.files.ReadFileTool;
 import fr.baretto.ollamassist.agent.tools.files.WriteFileTool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -173,4 +176,72 @@ class FileToolsParamValidationTest {
     }
 
     // Note: file-not-found case requires LocalFileSystem (Platform API).
+
+    // =========================================================================
+    // T-4 — Symlink escape blocked at each file tool (SI-2 / A3)
+    //
+    // These tests verify that a symlinked directory inside the project pointing
+    // to an external location is blocked by FilePathGuard before any I/O occurs,
+    // and that each tool surfaces the rejection as ToolResult.failure.
+    // =========================================================================
+
+    private static Project projectWithRoot(Path root) {
+        Project p = mock(Project.class);
+        when(p.getBasePath()).thenReturn(root.toString());
+        return p;
+    }
+
+    @Test
+    void writeFile_symlinkDirPointingOutside_returnsFailure(
+            @TempDir Path projectRoot, @TempDir Path externalDir) throws Exception {
+        Path symlink = projectRoot.resolve("ext");
+        Files.createSymbolicLink(symlink, externalDir);
+
+        ToolResult result = new WriteFileTool(projectWithRoot(projectRoot))
+                .execute(Map.of("path", "ext/secret.txt", "content", "evil"));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).containsIgnoringCase("project root");
+    }
+
+    @Test
+    void readFile_symlinkDirPointingOutside_returnsFailure(
+            @TempDir Path projectRoot, @TempDir Path externalDir) throws Exception {
+        Path symlink = projectRoot.resolve("ext");
+        Files.createSymbolicLink(symlink, externalDir);
+        // Place a real file in externalDir so the symlink target exists
+        Files.writeString(externalDir.resolve("secret.txt"), "secret");
+
+        ToolResult result = new ReadFileTool(projectWithRoot(projectRoot))
+                .execute(Map.of("path", "ext/secret.txt"));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).containsIgnoringCase("project root");
+    }
+
+    @Test
+    void editFile_symlinkDirPointingOutside_returnsFailure(
+            @TempDir Path projectRoot, @TempDir Path externalDir) throws Exception {
+        Path symlink = projectRoot.resolve("ext");
+        Files.createSymbolicLink(symlink, externalDir);
+
+        ToolResult result = new EditFileTool(projectWithRoot(projectRoot))
+                .execute(Map.of("path", "ext/secret.txt", "search", "a", "replace", "b"));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).containsIgnoringCase("project root");
+    }
+
+    @Test
+    void deleteFile_symlinkDirPointingOutside_returnsFailure(
+            @TempDir Path projectRoot, @TempDir Path externalDir) throws Exception {
+        Path symlink = projectRoot.resolve("ext");
+        Files.createSymbolicLink(symlink, externalDir);
+
+        ToolResult result = new DeleteFileTool(projectWithRoot(projectRoot))
+                .execute(Map.of("path", "ext/secret.txt"));
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).containsIgnoringCase("project root");
+    }
 }
