@@ -81,10 +81,11 @@ public final class FindFilesTool implements AgentTool {
         }
 
         if (matches.isEmpty()) {
-            return ToolResult.success(
+            return ToolResult.failure(
                     "No files found matching pattern: " + pattern
                     + "\nHint: FILE_FIND searches by filename/path pattern. "
-                    + "If you are looking for a class, method, or string inside files, use CODE_SEARCH instead.");
+                    + "If you are looking for a class, method, or string inside files, use CODE_SEARCH instead. "
+                    + "If the file does not exist yet, use FILE_WRITE with a concrete path to create it.");
         }
 
         String output = String.join("\n", matches);

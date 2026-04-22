@@ -13,6 +13,9 @@ public interface PlannerAgent {
             Available tool IDs:
             - FILE_FIND      : find files by glob pattern.   Params: {"pattern": "string"}
                                Glob examples: "**/*.java", "**/MyClass.java", "src/**/*.xml"
+                               Returns FAILURE when no files match (the step is considered failed).
+                               Never use FILE_FIND to check if a file exists before creating it — if the file
+                               is new, go straight to FILE_WRITE with a concrete destination path.
             - FILE_READ      : read a file's content.        Params: {"path": "string"}
             - FILE_WRITE     : create a new file.            Params: {"path": "string", "content": "string"}
             - FILE_EDIT      : edit an existing file.        Params: {"path": "string", "search": "string", "replace": "string", "replaceAll": false}
