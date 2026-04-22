@@ -175,27 +175,47 @@ public final class AgentOrchestrator implements Disposable {
         }
     }
 
+    /** Maximum number of plan generation attempts before aborting. */
+    static final int MAX_PLAN_ATTEMPTS = 3;
+
     @TestOnly
     CompletableFuture<AgentPlan> plan(String userGoal, PlannerAgent agent) {
         return CompletableFuture.supplyAsync(() -> {
             publishProgress(AgentProgressEvent.planning());
-            try {
-                long timeout = planTimeoutSeconds();
-                String enrichedGoal = enrichGoal(userGoal);
-                AgentPlan agentPlan = CompletableFuture
-                        .supplyAsync(() -> agent.plan(enrichedGoal))
-                        .orTimeout(timeout, TimeUnit.SECONDS)
-                        .join();
-                validatePlan(agentPlan, userGoal);
-                publishProgress(AgentProgressEvent.planReady(agentPlan));
-                return agentPlan;
-            } catch (Exception e) {
-                Throwable cause = e.getCause() != null ? e.getCause() : e;
-                String message = buildPlanErrorMessage(cause);
-                log.error("Plan generation failed for goal: {}", userGoal, cause);
-                publishProgress(AgentProgressEvent.aborted(message));
-                throw new RuntimeException("Plan generation failed", cause);
+            long timeout = planTimeoutSeconds();
+            String enrichedGoal = enrichGoal(userGoal);
+            String currentGoal = enrichedGoal;
+            Exception lastException = null;
+            for (int attempt = 1; attempt <= MAX_PLAN_ATTEMPTS; attempt++) {
+                try {
+                    if (attempt > 1) {
+                        log.info("Plan retry attempt {}/{} for goal: {}", attempt, MAX_PLAN_ATTEMPTS, userGoal);
+                    }
+                    final String goalForAttempt = currentGoal;
+                    AgentPlan agentPlan = CompletableFuture
+                            .supplyAsync(() -> agent.plan(goalForAttempt))
+                            .orTimeout(timeout, TimeUnit.SECONDS)
+                            .join();
+                    validatePlan(agentPlan, userGoal);
+                    publishProgress(AgentProgressEvent.planReady(agentPlan));
+                    return agentPlan;
+                } catch (Exception e) {
+                    lastException = e;
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    log.warn("Plan attempt {}/{} failed: {}", attempt, MAX_PLAN_ATTEMPTS, cause.getMessage());
+                    if (attempt < MAX_PLAN_ATTEMPTS) {
+                        // Prepend the validation error so the LLM can self-correct on the next attempt
+                        currentGoal = "PREVIOUS PLAN WAS REJECTED — reason: " + cause.getMessage()
+                                + "\n\nPlease generate a corrected plan for the original goal below:\n\n"
+                                + enrichedGoal;
+                    }
+                }
             }
+            Throwable cause = lastException.getCause() != null ? lastException.getCause() : lastException;
+            String message = buildPlanErrorMessage(cause);
+            log.error("All {} plan attempts failed for goal: {}", MAX_PLAN_ATTEMPTS, userGoal, cause);
+            publishProgress(AgentProgressEvent.aborted(message));
+            throw new RuntimeException("Plan generation failed after " + MAX_PLAN_ATTEMPTS + " attempts", cause);
         });
     }
 
