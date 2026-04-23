@@ -11,9 +11,12 @@ import lombok.Setter;
 import javax.swing.*;
 import javax.swing.event.PopupMenuEvent;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ModelSelector extends JPanel {
 
@@ -28,13 +31,25 @@ public class ModelSelector extends JPanel {
     private transient ModelLoader modelLoader;
     private boolean isLoaded = false;
 
+    /** Returns the currently saved model name (used to pre-select after loading). */
+    private transient Supplier<String> modelGetter;
+    /** Saves the selected model name and fires any required notification. */
+    private transient Consumer<String> modelSetter;
+    /** Installed ActionListener — kept so it can be replaced when reconfigured. */
+    private transient ActionListener currentActionListener;
+
     public ModelSelector() {
         setLayout(new BorderLayout());
 
-        String savedModel = OllamAssistSettings.getInstance().getChatModelName();
+        modelGetter = () -> OllamAssistSettings.getInstance().getChatModelName();
+        modelSetter = name -> {
+            OllamAssistSettings.getInstance().setChatModelName(name);
+            ApplicationManager.getApplication().getMessageBus()
+                    .syncPublisher(ChatModelModifiedNotifier.TOPIC).onChatModelModified();
+        };
 
         DefaultComboBoxModel<String> initialModel = new DefaultComboBoxModel<>();
-        initialModel.setSelectedItem(savedModel);
+        initialModel.setSelectedItem(modelGetter.get());
         comboBox = new ComboBox<>(initialModel);
         comboBox.setPrototypeDisplayValue("Prototype_Model_Name_Length");
         comboBox.setPreferredSize(new Dimension(180, comboBox.getPreferredSize().height));
@@ -48,18 +63,30 @@ public class ModelSelector extends JPanel {
         progressBar.setVisible(false);
         progressBar.setBorder(JBUI.Borders.empty(2));
 
-
         add(comboBox, BorderLayout.CENTER);
         add(progressBar, BorderLayout.SOUTH);
         activateListener();
     }
 
-    public void activateListener() {
+    /**
+     * Reconfigures the selector to persist a different model (e.g. agent model vs chat model).
+     * The previous ActionListener is removed and replaced. The combo is reset to force a fresh
+     * load from Ollama on next open.
+     */
+    public void reconfigure(Supplier<String> getter, Consumer<String> setter) {
+        this.modelGetter = getter;
+        this.modelSetter = setter;
+        this.isLoaded = false;
+        if (currentActionListener != null) {
+            comboBox.removeActionListener(currentActionListener);
+        }
+        activateListener();
+        setSelectedModel(getter.get());
+    }
 
-        comboBox.addActionListener(e -> {
-            OllamAssistSettings.getInstance().setChatModelName(getSelectedModel());
-            ApplicationManager.getApplication().getMessageBus().syncPublisher(ChatModelModifiedNotifier.TOPIC).onChatModelModified();
-        });
+    public void activateListener() {
+        currentActionListener = e -> modelSetter.accept(getSelectedModel());
+        comboBox.addActionListener(currentActionListener);
     }
 
     public String getSelectedModel() {
@@ -100,7 +127,7 @@ public class ModelSelector extends JPanel {
     }
 
     private void updateModels(List<String> models) {
-        String savedModel = OllamAssistSettings.getInstance().getChatModelName();
+        String savedModel = modelGetter.get();
 
         models.sort(String::compareTo);
         DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();

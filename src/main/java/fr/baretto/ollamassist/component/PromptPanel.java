@@ -60,8 +60,6 @@ public class PromptPanel extends JPanel implements Disposable {
     private EditorTextField editorTextField;
     private JButton sendButton;
     private ModelSelector modelSelector;
-    /** Compact label shown instead of the model selector when agent mode is active (U-6). */
-    private JLabel agentModelLabel;
     private JButton stopButton;
     private boolean isGenerating = false;
     private JToggleButton webSearchButton;
@@ -147,13 +145,6 @@ public class PromptPanel extends JPanel implements Disposable {
         modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
         modelSelector.setModelLoader(this::fetchAvailableModels);
 
-        // Compact label replacing the model selector when agent mode is active (U-6).
-        // Initialized here so it is ready before createAgentModeButton() calls updateModelSelectorForAgentMode().
-        agentModelLabel = new JLabel();
-        agentModelLabel.setFont(agentModelLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        agentModelLabel.setForeground(JBColor.namedColor("Component.infoForeground", JBColor.GRAY));
-        agentModelLabel.setVisible(false);
-
         sendButton = createSubmitButton();
         stopButton = createStopButton();
         stopButton.setVisible(false);
@@ -168,7 +159,6 @@ public class PromptPanel extends JPanel implements Disposable {
 
         JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightControlPanel.setOpaque(false);
-        rightControlPanel.add(agentModelLabel);
         rightControlPanel.add(modelSelector);
         rightControlPanel.add(sendButton);
         rightControlPanel.add(stopButton);
@@ -352,25 +342,33 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     /**
-     * Swaps the model selector for a compact label when agent mode is active (U-6).
-     * The selector is hidden — the agent uses its own dedicated model configured
-     * in Settings → Ollama → Agent, not the chat model shown in the selector.
+     * Reconfigures the model selector for the active mode.
+     * In agent mode it saves to {@code OllamaSettings.agentPlannerModelName};
+     * in chat mode it saves to {@code OllamAssistSettings.chatModelName}.
      */
     private void updateModelSelectorForAgentMode(boolean agentActive) {
         if (modelSelector == null) return;
         if (agentActive) {
-            String agentModel = OllamaSettings.getInstance().getAgentPlannerModelName();
-            String displayModel = (agentModel != null && !agentModel.isBlank()) ? agentModel : "Agent model";
-            modelSelector.setVisible(false);
-            if (agentModelLabel != null) {
-                agentModelLabel.setText(displayModel);
-                agentModelLabel.setToolTipText("Agent model — configure in Settings → Ollama → Agent");
-                agentModelLabel.setVisible(true);
-            }
+            modelSelector.reconfigure(
+                    () -> {
+                        String m = OllamaSettings.getInstance().getAgentPlannerModelName();
+                        return (m != null && !m.isBlank()) ? m : OllamAssistSettings.getInstance().getChatModelName();
+                    },
+                    name -> OllamaSettings.getInstance().setAgentPlannerModelName(name)
+            );
+            modelSelector.setToolTipText("Agent model — also configurable in Settings → OllamAssist → Agent");
         } else {
-            modelSelector.setVisible(true);
+            modelSelector.reconfigure(
+                    () -> OllamAssistSettings.getInstance().getChatModelName(),
+                    name -> {
+                        OllamAssistSettings.getInstance().setChatModelName(name);
+                        com.intellij.openapi.application.ApplicationManager.getApplication()
+                                .getMessageBus()
+                                .syncPublisher(fr.baretto.ollamassist.events.ChatModelModifiedNotifier.TOPIC)
+                                .onChatModelModified();
+                    }
+            );
             modelSelector.setToolTipText(null);
-            if (agentModelLabel != null) agentModelLabel.setVisible(false);
         }
     }
 
