@@ -354,7 +354,14 @@ public class PromptPanel extends JPanel implements Disposable {
                         String m = OllamaSettings.getInstance().getAgentPlannerModelName();
                         return (m != null && !m.isBlank()) ? m : OllamAssistSettings.getInstance().getChatModelName();
                     },
-                    name -> OllamaSettings.getInstance().setAgentPlannerModelName(name)
+                    name -> {
+                        OllamaSettings.getInstance().setAgentPlannerModelName(name);
+                        if (project != null) {
+                            fr.baretto.ollamassist.agent.AgentOrchestrator orchestrator =
+                                    project.getService(fr.baretto.ollamassist.agent.AgentOrchestrator.class);
+                            if (orchestrator != null) orchestrator.invalidatePlannerModel();
+                        }
+                    }
             );
             modelSelector.setToolTipText("Agent model — also configurable in Settings → OllamAssist → Agent");
         } else {

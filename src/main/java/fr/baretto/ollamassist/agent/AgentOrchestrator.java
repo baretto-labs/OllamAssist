@@ -183,28 +183,52 @@ public final class AgentOrchestrator implements Disposable {
         return CompletableFuture.supplyAsync(() -> {
             publishProgress(AgentProgressEvent.planning());
             long timeout = planTimeoutSeconds();
+            try {
+                OllamaSettings s = OllamaSettings.getInstance();
+                log.info("[AGENT] plan() start — goal='{}' timeout={}s model='{}' url='{}'",
+                        userGoal, timeout, s.getAgentPlannerModelName(), s.getChatOllamaUrl());
+            } catch (Exception ignored) {
+                log.info("[AGENT] plan() start — goal='{}' timeout={}s (settings unavailable in test)", userGoal, timeout);
+            }
+
             String enrichedGoal = enrichGoal(userGoal);
+            log.debug("[AGENT] enriched goal length={} chars", enrichedGoal.length());
+
             String currentGoal = enrichedGoal;
             Exception lastException = null;
             for (int attempt = 1; attempt <= MAX_PLAN_ATTEMPTS; attempt++) {
+                log.info("[AGENT] plan attempt {}/{}", attempt, MAX_PLAN_ATTEMPTS);
                 try {
-                    if (attempt > 1) {
-                        log.info("Plan retry attempt {}/{} for goal: {}", attempt, MAX_PLAN_ATTEMPTS, userGoal);
-                    }
                     final String goalForAttempt = currentGoal;
                     AgentPlan agentPlan = CompletableFuture
                             .supplyAsync(() -> agent.plan(goalForAttempt))
                             .orTimeout(timeout, TimeUnit.SECONDS)
                             .join();
+
+                    if (agentPlan == null) {
+                        log.warn("[AGENT] attempt {}: PlannerAgent returned null", attempt);
+                        throw new IllegalStateException("PlannerAgent returned null — the model may have emitted invalid JSON");
+                    }
+                    log.info("[AGENT] attempt {}: plan received — phases={} reasoning='{}'",
+                            attempt,
+                            agentPlan.getPhases() == null ? "null" : agentPlan.getPhases().size(),
+                            agentPlan.getReasoning());
+                    if (agentPlan.getPhases() != null) {
+                        agentPlan.getPhases().forEach(phase ->
+                                log.info("[AGENT]   phase='{}' steps={}", phase.getDescription(),
+                                        phase.getSteps() == null ? 0 : phase.getSteps().size()));
+                    }
+
                     validatePlan(agentPlan, userGoal);
+                    log.info("[AGENT] attempt {}: plan validated OK — publishing planReady", attempt);
                     publishProgress(AgentProgressEvent.planReady(agentPlan));
                     return agentPlan;
                 } catch (Exception e) {
                     lastException = e;
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    log.warn("Plan attempt {}/{} failed: {}", attempt, MAX_PLAN_ATTEMPTS, cause.getMessage());
+                    log.warn("[AGENT] attempt {}/{} failed: {} — {}",
+                            attempt, MAX_PLAN_ATTEMPTS, cause.getClass().getSimpleName(), cause.getMessage(), cause);
                     if (attempt < MAX_PLAN_ATTEMPTS) {
-                        // Prepend the validation error so the LLM can self-correct on the next attempt
                         currentGoal = "PREVIOUS PLAN WAS REJECTED — reason: " + cause.getMessage()
                                 + "\n\nPlease generate a corrected plan for the original goal below:\n\n"
                                 + enrichedGoal;
@@ -213,7 +237,8 @@ public final class AgentOrchestrator implements Disposable {
             }
             Throwable cause = lastException.getCause() != null ? lastException.getCause() : lastException;
             String message = buildPlanErrorMessage(cause);
-            log.error("All {} plan attempts failed for goal: {}", MAX_PLAN_ATTEMPTS, userGoal, cause);
+            log.error("[AGENT] all {} plan attempts failed for goal: '{}' — final error: {}",
+                    MAX_PLAN_ATTEMPTS, userGoal, cause.getMessage(), cause);
             publishProgress(AgentProgressEvent.aborted(message));
             throw new RuntimeException("Plan generation failed after " + MAX_PLAN_ATTEMPTS + " attempts", cause);
         });
@@ -224,6 +249,9 @@ public final class AgentOrchestrator implements Disposable {
     // -------------------------------------------------------------------------
 
     public CompletableFuture<Void> execute(AgentPlan plan) {
+        log.info("[AGENT] execute() called — goal='{}' phases={}",
+                plan.getGoal(),
+                plan.getPhases() == null ? "null" : plan.getPhases().size());
         // Capture both dispatcher and critic inside a single synchronized block so that
         // a concurrent invalidateAgents() call (triggered by ChatModelModifiedNotifier) cannot
         // null them out between the two acquisitions, which would cause execution to start with
@@ -665,7 +693,9 @@ public final class AgentOrchestrator implements Disposable {
     private static final int MAX_TOTAL_STEPS = 30;
 
     private void validatePlan(AgentPlan plan, String goal) {
+        log.info("[AGENT] validatePlan — goal='{}'", goal);
         if (plan == null) {
+            log.warn("[AGENT] validatePlan: plan is null");
             throw new IllegalStateException("PlannerAgent returned null for goal: " + goal);
         }
         if (plan.isEmpty()) {
@@ -766,14 +796,22 @@ public final class AgentOrchestrator implements Disposable {
             synchronized (this) {
                 if (plannerModel == null) {
                     OllamaSettings settings = OllamaSettings.getInstance();
+                    String modelName = settings.getAgentPlannerModelName();
+                    String url = settings.getChatOllamaUrl();
+                    log.info("[AGENT] creating PlannerModel — model='{}' url='{}' timeout={}",
+                            modelName, url, settings.getTimeoutDuration());
+                    if (modelName == null || modelName.isBlank()) {
+                        log.warn("[AGENT] agentPlannerModelName is blank — fallback to chatModelName='{}'",
+                                settings.getChatModelName());
+                    }
                     plannerModel = OllamaChatModel.builder()
-                            .baseUrl(settings.getChatOllamaUrl())
-                            .modelName(settings.getAgentPlannerModelName())
+                            .baseUrl(url)
+                            .modelName(modelName)
                             .responseFormat(ResponseFormat.JSON)
                             .temperature(0.3)
                             .timeout(settings.getTimeoutDuration())
                             .build();
-                    log.debug("Planner model created: {}", settings.getAgentPlannerModelName());
+                    log.info("[AGENT] PlannerModel created: model='{}'", modelName);
                 }
             }
         }
@@ -822,7 +860,15 @@ public final class AgentOrchestrator implements Disposable {
         closeModel(criticModel);
         plannerModel = null;
         criticModel = null;
-        log.debug("Agents invalidated — will be recreated on next call");
+        log.info("[AGENT] agents invalidated — will be recreated on next call");
+    }
+
+    /** Called when only the planner model changed (e.g. agent model selector in UI). */
+    public synchronized void invalidatePlannerModel() {
+        plannerAgent = null;
+        closeModel(plannerModel);
+        plannerModel = null;
+        log.info("[AGENT] plannerModel invalidated — will be recreated on next plan()");
     }
 
     private static void closeModel(OllamaChatModel model) {
