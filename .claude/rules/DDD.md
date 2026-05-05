@@ -19,13 +19,11 @@ method names, variable names, comments, commit messages, and documentation.
 | **Message** | A single exchange unit in a Conversation, authored by a Role | Line, Entry, Turn |
 | **Role** | The author of a Message: `USER` or `ASSISTANT` | Sender, Actor, Side |
 | **Goal** | The natural-language intent a user submits to the Agent | Task, Request, Command, Input |
-| **Plan** | The structured decomposition of a Goal into Phases and Steps | Roadmap, Schedule, Execution plan |
-| **Phase** | A logical group of Steps inside a Plan, evaluated by the Critic as a unit | Stage, Block, Group |
-| **Step** | A single atomic execution unit inside a Phase, dispatched to one Tool | Action, Operation, Job |
 | **Tool** | A self-contained capability the Agent can invoke (file read, git status, etc.) | Function, Command, Handler |
 | **ToolResult** | The outcome of a Tool execution: success flag, output, error message | Response, Output, Return |
-| **Critic** | The LLM agent that evaluates Phase results and decides to continue, adapt, or abort | Reviewer, Evaluator, Validator |
-| **CriticDecision** | Structured output of the Critic: `OK`, `ADAPT`, or `ABORT` with reasoning | Verdict, Judgment, Outcome |
+| **ToolCall** | A request emitted by the LLM to invoke a specific Tool with given parameters | FunctionCall, Invocation |
+| **Observation** | The ToolResult returned to the LLM after a ToolCall — feeds the next reasoning step | ToolOutput, Result, Feedback |
+| **ReActLoop** | The Reason + Act cycle: LLM reasons, calls a Tool, receives an Observation, repeats | AgentLoop, ExecutionLoop |
 | **Suggestion** | An inline code completion proposed to the developer inside the editor | Completion, Hint, Proposal |
 | **CompletionContext** | The editor state snapshot used to generate a Suggestion | Context, EditorState, Snippet |
 | **RagSource** | A retrieved knowledge fragment with its origin: `INDEX`, `WORKSPACE`, or `WEB` | Result, Match, Document, Hit |
@@ -66,21 +64,21 @@ another context's internals.
 ---
 
 ### 2. Agent Context
-**Responsibility:** Autonomously execute a Goal through a Plan, with human-in-the-loop validation.
+**Responsibility:** Autonomously execute a Goal via a ReAct loop, with human-in-the-loop approval for mutations.
 
-**Owns:** `Goal`, `Plan`, `Phase`, `Step`, `Tool`, `ToolResult`, `CriticDecision`, `CommandTier`
+**Owns:** `Goal`, `Tool`, `ToolResult`, `ToolCall`, `Observation`, `ReActLoop`, `CommandTier`
 
-**Produces events:** `AgentProgressNotifier`, `FileApprovalNotifier`
+**Produces events:** `AgentProgressEvent`, `FileApprovalRequestNotifier`
 
-**Consumes:** Chat Context (renders plan inline in `MessagesPanel`), RAG Context (`SearchKnowledgeBaseTool`)
+**Consumes:** Chat Context (streams ReAct output into `MessagesPanel`), RAG Context (`SearchKnowledgeBaseTool`)
 
 **Rules:**
-- The LLM plans. Java executes. No LLM tool calling. See `AGENT_ARCH.md` Rule 1.
-- A `Step` is immutable once the Plan is validated. If the Critic requests adaptation,
-  a new `Phase` is produced — the original Step is never mutated.
+- The LLM decides which Tool to call and when. Java executes the call. See `AGENT_ARCH.md` Rule 1.
 - `CommandTier` classification is always performed by `CommandClassifier` (Java regex),
   never inferred from LLM output.
 - Every Tool must be registered in `ToolRegistry` with its `CommandTier` before use.
+- Every MUTATING or DESTRUCTIVE Tool call must publish `FileApprovalRequestNotifier`
+  and wait for user Approval before executing. See `AGENT_ARCH.md` Rule 4.
 
 ---
 
@@ -213,12 +211,10 @@ fr.baretto.ollamassist.
 
 **Entity** (has identity, mutable over time):
 - `Conversation` — identified by `id`, messages accumulate over time
-- `AgentOrchestrator` — stateful execution coordinator
+- `FunctionCallingAgentService` — stateful execution coordinator (holds loop state during execution)
 
 **Value Object** (defined by its values, immutable):
 - `ConversationMessage` — immutable once created; use factory methods `user(content)` / `assistant(content)`
-- `AgentPlan`, `Phase`, `Step` — immutable once produced by the Planner
-- `CriticDecision` — immutable evaluation result
 - `ToolResult` — immutable execution result
 - `RagSource` — immutable retrieval fragment
 - `CompletionContext` — immutable snapshot of editor state
@@ -254,3 +250,4 @@ These boundaries prevent domain concepts from leaking across contexts:
 | `SuggestionManager` / `MultiSuggestionManager` naming inconsistency with `Completion` vocabulary | `completion/` | Low |
 | `ToolCallDetector` / `ToolCallParser` share the word "Tool" with agent tools | `chat/tools/` | Low (rename to `LlmToolCall*`) |
 | `PrerequisteAvailableNotifier` misspelling in Topic name | `events/` | Low (fix on next touch) |
+| `AgentOrchestrator`, `PlannerAgent`, `CriticAgent`, `Phase`, `Step`, `AgentPlan` still present | `agent/` | High (remove in T5.1 — superseded by `FunctionCallingAgentService`) |

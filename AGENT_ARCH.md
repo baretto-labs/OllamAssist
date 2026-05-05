@@ -1,180 +1,176 @@
-# AGENT_ARCH.md
+# AGENT_ARCH.md — Agent Architecture Rules
 
-Architecture rules for the OllamAssist autonomous agent system.
-These rules are binding for all implementation work on the agent feature.
-
-## Vision
-
-Transform the OllamAssist chat into a fully autonomous agent capable of reading, editing,
-creating, and deleting files, running commands, and searching the codebase — with a
-human-in-the-loop planning step and a continuous feedback loop.
-
-Medium-term goal: use the agent as the execution engine for a spec-driven development
-workflow directly inside the IDE.
+This file defines the binding architecture rules for the OllamAssist agent subsystem.
+It supplements `ARCH_SECURITY.md` (security invariants A1–A7) and `DDD.md` (domain model).
 
 ---
 
-## Core Loop: Plan → Validate → Execute → Critic
+## Architecture: ReAct loop via native function calling
+
+The agent uses a **ReAct** (Reason + Act) loop built on LangChain4j's native function calling.
 
 ```
-User Prompt
-    ↓
-[PlannerAgent]          structured output → AgentPlan
-    ↓
-[UI: Plan Panel]        user edits / validates / enables auto-validation
-    ↓
-for each logical phase:
-    for each step in phase:
-        [ToolDispatcher]    deterministic Java dispatch (no LLM tool calling)
-            ↓
-        [Tool]              self-contained execution
-            ↓
-        [AgentProgressNotifier]   streaming status to UI
-    ↓
-    [CriticAgent]           structured output → CriticDecision
-        OK      → next phase
-        ADAPT   → generate revised partial plan, loop
-        ABORT   → report to user with full reasoning
+User Goal
+    │
+    ▼
+FunctionCallingAgentService
+    │  AiServices with @Tool-annotated AgentToolProvider
+    │
+    ├─ [Thought]      LLM reasons about the next action
+    ├─ [Action]       LLM emits a tool call
+    ├─ [Observation]  Framework executes the tool, returns result to LLM
+    └─ repeat until final answer or MAX_TOOL_CALLS reached
 ```
 
----
-
-## Rule 1: No LLM Tool Calling
-
-Never use LangChain4j's `@Tool` / function-calling mechanism with Ollama models.
-Small models are unreliable at tool selection.
-
-- The **PlannerAgent** uses structured output to produce `AgentPlan`.
-- The **CriticAgent** uses structured output to produce `CriticDecision`.
-- The **ToolDispatcher** is pure deterministic Java: reads `step.toolId`, calls the matching tool.
-
-The LLM plans. Java executes.
+**No upfront plan.** The LLM adapts after each observation. There is no Planner, no Critic,
+no Phase/Step decomposition. The LLM reasons inline after every tool result.
 
 ---
 
-## Rule 2: Two-Level Plan Abstraction
+## Rule 1 — Java executes. LLM decides.
 
-**Level 1 — Logical steps (user-visible):**
-- Readable intent: "Modify function `foo` in `Bar.java`"
-- This is what appears in the Plan Panel
-- Grouped into logical phases
+The LLM decides *what* to call and *when*. Java executes the call and returns the result.
 
-**Level 2 — Tool calls (internal):**
-- Each tool is self-contained and handles its own sub-operations
-- `EditFileTool` reads the file internally, applies the edit, writes back — the plan does not contain a separate "ReadFile" step
-- The user never sees raw tool names in the plan unless they expand a step
-
-Never expose atomic tool mechanics as top-level plan steps.
+- Tool implementations live in `fr.baretto.ollamassist.agent.tools.*` — no LLM calls inside.
+- `AgentToolProvider` exposes tools to LangChain4j via `@Tool`-annotated methods.
+- `FunctionCallingAgentService` owns the `AiServices` instance and all loop guards.
+- **Never** put execution logic (file I/O, subprocess, HTTP) inside a prompt or system message.
 
 ---
 
-## Rule 3: CriticAgent Trigger Granularity
+## Rule 2 — @Tool method contract
 
-Trigger the CriticAgent **after each logical phase**, not after each atomic step.
+Every method annotated with `@Tool` must:
 
-Calling an LLM after every step on a local model will produce unacceptable latency.
+1. Accept only Java primitive types or `String` as parameters — never `Map<String,Object>`.
+2. Carry a `@Tool` description that tells the LLM exactly what the tool does and when to use it.
+   Vague descriptions produce incorrect tool calls.
+3. Return a `String` — either the result content or a prefixed error message
+   `"ERROR: <reason>"` so the LLM can reason about failures.
+4. Never propagate checked exceptions to the LLM layer — catch internally and return an error
+   string. Unchecked exceptions are caught by LangChain4j and fed back as observations.
+5. Delegate all business logic to the underlying `AgentTool` implementation.
+   `AgentToolProvider` is an adapter, not a domain class.
 
-Exception: a `paranoid` mode (opt-in in settings) may trigger the Critic after every step
-for sensitive operations (file deletion, command execution).
-
-CriticDecision structure:
 ```java
-record CriticDecision(
-    Status status,      // OK, ADAPT, ABORT
-    String reasoning,
-    List<Step> revisedSteps  // non-null when ADAPT
-) {}
+// Correct
+@Tool("Read the content of a file at the given path relative to the project root")
+public String readFile(
+    @P("File path relative to project root, e.g. src/main/java/Foo.java") String path
+) {
+    ToolResult result = readFileTool.execute(Map.of("path", path));
+    return result.isSuccess() ? result.getOutput() : "ERROR: " + result.getError();
+}
+
+// Wrong — Map parameter, no description, throws exception
+public String readFile(Map<String, Object> params) throws IOException { ... }
 ```
 
 ---
 
-## Rule 4: Plan UI is Inline in Chat, Not Modal
+## Rule 3 — Loop guards are mandatory
 
-The plan is displayed as a message component inside `MessagesPanel`, inline in the
-conversation flow — not as a dialog, not as a separate panel tab.
+Every agent execution must be bounded by three independent guards:
 
-Requirements:
-- Each logical step is displayed with an editable description
-- User can remove or reorder steps before confirming
-- Buttons: [Edit] [Validate] [Auto-validate]
-- During execution: steps transition to icons: pending / running (spinner) / success / failed
-- The Critic's ADAPT decisions produce a visible "plan revised" message in the same flow
+| Guard | Default | Where enforced |
+|---|---|---|
+| `MAX_TOOL_CALLS_PER_EXECUTION` | 30 | `FunctionCallingAgentService` |
+| Execution timeout | 5 min (configurable in settings) | `FunctionCallingAgentService` |
+| Per-tool rate limit | See `ToolRateLimiter` | `AgentToolProvider` before each tool call |
 
-This mirrors modern AI agent UIs (Cursor, Copilot Workspace, Claude Code).
+When `MAX_TOOL_CALLS` is reached, the service stops the loop and streams a clear
+message to the user: `"Agent stopped: maximum tool calls (30) reached for this execution."`
+
+`ToolRateLimiter.reset()` is called at the start of each new execution, not at construction.
 
 ---
 
-## Rule 5: File Operations Use JetBrains Abstractions
+## Rule 4 — Human-in-the-loop for mutating operations
 
-All file read/write/delete operations must go through IntelliJ Platform APIs, never raw Java IO.
+Any tool that writes to the filesystem (`FILE_EDIT`, `FILE_WRITE`) must:
+
+1. Compute the diff (before/after) before writing.
+2. Publish a `FileApprovalRequestNotifier` event carrying the diff.
+3. Block until the user approves or rejects (via `CompletableFuture`).
+4. On rejection: return `"ERROR: User rejected the change."` to the LLM as an observation.
+5. On timeout (30 s): treat as rejection.
+
+This behaviour is bypassed only when `agentApprovalMode == AUTO` in settings.
+
+`FILE_DELETE` always requires explicit approval regardless of `agentApprovalMode`.
+
+---
+
+## Rule 5 — File operations use JetBrains abstractions
+
+All file read/write/delete operations go through IntelliJ Platform APIs, not raw Java IO.
 
 - Read: `VirtualFile.contentsToByteArray()` or `FileDocumentManager`
-- Write/Edit: `WriteCommandAction.runWriteCommandAction(project, description, null, () -> { ... })`
+- Write/Edit: `WriteCommandAction.runWriteCommandAction(project, ...)` — makes edits undoable
 - Delete: `VirtualFile.delete(requestor)`
 - Find: `LocalFileSystem.getInstance().refreshAndFindFileByPath()`
-- Search: `FilenameIndex`, `PsiManager`, `PsiShortNamesCache`
 
-**Critical:** `WriteCommandAction` must run on the EDT. Agent steps run on background threads.
-Always wrap writes with `ApplicationManager.getApplication().invokeLater(...)` or use
-`WriteCommandAction.runWriteCommandAction` which handles EDT dispatch internally.
+**Critical:** `WriteCommandAction` runs on the EDT. Agent steps run on background threads.
+Always dispatch via `ApplicationManager.getApplication().invokeLater(...)`.
 
-Benefit: all edits are **undoable via Ctrl+Z** in the IDE. This is non-negotiable for user trust.
+Benefit: all edits are **undoable via Ctrl+Z** in the IDE.
 
 ---
 
-## Rule 6: Terminal Command Security — Three Tiers
+## Rule 6 — Terminal command security — three tiers
 
 ```
-READ_ONLY    git status, git log, ls, find, grep, cat, mvn verify (no deploy)
+READ_ONLY    git status, git log, ls, find, grep, cat
              → execute directly, no confirmation
 
-MUTATING     git commit, git add, mvn install, npm install, mkdir, touch
-             → show command + confirmation UI before execution
+MUTATING     git commit, git add, mvn install, mkdir, touch
+             → show command + confirmation before execution
 
-DESTRUCTIVE  rm, git reset --hard, git push --force, DROP, truncate
-             → blocked by default; requires explicit opt-in in Settings
-             → always show command + explicit confirmation even when opted in
+DESTRUCTIVE  rm, git reset --hard, git push --force
+             → blocked by default; explicit opt-in in settings required
+             → always show command + confirmation even when opted in
 ```
 
-Classification is done by a Java matcher (regex/prefix patterns), never by the LLM.
-The exact command string is always displayed to the user before any MUTATING or DESTRUCTIVE execution.
+Classification is performed by `CommandClassifier` (Java regex/prefix), never by the LLM.
 
 ---
 
-## Rule 7: Streaming Status is Mandatory from Day One
+## Rule 7 — Streaming status is mandatory
 
 Latency on local models is significant. The UI must provide continuous feedback.
 
-Every state transition publishes to `AgentProgressNotifier`:
-- Plan generation started / completed
-- Step started (with step description)
-- Step completed (success or failure with output)
-- Critic thinking
-- Plan adapted (with diff of changes)
-- Agent completed / aborted
+`AgentProgressEvent` is published for every state transition:
+- Tool call started (tool name + parameters summary)
+- Tool call completed (success or failure)
+- LLM reasoning token (streamed)
+- Execution stopped (completed / aborted / MAX_TOOL_CALLS reached)
 
-There is no "silent processing" phase longer than 2 seconds without a visible status update.
+There is no silent processing phase longer than 2 seconds without a visible status update.
 
 ---
 
 ## Tool Catalog
 
-| ID | Class | Category | Notes |
+| ID | Class | Tier | Notes |
 |---|---|---|---|
-| `FILE_READ` | `ReadFileTool` | Files | Via VirtualFile |
-| `FILE_WRITE` | `WriteFileTool` | Files | WriteCommandAction, undoable |
-| `FILE_EDIT` | `EditFileTool` | Files | Read+patch+write, undoable |
-| `FILE_DELETE` | `DeleteFileTool` | Files | Confirmation if MUTATING |
-| `FILE_FIND` | `FindFilesTool` | Navigation | Glob patterns via FilenameIndex |
-| `CODE_SEARCH` | `SearchCodeTool` | Navigation | Text + PSI search |
-| `RUN_COMMAND` | `RunCommandTool` | Terminal | 3-tier security |
-| `OPEN_IN_EDITOR` | `OpenInEditorTool` | IDE | FileEditorManager |
-| `GET_CURRENT_FILE` | `GetCurrentFileTool` | IDE | DataContext |
-| `SEARCH_KNOWLEDGE` | `SearchKnowledgeBaseTool` | RAG | Existing LuceneEmbeddingStore |
-| `GIT_STATUS` | `GitStatusTool` | Git | READ_ONLY |
-| `GIT_DIFF` | `GitDiffTool` | Git | READ_ONLY |
+| `FILE_READ` | `ReadFileTool` | READ_ONLY | Via VirtualFile, 512 KB limit |
+| `FILE_WRITE` | `WriteFileTool` | MUTATING | Creates file; approval required |
+| `FILE_EDIT` | `EditFileTool` | MUTATING | Search/replace; diff + approval required |
+| `FILE_APPEND` | `AppendFileTool` | MUTATING | Appends to existing file |
+| `FILE_DELETE` | `DeleteFileTool` | DESTRUCTIVE | Always requires approval |
+| `FILE_FIND` | `FindFilesTool` | READ_ONLY | Glob patterns, 100 result max |
+| `LIST_DIRECTORY` | `ListDirectoryTool` | READ_ONLY | Directory listing |
+| `CODE_SEARCH` | `SearchCodeTool` | READ_ONLY | Keyword search in workspace |
+| `SEARCH_KNOWLEDGE` | `SearchKnowledgeBaseTool` | READ_ONLY | Semantic search via LuceneEmbeddingStore |
+| `WEB_SEARCH` | `WebSearchAgentTool` | READ_ONLY | DuckDuckGo search |
+| `RUN_COMMAND` | `RunCommandTool` | varies | 3-tier security via CommandClassifier |
+| `OPEN_IN_EDITOR` | `OpenInEditorTool` | READ_ONLY | FileEditorManager |
+| `GET_CURRENT_FILE` | `GetCurrentFileTool` | READ_ONLY | Currently open file |
+| `GIT_STATUS` | `GitStatusTool` | READ_ONLY | git status output |
+| `GIT_DIFF` | `GitDiffTool` | READ_ONLY | git diff output |
 
-New tools must be registered in `ToolRegistry` and assigned a tier (READ_ONLY / MUTATING / DESTRUCTIVE).
+New tools must be registered in `ToolRegistry` with a tier before use.
+Any new MUTATING or DESTRUCTIVE tool must be counted by `ToolRateLimiter`.
 
 ---
 
@@ -182,31 +178,24 @@ New tools must be registered in `ToolRegistry` and assigned a tier (READ_ONLY / 
 
 ```
 fr.baretto.ollamassist.agent/
-  AgentOrchestrator          # main loop coordinator
-  plan/
-    PlannerAgent             # LangChain4j AiService, structured output
-    AgentPlan                # record: List<Phase>
-    Phase                    # record: description, List<Step>
-    Step                     # record: toolId, description, params Map
-  critic/
-    CriticAgent              # LangChain4j AiService, structured output
-    CriticDecision           # record: Status, reasoning, revisedSteps
+  FunctionCallingAgentService.java    ← loop owner, @Service(PROJECT)
+  AgentToolProvider.java              ← @Tool adapter injected into AiServices
+  AgentProgressEvent.java             ← streamed to UI during execution
   tools/
-    ToolRegistry             # maps toolId → Tool instance
-    ToolDispatcher           # dispatches Step → Tool
-    Tool                     # interface: execute(Map<String,Object>) → ToolResult
-    ToolResult               # record: success, output, errorMessage
-    files/                   # ReadFileTool, WriteFileTool, EditFileTool, DeleteFileTool
-    navigation/              # FindFilesTool, SearchCodeTool
-    terminal/                # RunCommandTool (with tier classification)
-    ide/                     # OpenInEditorTool, GetCurrentFileTool
-    rag/                     # SearchKnowledgeBaseTool
-    git/                     # GitStatusTool, GitDiffTool
+    AgentTool.java                    ← interface: execute(Map) → ToolResult
+    ToolResult.java                   ← value object: success flag, output, error
+    ToolRateLimiter.java              ← per-tool + global call limits
+    ToolRegistry.java                 ← tier metadata (READ_ONLY / MUTATING / DESTRUCTIVE)
+    SecretDetector.java               ← detects secrets in file content before reads
+    files/                            ← ReadFileTool, WriteFileTool, EditFileTool, …
+    git/                              ← GitStatusTool, GitDiffTool
+    ide/                              ← OpenInEditorTool, GetCurrentFileTool
+    navigation/                       ← FindFilesTool, SearchCodeTool, ListDirectoryTool
+    rag/                              ← SearchKnowledgeBaseTool
+    terminal/                         ← RunCommandTool, CommandClassifier, CommandTier
+    web/                              ← WebSearchAgentTool
   ui/
-    AgentPlanPanel           # Swing component rendered inline in MessagesPanel
-    StepStatusComponent      # individual step with status icon
-  events/
-    AgentProgressNotifier    # MessageBus topic for streaming status
+    FileDiffPanel.java                ← shows diff before file mutation (human-in-the-loop)
 ```
 
 ---
@@ -214,94 +203,78 @@ fr.baretto.ollamassist.agent/
 ## Security Invariants
 
 These invariants are **non-negotiable** for every component in the agent subsystem.
-They are listed here so they can be cited during code review and during the RED phase of TDD.
-An implementation that violates an invariant is incomplete, regardless of test coverage.
-
-> Implementation patterns and anti-patterns for each invariant are documented in
-> `.claude/rules/ARCH_SECURITY.md` (rules A1–A7). The SI numbers below map to those rules:
-> SI-1 → A1, SI-2 → A3, SI-3 → A2, SI-4 → A4, SI-5 → A6, SI-6 → A6, SI-7 → A5.
+Implementation patterns for each are in `.claude/rules/ARCH_SECURITY.md` (rules A1–A7).
 
 ### SI-1 — All security decisions are fail-closed
 
-Any method whose job is to verify, validate, or classify must return the **safe / restrictive**
-outcome when it cannot complete normally (null input, I/O error, missing key, unexpected state).
+Any method that verifies, validates, or classifies must return the restrictive outcome
+on null input, I/O error, or unexpected state — never the permissive outcome.
 
-```
-// Wrong — fail-open
-if (keyFile == null) return true;
+Applies to: `SecretDetector.detect`, `CommandClassifier.classify`, `FilePathGuard.*`,
+any future boolean security predicate.
 
-// Correct — fail-closed
-if (keyFile == null) return false;
-```
+### SI-2 — File paths are confined to the project root before any I/O
 
-Applies to: `verifyHmac`, `SecretDetector.detect`, `CommandClassifier.classify`,
-`FilePathGuard.*`, any future security predicate.
-
-### SI-2 — File paths are always confined to the project root before use
-
-Every tool that accepts a file path parameter must resolve the path through `FilePathGuard`
-(or equivalent `toRealPath()` + `startsWith(root)` check) **before** performing any I/O.
-A path that resolves outside the project root must produce `ToolResult.failure` — never a
-silent fallback to the project root, which would hide the rejection from the agent.
+Every tool that accepts a file path must call `FilePathGuard` (or `toRealPath()` +
+`startsWith(root)`) before any I/O. A path that escapes the root produces
+`ToolResult.failure` — never a silent fallback to the project root.
 
 Applies to: `ReadFileTool`, `WriteFileTool`, `EditFileTool`, `DeleteFileTool`,
 `RunCommandTool.resolveWorkingDir`, `GoalContextResolver`.
 
 ### SI-3 — External inputs to subprocesses are whitelisted, never sanitised
 
-Do not attempt to escape or sanitise arguments passed to external processes.
 Maintain an explicit whitelist of known-safe values and reject everything else.
-Sanitisation is fragile; whitelisting is verifiable.
+Do not escape or strip untrusted arguments.
 
-```
-// Wrong — sanitisation attempt
-command.add(arg.replaceAll("[^a-zA-Z0-9_\\-]", ""));
+Applies to: `GitDiffTool`, `GitStatusTool`, any future subprocess-building tool.
 
-// Correct — whitelist
-if (!ALLOWED_ARGS.contains(arg)) return ToolResult.failure("Argument not allowed: " + arg);
-command.add(arg);
-```
+### SI-4 — LLM-generated content is treated as data, not instructions
 
-Applies to: `GitDiffTool`, `GitStatusTool`, any future tool that builds a subprocess command.
+Tool output injected into any LLM prompt must pass through `PromptSanitizer.sanitize()`
+(delimiters, control character stripping, bidi override removal) before injection.
 
-### SI-4 — LLM-generated content is never trusted as instructions
+### SI-5 — Blast radius is bounded by rate limits, not by plan validation
 
-Content returned by tools (file contents, command output, git diff) is data, not instructions.
-Before injecting it into any LLM prompt it must pass through `PromptSanitizer.sanitize()`,
-which wraps it in non-XML delimiters, escapes those delimiters if they appear in the content,
-and strips control characters and bidi override sequences.
+The agent has no upfront plan to validate. Blast radius is controlled by:
+1. `MAX_TOOL_CALLS_PER_EXECUTION` — absolute cap on total tool invocations.
+2. `ToolRateLimiter` per-tool limits — prevents a single tool from being called in a loop.
+3. Human-in-the-loop approval for every MUTATING and DESTRUCTIVE tool call.
 
-This applies even when the content looks benign. Prompt injection attacks are invisible by design.
+Any new MUTATING or DESTRUCTIVE `@Tool` method must call `ToolRateLimiter.tryAcquire(toolId)`
+before executing. Omitting this call is a security violation.
 
-### SI-5 — Critic-proposed plan revisions cannot escalate blast radius
+### SI-6 — Rate limits reset per execution, not per session
 
-When the Critic returns `ADAPT`, the revised phases are validated against:
-1. The same structural rules as the original plan (unknown toolIds, MAX_DELETE_STEPS, etc.).
-2. An additional check: `countDestructiveSteps(revised) ≤ countDestructiveSteps(original)`.
+`ToolRateLimiter.reset()` is called at the start of each `FunctionCallingAgentService.execute()`
+call. Counters must never carry over between user-initiated executions.
 
-If either check fails, the execution is aborted. The Critic cannot grant itself more
-destructive capability than the user originally approved.
+### SI-7 — Truncation of tool output uses first + last strategy
 
-### SI-6 — Rate limits and total invocation caps are enforced per execution, not per session
-
-`ToolRateLimiter` counters reset at the start of each execution (`resetRateLimits()`).
-They enforce:
-- Per-tool limit: prevents a single tool from being called in a loop.
-- Total invocation cap (`MAX_TOTAL_INVOCATIONS`): prevents spreading the loop across many tools.
-
-Both limits must be enforced. Removing either one degrades the blast-radius guard.
-
-### SI-7 — Truncation of outputs injected into LLM prompts uses first + last strategy
-
-When a tool output is too long to inject into a prompt, keep the **first 60% and last 40%**
-of the allowed budget. Never use head-only truncation: error messages, stack traces, and
-root causes appear at the end of output and must reach the Critic.
+When tool output exceeds the size budget for prompt injection, preserve the first 60%
+and last 40%. Head-only truncation silently drops error messages and stack traces.
 
 ---
 
-## Non-Goals (out of scope for v1)
+## Agent mode stays in Preview until
 
-- LLM-based tool selection (function calling)
-- Multi-agent parallelism
-- Remote/cloud tool execution
-- Sandboxed subprocess isolation (deferred to post-v1 security review)
+1. All `@Tool` methods in `AgentToolProvider` have automated tests (happy path + adversarial).
+2. Integration test demonstrating a multi-step ReAct loop with mock LLM.
+3. Human-in-the-loop diff approval tested end-to-end.
+
+---
+
+## What was removed compared to the previous architecture
+
+| Removed | Replaced by |
+|---|---|
+| `PlannerAgent` (structured JSON plan) | LLM native reasoning in the ReAct loop |
+| `PlanValidator` | LangChain4j method-signature validation |
+| `CriticAgent` | LLM self-corrects via observations |
+| `AgentOrchestrator` | `FunctionCallingAgentService` |
+| `AgentPlan`, `Phase`, `Step` | No upfront plan; LLM decides step by step |
+| `StepParamResolver` | LangChain4j resolves parameters from method signatures |
+| `ToolDispatcher` | LangChain4j dispatches tool calls automatically |
+| `StepRecoveryEngine` | LLM retries by calling the next tool after an error observation |
+| `AgentCheckpointService` | Conversation history is the state; no plan checkpoints |
+| `ContinuationPlannerAgent` | No plan continuation; LLM continues naturally |
