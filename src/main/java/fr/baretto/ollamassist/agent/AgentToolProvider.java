@@ -33,6 +33,7 @@ public class AgentToolProvider {
     private final SearchCodeTool searchCodeTool;
     private final SearchKnowledgeBaseTool searchKnowledgeTool;
     private final ToolRateLimiter rateLimiter;
+    private volatile boolean aborted = false;
 
     public AgentToolProvider(Project project, ToolRateLimiter rateLimiter) {
         this.editFileTool = new EditFileTool(project);
@@ -60,9 +61,27 @@ public class AgentToolProvider {
         this.rateLimiter = rateLimiter;
     }
 
+    /** Called by FunctionCallingAgentService when MAX_TOOL_CALLS is reached. */
+    public void abort() {
+        this.aborted = true;
+    }
+
+    /** Called at the start of each execution to reset the abort flag. */
+    public void resetAbort() {
+        this.aborted = false;
+    }
+
     // -------------------------------------------------------------------------
     // Tools
     // -------------------------------------------------------------------------
+
+    private static final String ABORTED_MSG =
+            "ERROR: Agent execution stopped — maximum tool calls per execution reached. " +
+            "Please summarize what you have accomplished so far and provide a final answer.";
+
+    private String checkAborted() {
+        return aborted ? ABORTED_MSG : null;
+    }
 
     @Tool("Edit an existing file by replacing a specific text fragment. " +
           "The 'search' string must exactly match the content currently in the file (whitespace included). " +
@@ -73,6 +92,8 @@ public class AgentToolProvider {
             @P("Exact text to search for in the file — must match content character-for-character") String search,
             @P("Text to replace the found content with") String replace,
             @P("If true, replace all occurrences; if false (default), replace only the first") String replaceAll) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("FILE_EDIT")) {
             return "ERROR: FILE_EDIT rate limit reached for this execution. Too many file edits.";
         }
@@ -92,6 +113,8 @@ public class AgentToolProvider {
     public String writeFile(
             @P("File path relative to the project root, e.g. src/main/java/com/example/Bar.java") String path,
             @P("Full content to write into the new file") String content) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("FILE_WRITE")) {
             return "ERROR: FILE_WRITE rate limit reached for this execution. Too many file creations.";
         }
@@ -108,6 +131,8 @@ public class AgentToolProvider {
           "Returns an error if web search is disabled in settings.")
     public String searchWeb(
             @P("Search query, e.g. 'LangChain4j AiServices tool use Java example'") String query) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("WEB_SEARCH")) {
             return "ERROR: WEB_SEARCH rate limit reached for this execution.";
         }
@@ -120,6 +145,8 @@ public class AgentToolProvider {
           "Use this for exact-string searches. For semantic/concept search, use searchKnowledgeBase instead.")
     public String searchWorkspace(
             @P("Keyword or code fragment to search for, e.g. 'OllamaService' or 'getService'") String query) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("CODE_SEARCH")) {
             return "ERROR: CODE_SEARCH rate limit reached for this execution.";
         }
@@ -132,6 +159,8 @@ public class AgentToolProvider {
           "Use this when you need to find code related to a concept rather than an exact keyword.")
     public String searchKnowledgeBase(
             @P("Concept or description to search for, e.g. 'authentication middleware' or 'file indexing pipeline'") String query) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("SEARCH_KNOWLEDGE")) {
             return "ERROR: SEARCH_KNOWLEDGE rate limit reached for this execution.";
         }
