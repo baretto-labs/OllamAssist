@@ -8,6 +8,7 @@ public final class AgentProgressEvent {
 
     public enum Type {
         PLANNING,
+        PLANNING_RETRY,
         PLAN_READY,
         STEP_STARTED,
         STEP_COMPLETED,
@@ -15,6 +16,7 @@ public final class AgentProgressEvent {
         CRITIC_THINKING,
         PLAN_ADAPTED,
         COMPLETED,
+        MANUALLY_COMPLETED,
         ABORTED
     }
 
@@ -38,6 +40,18 @@ public final class AgentProgressEvent {
 
     public static AgentProgressEvent planning() {
         return new AgentProgressEvent(Type.PLANNING, "Generating execution plan...", null, null, null);
+    }
+
+    /**
+     * Published when a plan-generation attempt times out and a retry is about to start.
+     *
+     * @param failedAttempt the attempt number that just timed out (1-based)
+     * @param maxAttempts   total number of attempts allowed
+     */
+    public static AgentProgressEvent planningRetry(int failedAttempt, int maxAttempts) {
+        return new AgentProgressEvent(Type.PLANNING_RETRY,
+                "Attempt " + failedAttempt + "/" + maxAttempts + " timed out — retrying...",
+                null, null, null);
     }
 
     public static AgentProgressEvent planReady(AgentPlan plan) {
@@ -82,6 +96,16 @@ public final class AgentProgressEvent {
 
     public static AgentProgressEvent aborted(String reason) {
         return new AgentProgressEvent(Type.ABORTED, "Aborted: " + reason, null, null, null);
+    }
+
+    /**
+     * Published when the continuation planner determines the manual change already
+     * completed the goal — no further steps are needed.
+     */
+    public static AgentProgressEvent manuallyCompleted(String goal) {
+        return new AgentProgressEvent(Type.MANUALLY_COMPLETED,
+                "Goal already achieved — your manual change completed: " + goal,
+                null, null, null);
     }
 
     public Type getType() {

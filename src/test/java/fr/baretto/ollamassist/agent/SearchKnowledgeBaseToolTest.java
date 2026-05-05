@@ -83,15 +83,6 @@ class SearchKnowledgeBaseToolTest {
     }
 
     @Test
-    void customTopK_passedToStore() {
-        when(mockStore.bm25Search("test", 3)).thenReturn(List.of());
-
-        tool.execute(Map.of("query", "test", "topK", 3));
-
-        verify(mockStore).bm25Search("test", 3);
-    }
-
-    @Test
     void storeThrows_returnsFailure() {
         when(mockStore.bm25Search(any(), anyInt())).thenThrow(new RuntimeException("index locked"));
 

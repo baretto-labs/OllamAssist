@@ -68,6 +68,7 @@ public final class ToolRateLimiter {
     private static boolean isDestructiveClass(String toolId) {
         return "FILE_DELETE".equals(toolId)
                 || "FILE_WRITE".equals(toolId)
-                || "FILE_EDIT".equals(toolId);
+                || "FILE_EDIT".equals(toolId)
+                || "FILE_APPEND".equals(toolId);
     }
 }

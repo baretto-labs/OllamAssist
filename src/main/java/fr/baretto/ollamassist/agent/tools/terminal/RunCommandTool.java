@@ -40,7 +40,7 @@ public final class RunCommandTool implements AgentTool {
             return 60;
         }
     }
-    private static final int MAX_OUTPUT_CHARS = 8_000;
+    static final int MAX_OUTPUT_CHARS = 8_000;
 
     private final Project project;
     private final ToolApprovalHelper approvalHelper;
@@ -117,9 +117,7 @@ public final class RunCommandTool implements AgentTool {
                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (output.length() < MAX_OUTPUT_CHARS) {
-                        output.append(line).append('\n');
-                    }
+                    output.append(line).append('\n');
                 }
             }
 
@@ -131,10 +129,7 @@ public final class RunCommandTool implements AgentTool {
             }
 
             int exitCode = process.exitValue();
-            String result = output.toString().stripTrailing();
-            if (output.length() >= MAX_OUTPUT_CHARS) {
-                result += "\n[output truncated]";
-            }
+            String result = truncateOutput(output.toString().stripTrailing());
 
             if (exitCode != 0) {
                 return ToolResult.failure("Command exited with code " + exitCode + ":\n" + result);
@@ -150,6 +145,21 @@ public final class RunCommandTool implements AgentTool {
             log.error("RUN_COMMAND failed: {}", command, e);
             return ToolResult.failure("Failed to run command: " + e.getMessage());
         }
+    }
+
+    /**
+     * Truncates {@code output} to {@link #MAX_OUTPUT_CHARS} using a head-60% + tail-40% strategy
+     * so that errors appearing at the end of build output are never silently dropped (Rule A5).
+     */
+    static String truncateOutput(String output) {
+        if (output == null) return "";
+        if (output.length() <= MAX_OUTPUT_CHARS) return output;
+        int omitted = output.length() - MAX_OUTPUT_CHARS;
+        int head = (int) (MAX_OUTPUT_CHARS * 0.6);
+        int tail = MAX_OUTPUT_CHARS - head;
+        return output.substring(0, head)
+                + "\n... [" + omitted + " chars omitted] ...\n"
+                + output.substring(output.length() - tail);
     }
 
     /**

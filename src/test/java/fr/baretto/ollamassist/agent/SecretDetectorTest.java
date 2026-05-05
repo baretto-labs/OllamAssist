@@ -104,7 +104,7 @@ class SecretDetectorTest {
 
     @Test
     void slackBotToken_detected() {
-        String content = "xoxb" + "-1234567890-1234567890-abcdefghijklmnop";
+        String content = "xoxb-" + "1234567890-1234567890-abcdefghijklmnop";
         assertThat(SecretDetector.detect(content)).contains("Slack");
     }
 
@@ -173,7 +173,7 @@ class SecretDetectorTest {
     void nocheckDoesNotSuppressOtherLines() {
         // nocheck on one line should not suppress an unrelated line with a real secret
         String content = "// example constants — ollamassist-nocheck\n"
-                + "private static final String KEY = \"sk_live" + "_abcdefghijklmnop123456789\";";
+                + "private static final String KEY = \"sk_live_" + "abcdefghijklmnop123456789\";";
         assertThat(SecretDetector.detect(content)).isNotNull();
     }
 

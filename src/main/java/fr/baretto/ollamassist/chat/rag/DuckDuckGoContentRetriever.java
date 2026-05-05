@@ -56,6 +56,30 @@ public class DuckDuckGoContentRetriever {
         return execute(webQuery);
     }
 
+    /**
+     * Executes a web search with {@code rawQuery} directly, without LLM reformulation.
+     * Intended for agent tool use where the caller (PlannerAgent) already produced a precise query.
+     *
+     * @return list of (title, url, snippet) triples, empty on error
+     */
+    public List<SearchResult> searchRaw(String rawQuery) {
+        try {
+            return htmlSearch(rawQuery);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return List.of();
+        } catch (Exception e) {
+            try {
+                return apiSearch(rawQuery);
+            } catch (Exception ex) {
+                return List.of();
+            }
+        }
+    }
+
+    /** Expose the internal SearchResult record for agent-tool consumers. */
+    public record SearchResult(String title, String url, String snippet) {}
+
     private @NotNull List<Content> execute(String webQuery) throws IOException, InterruptedException {
         List<SearchResult> results;
         try {
@@ -229,6 +253,4 @@ public class DuckDuckGoContentRetriever {
         return url;
     }
 
-    private record SearchResult(String title, String url, String snippet) {
-    }
 }

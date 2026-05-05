@@ -36,6 +36,11 @@ public final class DeleteFileTool implements AgentTool {
         if (path == null || path.isBlank()) {
             return ToolResult.failure("Parameter 'path' is required");
         }
+        if (path.contains("<<")) {
+            return ToolResult.failure(
+                    "Parameter 'path' contains an unresolved placeholder: '" + path
+                    + "'. Use <<var.NAME>> and ensure the step declaring outputVar:\"NAME\" precedes this one.");
+        }
 
         Path absolutePath;
         try {

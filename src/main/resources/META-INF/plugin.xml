@@ -56,6 +56,22 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.12.0 — Agent Mode Preview</h2>
+        <UL>
+            <LI><b>[Preview]</b> Agent mode — autonomously executes multi-step development tasks (refactoring, file creation, running commands) from a single natural-language goal.</LI>
+            <LI>feat: Planner/Critic/Executor architecture — the LLM plans, Java executes; no LangChain4j tool-calling.</LI>
+            <LI>feat: Multi-level recovery — L1 deterministic rules, L2 Critic step injection, L3 Critic plan replacement.</LI>
+            <LI>feat: Resume after manual edit — cancel the agent, modify files yourself, then describe your change to generate a context-aware continuation plan (not a restart from scratch).</LI>
+            <LI>feat: Parallel phase execution — mark a phase parallel:true to run its independent steps concurrently.</LI>
+            <LI>feat: 14 agent tools — FILE_READ/WRITE/EDIT/APPEND/DELETE/FIND, LIST_DIRECTORY, CODE_SEARCH, WEB_SEARCH, RUN_COMMAND, GIT_STATUS/DIFF, OPEN_IN_EDITOR, SEARCH_KNOWLEDGE.</LI>
+            <LI>feat: WEB_SEARCH tool — DuckDuckGo search without LLM query reformulation; respects the existing web-search toggle.</LI>
+            <LI>feat: Colored diff view in approval dialogs — removed/added lines highlighted in red/green.</LI>
+            <LI>feat: Plan UI — reasoning panel, tier badges per step (green/orange/red), step param editing, retry after abort.</LI>
+            <LI>feat: Checkpoint service — HMAC-signed execution state survives IDE crashes; resume from last completed phase.</LI>
+            <LI>feat: Agent memory — 30-day rolling history of past executions injected into Planner context to avoid redundant work.</LI>
+            <LI>security: SecretDetector blocks writing secrets to files; path traversal and shell injection guards.</LI>
+            <LI>security: Blast-radius controls — per-tool rate limits, max phases/steps/deletes per plan, Critic cannot escalate destructive count.</LI>
+        </UL>
         <h2>V1.11.0</h2>
         <UL>
             <LI>feat: Conversation management - Conversations are now persisted per project across IDE sessions.</LI>
@@ -272,6 +288,7 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.tools.FileCreator"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentOrchestrator"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentMemoryService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentCheckpointService"/>
         <projectService serviceImplementation="fr.baretto.ollamassist.agent.AuditLogger"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>

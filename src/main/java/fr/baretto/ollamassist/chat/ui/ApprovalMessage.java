@@ -9,6 +9,7 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 
 import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -66,23 +67,26 @@ public class ApprovalMessage extends JPanel {
             ? content.substring(0, 5000) + TRUNCATION_SUFFIX
             : content;
 
-        RSyntaxTextArea codeArea = new RSyntaxTextArea(previewContent);
-        // Diff content (produced by EditFileTool.buildDiff) must not be highlighted as source code.
-        // Applying Java/Python syntax to "--- BEFORE:" / "+++ AFTER:" markers looks wrong.
-        String syntaxStyle = isDiffContent(previewContent) ? SyntaxConstants.SYNTAX_STYLE_NONE : detectSyntaxStyle(filePath);
-        codeArea.setSyntaxEditingStyle(syntaxStyle);
-        codeArea.setCodeFoldingEnabled(true);
-        codeArea.setEditable(false);
-        codeArea.setRows(Math.min(20, previewContent.split("\n").length));
-
-        try {
-            Theme theme = Theme.load(getClass().getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml"));
-            theme.apply(codeArea);
-        } catch (IOException e) {
-            // Fallback to default theme
+        JComponent contentView;
+        if (isDiffContent(previewContent)) {
+            // UX-3: unified diff view with colored lines (red = removed, green = added)
+            contentView = buildDiffPane(previewContent);
+        } else {
+            RSyntaxTextArea codeArea = new RSyntaxTextArea(previewContent);
+            codeArea.setSyntaxEditingStyle(detectSyntaxStyle(filePath));
+            codeArea.setCodeFoldingEnabled(true);
+            codeArea.setEditable(false);
+            codeArea.setRows(Math.min(20, previewContent.split("\n").length));
+            try {
+                Theme theme = Theme.load(getClass().getResourceAsStream("/org/fife/ui/rsyntaxtextarea/themes/dark.xml"));
+                theme.apply(codeArea);
+            } catch (IOException e) {
+                // Fallback to default theme
+            }
+            contentView = codeArea;
         }
 
-        JBScrollPane codeScrollPane = new JBScrollPane(codeArea);
+        JBScrollPane codeScrollPane = new JBScrollPane(contentView);
         codeScrollPane.setPreferredSize(new Dimension(600, 300));
         codeScrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
         contentPanel.add(codeScrollPane);
@@ -137,9 +141,56 @@ public class ApprovalMessage extends JPanel {
         onDecision.accept(approved);
     }
 
-    /** Returns true if the content looks like a buildDiff() output rather than raw source code. */
+    /**
+     * Builds a colored diff pane: lines starting with "-" are red, "+" are green,
+     * "@@" and header lines are gray. Uses JTextPane so no RSyntaxTextArea dependency.
+     */
+    private static JTextPane buildDiffPane(String diffText) {
+        JTextPane pane = new JTextPane();
+        pane.setEditable(false);
+        pane.setFont(new Font(Font.MONOSPACED, Font.PLAIN, FontUtils.getSmallFont().getSize()));
+
+        StyledDocument doc = pane.getStyledDocument();
+
+        SimpleAttributeSet removed = new SimpleAttributeSet();
+        StyleConstants.setForeground(removed, JBColor.namedColor("Component.errorFocusColor", new Color(200, 60, 60)));
+        StyleConstants.setBackground(removed, JBColor.namedColor("FileColor.Red", new Color(255, 235, 235)));
+
+        SimpleAttributeSet added = new SimpleAttributeSet();
+        StyleConstants.setForeground(added, JBColor.namedColor("Label.successForeground", new Color(30, 130, 30)));
+        StyleConstants.setBackground(added, JBColor.namedColor("FileColor.Green", new Color(235, 255, 235)));
+
+        SimpleAttributeSet meta = new SimpleAttributeSet();
+        StyleConstants.setForeground(meta, JBColor.GRAY);
+        StyleConstants.setBold(meta, true);
+
+        SimpleAttributeSet normal = new SimpleAttributeSet();
+        StyleConstants.setForeground(normal, JBColor.namedColor("Label.foreground", JBColor.BLACK));
+
+        for (String line : diffText.split("\n", -1)) {
+            AttributeSet style;
+            if (line.startsWith("- ") || line.startsWith("-\t")) {
+                style = removed;
+            } else if (line.startsWith("+ ") || line.startsWith("+\t")) {
+                style = added;
+            } else if (line.startsWith("@@") || line.startsWith("---") || line.startsWith("+++")
+                    || line.startsWith("##") || line.startsWith("!!") || line.startsWith("\\")) {
+                style = meta;
+            } else {
+                style = normal;
+            }
+            try {
+                doc.insertString(doc.getLength(), line + "\n", style);
+            } catch (BadLocationException ignored) {
+            }
+        }
+        return pane;
+    }
+
+    /** Returns true if the content looks like a unified diff output rather than raw source code. */
     static boolean isDiffContent(String content) {
-        return content.contains("--- BEFORE:") || content.contains("+++ AFTER:");
+        return content.contains("@@ search → replace @@")
+                || content.contains("--- BEFORE:") || content.contains("+++ AFTER:");
     }
 
     private String detectSyntaxStyle(String filePath) {

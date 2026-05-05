@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HexFormat;
@@ -43,6 +44,8 @@ import java.util.List;
 public final class AgentMemoryService {
 
     static final int MAX_RECORDS = 15;
+    /** Records older than this are dropped on load (DEV-3). */
+    static final int TTL_DAYS = 30;
     private static final String MEMORY_FILE = ".ollamassist/agent_memory.json";
     private static final String HMAC_FILE   = ".ollamassist/agent_memory.json.hmac";
     private static final String KEY_FILE    = ".ollamassist/memory.key";
@@ -81,9 +84,15 @@ public final class AgentMemoryService {
      * @param reason        brief outcome summary (Critic reasoning or error message)
      */
     public synchronized void record(String correlationId, String goal, String status, String reason) {
+        record(correlationId, goal, status, reason, "");
+    }
+
+    public synchronized void record(String correlationId, String goal, String status, String reason, String modelName) {
         if (memoryPath == null) return;
         List<ExecutionRecord> records = load();
-        records.add(0, new ExecutionRecord(Instant.now().toString(), correlationId, goal, status, truncate(reason, 200)));
+        records.add(0, new ExecutionRecord(
+                Instant.now().toString(), correlationId, goal, status,
+                truncate(reason, 200), modelName != null ? modelName : ""));
         if (records.size() > MAX_RECORDS) {
             records = records.subList(0, MAX_RECORDS);
         }
@@ -124,7 +133,11 @@ public final class AgentMemoryService {
         for (ExecutionRecord r : records) {
             sb.append("- [").append(r.status).append("] ")
                     .append(truncate(r.goal, 80))
-                    .append(" (").append(r.timestamp.substring(0, 10)).append(")\n");
+                    .append(" (").append(r.timestamp.substring(0, 10)).append(")");
+            if (r.modelName != null && !r.modelName.isBlank()) {
+                sb.append(" [model: ").append(r.modelName).append("]");
+            }
+            sb.append("\n");
             if (r.reason != null && !r.reason.isBlank()) {
                 sb.append("  Outcome: ").append(r.reason).append("\n");
             }
@@ -145,8 +158,16 @@ public final class AgentMemoryService {
                 return new ArrayList<>();
             }
             ExecutionRecord[] records = mapper.readValue(content, ExecutionRecord[].class);
+            Instant cutoff = Instant.now().minus(TTL_DAYS, ChronoUnit.DAYS);
             List<ExecutionRecord> list = new ArrayList<>();
-            Collections.addAll(list, records);
+            for (ExecutionRecord r : records) {
+                // DEV-3: drop records older than TTL_DAYS to prevent stale context bias
+                try {
+                    if (Instant.parse(r.timestamp()).isAfter(cutoff)) list.add(r);
+                } catch (Exception ignored) {
+                    list.add(r); // keep records with unparseable timestamps
+                }
+            }
             return list;
         } catch (IOException e) {
             log.debug("Could not load agent memory (will start fresh): {}", e.getMessage());
@@ -264,11 +285,13 @@ public final class AgentMemoryService {
             @com.fasterxml.jackson.annotation.JsonProperty("correlationId") String correlationId,
             @com.fasterxml.jackson.annotation.JsonProperty("goal")       String goal,
             @com.fasterxml.jackson.annotation.JsonProperty("status")     String status,
-            @com.fasterxml.jackson.annotation.JsonProperty("reason")     String reason
+            @com.fasterxml.jackson.annotation.JsonProperty("reason")     String reason,
+            /** Model name at execution time — for context segregation (FEAT-4). */
+            @com.fasterxml.jackson.annotation.JsonProperty("modelName")  String modelName
     ) {
         /** No-arg constructor required by Jackson for deserialisation. */
         public ExecutionRecord() {
-            this(null, null, null, null, null);
+            this(null, null, null, null, null, null);
         }
     }
 }

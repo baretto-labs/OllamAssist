@@ -34,8 +34,8 @@ and improve correctness, not for style points.
 **Current versions (update this block when bumping):**
 
 ```
-langchain4jVersion      = 1.12.2
-langchain4jEasyRag      = 1.12.2-beta22
+langchain4jVersion      = 1.13.1
+langchain4jEasyRag      = 1.13.1-beta23
 ```
 
 **Rules:**

@@ -1,6 +1,7 @@
 package fr.baretto.ollamassist.chat.askfromcode;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
@@ -16,7 +17,9 @@ import java.util.WeakHashMap;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EditorListener {
-    private static final Disposable PLUGIN_DISPOSABLE = Disposer.newDisposable("OllamAssistPlugin");
+    // Use the application as parent so this disposable is cleaned up on IDE shutdown.
+    private static final Disposable PLUGIN_DISPOSABLE =
+            Disposer.newDisposable(ApplicationManager.getApplication(), "OllamAssistPlugin");
     private static final Map<Editor, OllamAssistSelectionListener> LISTENER_MAP =
             Collections.synchronizedMap(new WeakHashMap<>());
 

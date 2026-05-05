@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.11.0"
+version = "1.12.0"
 
 repositories {
     mavenCentral()
@@ -14,8 +14,8 @@ repositories {
         defaultRepositories()
     }
 }
-val langchain4jEasyRag = "1.12.2-beta22"
-val langchain4jVersion = "1.12.2"
+val langchain4jEasyRag = "1.13.1-beta23"
+val langchain4jVersion = "1.13.1"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"
@@ -40,8 +40,12 @@ dependencies {
         exclude(group = "org.apache.lucene")
     }
 
-    implementation("ai.djl:api:$djlVersion")
-    implementation("ai.djl.huggingface:tokenizers:$djlVersion")
+    implementation("ai.djl:api:$djlVersion") {
+        exclude(group = "org.slf4j")
+    }
+    implementation("ai.djl.huggingface:tokenizers:$djlVersion") {
+        exclude(group = "org.slf4j")
+    }
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion"){
         exclude(group = "org.apache.lucene")
@@ -76,9 +80,12 @@ dependencies {
         exclude(group = "org.slf4j")
     }
 
-    implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag")
-    implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag")
-    runtimeOnly("org.slf4j:slf4j-jdk14:1.7.36")
+    implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag") {
+        exclude(group = "org.slf4j")
+    }
+    implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag") {
+        exclude(group = "org.slf4j")
+    }
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")

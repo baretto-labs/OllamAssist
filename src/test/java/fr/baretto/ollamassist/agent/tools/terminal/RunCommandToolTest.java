@@ -95,4 +95,45 @@ class RunCommandToolTest {
     void toolId_isRunCommand() {
         assertThat(tool.toolId()).isEqualTo("RUN_COMMAND");
     }
+
+    // -------------------------------------------------------------------------
+    // truncateOutput — Rule A5 (head+tail strategy)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void truncateOutput_shortOutput_returnedUnchanged() {
+        String input = "short output";
+        assertThat(RunCommandTool.truncateOutput(input)).isEqualTo(input);
+    }
+
+    @Test
+    void truncateOutput_nullInput_returnsEmpty() {
+        assertThat(RunCommandTool.truncateOutput(null)).isEmpty();
+    }
+
+    @Test
+    void truncateOutput_exceedsLimit_preservesTail() {
+        // Build an output larger than MAX_OUTPUT_CHARS with a known marker at the very end
+        String tailMarker = "ERROR: root cause is here";
+        String filler = "a".repeat(RunCommandTool.MAX_OUTPUT_CHARS + 500);
+        String input = filler + tailMarker;
+
+        String truncated = RunCommandTool.truncateOutput(input);
+
+        assertThat(truncated.length()).isLessThanOrEqualTo(RunCommandTool.MAX_OUTPUT_CHARS + 60);
+        assertThat(truncated).endsWith(tailMarker);
+        assertThat(truncated).contains("chars omitted");
+    }
+
+    @Test
+    void truncateOutput_exceedsLimit_preservesHead() {
+        String headMarker = "START: context info";
+        String filler = "b".repeat(RunCommandTool.MAX_OUTPUT_CHARS + 500);
+        String input = headMarker + filler;
+
+        String truncated = RunCommandTool.truncateOutput(input);
+
+        assertThat(truncated).startsWith(headMarker);
+        assertThat(truncated).contains("chars omitted");
+    }
 }

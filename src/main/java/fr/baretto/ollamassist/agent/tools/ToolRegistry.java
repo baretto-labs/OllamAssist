@@ -9,6 +9,7 @@ import fr.baretto.ollamassist.agent.tools.ide.OpenInEditorTool;
 import fr.baretto.ollamassist.agent.tools.navigation.SearchCodeTool;
 import fr.baretto.ollamassist.agent.tools.rag.SearchKnowledgeBaseTool;
 import fr.baretto.ollamassist.agent.tools.terminal.RunCommandTool;
+import fr.baretto.ollamassist.agent.tools.web.WebSearchAgentTool;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -20,8 +21,9 @@ public final class ToolRegistry {
     /** All valid tool IDs supported by this registry. Used for plan validation. */
     public static final Set<String> KNOWN_TOOL_IDS = Set.of(
             "FILE_READ", "FILE_WRITE", "FILE_EDIT", "FILE_DELETE", "FILE_FIND",
+            "FILE_APPEND", "LIST_DIRECTORY",
             "CODE_SEARCH", "RUN_COMMAND", "GIT_STATUS", "GIT_DIFF",
-            "OPEN_IN_EDITOR", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE"
+            "OPEN_IN_EDITOR", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE", "WEB_SEARCH"
     );
 
     /**
@@ -30,8 +32,8 @@ public final class ToolRegistry {
      * are auto-approved without requiring manual user validation.
      */
     public static final Set<String> READ_ONLY_TOOL_IDS = Set.of(
-            "FILE_READ", "FILE_FIND", "CODE_SEARCH",
-            "GIT_STATUS", "GIT_DIFF", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE"
+            "FILE_READ", "FILE_FIND", "LIST_DIRECTORY", "CODE_SEARCH",
+            "GIT_STATUS", "GIT_DIFF", "GET_CURRENT_FILE", "SEARCH_KNOWLEDGE", "WEB_SEARCH"
     );
 
     private final Map<String, AgentTool> tools = new HashMap<>();
@@ -42,8 +44,11 @@ public final class ToolRegistry {
         register(new EditFileTool(project));
         register(new DeleteFileTool(project));
         register(new FindFilesTool(project));
+        register(new ListDirectoryTool(project));
+        register(new AppendFileTool(project));
         register(new SearchCodeTool(project));
         register(new RunCommandTool(project));
+        register(new WebSearchAgentTool());
         register(new GitStatusTool(project));
         register(new GitDiffTool(project));
         register(new OpenInEditorTool(project));

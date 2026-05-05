@@ -46,11 +46,12 @@ class FindFilesToolTest {
     }
 
     @Test
-    void noMatchingFiles_returnsSuccessWithEmptyMessage() {
+    void noMatchingFiles_returnsFailureWithHint() {
         ToolResult result = tool.execute(Map.of("pattern", "**/*.nonexistent"));
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).contains("No files found");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("No files found");
+        assertThat(result.getErrorMessage()).contains("FILE_WRITE");
     }
 
     @Test
