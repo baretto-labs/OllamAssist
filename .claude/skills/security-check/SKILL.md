@@ -1,6 +1,6 @@
-il fa---
+---
 name: security-check
-description: Pre-commit security review of agent subsystem changes against SI-1…SI-7 invariants
+description: Pre-commit security review of agent subsystem changes against SI-1…SI-7 invariants (function-calling ReAct architecture)
 ---
 
 You are performing a **pre-commit security review** of the agent subsystem changes in this repository.
@@ -20,6 +20,7 @@ You are performing a **pre-commit security review** of the agent subsystem chang
 ### SI-1 — Fail-closed
 - [ ] Every method that returns a boolean security decision returns `false`/`failure` on null input, I/O error, or missing configuration — never `true`.
 - Watch for: `if (x == null) return true`, catch blocks that return `true`, missing null checks before security predicates.
+- Includes: `ToolApprovalHelper.requestApproval()` settings-unavailable fallback must NOT auto-approve.
 
 ### SI-2 — Path confinement
 - [ ] Every tool that accepts a file path calls `FilePathGuard` or performs `toRealPath()` + `startsWith(root)` before any I/O.
@@ -34,17 +35,20 @@ You are performing a **pre-commit security review** of the agent subsystem chang
 ### SI-4 — Prompt injection defence
 - [ ] Every tool output injected into an LLM prompt passes through `PromptSanitizer.sanitize()`.
 - [ ] No raw string concatenation of tool output into a prompt string.
-- Watch for: `"Step result: " + result.getOutput()` in prompt builders without sanitization.
+- Watch for: `"Context: " + result.getOutput()` in prompt or system-message builders without sanitization.
 
-### SI-5 — Critic blast-radius guard
-- [ ] Any call to `validateRevisedPhases` passes the `originalDestructiveCount`.
-- [ ] `countDestructiveSteps` covers FILE_DELETE, FILE_WRITE, FILE_EDIT, RUN_COMMAND.
-- Watch for: new tools added to the catalog that perform mutations but are missing from `countDestructiveSteps`.
+### SI-5 — Blast radius bounded (function-calling architecture)
+- [ ] Every new `@Tool` method in `AgentToolProvider` calls `checkAborted()` as its first line.
+- [ ] Every new `@Tool` method calls `rateLimiter.tryAcquire(toolId)` before executing the underlying tool.
+- [ ] Every new MUTATING or DESTRUCTIVE `@Tool` method publishes `FileApprovalRequestNotifier` before writing to disk.
+- [ ] `FunctionCallingAgentService.MAX_TOOL_CALLS_PER_EXECUTION` has not been raised without justification.
+- Watch for: new `@Tool` methods missing `checkAborted()`, missing `tryAcquire`, or skipping approval.
 
-### SI-6 — Rate limits enforced
-- [ ] `ToolRateLimiter` is called via `tryAcquire` before every tool dispatch.
-- [ ] `resetRateLimits()` is called at the start of each new execution, not once at construction.
-- [ ] New tools are registered in `ToolRegistry` with a tier (not just added to the tool map).
+### SI-6 — Rate limits reset per execution
+- [ ] `ToolRateLimiter.reset()` is called at the start of each `FunctionCallingAgentService.execute()` call.
+- [ ] `AgentToolProvider.resetAbort()` is called at the start of each execution.
+- [ ] Both resets happen BEFORE the agent starts, not at construction time.
+- Watch for: reset calls moved to constructors, or removed entirely.
 
 ### SI-7 — Truncation strategy
 - [ ] Any new truncation of tool output uses first + last strategy (never head-only).
@@ -55,8 +59,9 @@ You are performing a **pre-commit security review** of the agent subsystem chang
 
 ## Additional checks (not invariants, but flag if found)
 
-- A new `AgentTool` has no test for missing required params → flag as WARNING.
-- A new `AgentTool` has no adversarial input test → flag as WARNING.
+- A new `@Tool` method has no unit test in `AgentToolProviderTest` → flag as WARNING.
+- A new `@Tool` method has no adversarial input test (path traversal, null param, rate limit) → flag as WARNING.
+- A new `AgentTool` implementation has no test for missing required params → flag as WARNING.
 - A security method has 0 test coverage for the failure path → flag as WARNING.
 
 ---
