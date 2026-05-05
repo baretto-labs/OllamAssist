@@ -6,7 +6,6 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import fr.baretto.ollamassist.agent.ui.AgentPlanPanel;
 import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.conversation.ConversationMessage;
 import fr.baretto.ollamassist.events.ConversationNotifier;
@@ -167,19 +166,6 @@ public class MessagesPanel extends JPanel implements Disposable {
             container.repaint();
             scrollToBottom();
         }
-    }
-
-    public void addAgentPlanPanel(AgentPlanPanel panel) {
-        SwingUtilities.invokeLater(() -> {
-            if (presentationPanel != null) {
-                container.remove(presentationPanel);
-                presentationPanel = null;
-            }
-            container.add(panel, createGbc(container.getComponentCount()));
-            scrollToBottom();
-            container.revalidate();
-            container.repaint();
-        });
     }
 
     /**

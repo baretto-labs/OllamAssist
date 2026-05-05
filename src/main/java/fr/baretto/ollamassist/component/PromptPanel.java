@@ -21,7 +21,6 @@ import com.intellij.util.ui.UIUtil;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import com.intellij.icons.AllIcons;
-import fr.baretto.ollamassist.agent.AgentOrchestrator;
 import fr.baretto.ollamassist.agent.ui.AgentHistoryPopup;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
@@ -312,9 +311,6 @@ public class PromptPanel extends JPanel implements Disposable {
                 );
                 PropertiesComponent.getInstance().setValue(AGENT_PREVIEW_SHOWN_KEY, true);
             }
-            if (button.isSelected() && project != null) {
-                runAgentCompatibilityCheck(project);
-            }
             updateAgentModeButtonState(button);
         });
         updateAgentModeButtonState(button);
@@ -372,28 +368,6 @@ public class PromptPanel extends JPanel implements Disposable {
             modelSelector.setToolTipText(null);
             if (agentModelLabel != null) agentModelLabel.setVisible(false);
         }
-    }
-
-    /**
-     * Fires a background model compatibility check (Item 3 — Phase 4).
-     * Shows a warning dialog on the EDT if the model does not support structured JSON output.
-     * The check is non-blocking — it does not delay the UI toggle.
-     */
-    private void runAgentCompatibilityCheck(Project project) {
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            AgentOrchestrator orchestrator = project.getService(AgentOrchestrator.class);
-            if (orchestrator == null) return;
-            String error = orchestrator.checkModelCompatibility();
-            if (error != null) {
-                ApplicationManager.getApplication().invokeLater(() ->
-                        Messages.showWarningDialog(
-                                "Agent model compatibility check failed:\n\n" + error
-                                + "\n\nYou can change the agent model in Settings → OllamAssist → Agent.",
-                                "Agent Model Warning"
-                        )
-                );
-            }
-        });
     }
 
     public boolean isAgentMode() {
