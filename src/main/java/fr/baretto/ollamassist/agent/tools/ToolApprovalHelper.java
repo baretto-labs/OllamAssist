@@ -47,14 +47,24 @@ public final class ToolApprovalHelper {
 
     /**
      * Requests user approval and blocks until a decision is made.
+     * Returns {@code true} immediately (without publishing an event) when
+     * {@code agentFileApprovalAuto=true} is configured in {@link fr.baretto.ollamassist.setting.OllamaSettings}.
      *
      * @param title    Dialog title shown in the approval panel
      * @param filePath Path shown as context (file or command)
      * @param content  Preview content (file content, diff, or command string)
-     * @return {@code true} if the user approved, {@code false} if rejected
-     * @throws ApprovalTimeoutException if no response within {@value TIMEOUT_MINUTES} minutes
+     * @return {@code true} if the user approved (or AUTO mode is on), {@code false} if rejected
+     * @throws ApprovalTimeoutException if no response within the configured timeout
      */
     public boolean requestApproval(String title, String filePath, String content) {
+        try {
+            if (fr.baretto.ollamassist.setting.OllamaSettings.getInstance().isAgentFileApprovalAuto()) {
+                log.debug("AUTO approval mode — skipping confirmation for: {}", filePath);
+                return true;
+            }
+        } catch (Exception e) {
+            log.debug("OllamaSettings unavailable — defaulting to MANUAL approval");
+        }
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()

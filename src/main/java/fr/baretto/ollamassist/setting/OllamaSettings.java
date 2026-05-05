@@ -191,6 +191,15 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         myState.agentToolTimeoutSeconds = Math.max(10, Math.min(seconds, 3600));
     }
 
+    /** Returns true when file mutations are applied without asking the user (AUTO mode). */
+    public boolean isAgentFileApprovalAuto() {
+        return myState.agentFileApprovalAuto;
+    }
+
+    public void setAgentFileApprovalAuto(boolean auto) {
+        myState.agentFileApprovalAuto = auto;
+    }
+
     /**
      * Model name used by the PlannerAgent.
      * Empty string means "use chatModelName" (backward-compatible default).
@@ -269,5 +278,8 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public String agentAutoValidateMode = "MANUAL";
         // Global wall-clock timeout for the entire agent execution (0 = disabled)
         public int agentGlobalTimeoutMinutes = 0;
+        // File approval mode for function-calling agent: false = MANUAL (show diff + buttons),
+        // true = AUTO (apply mutations without asking). Default: MANUAL for safety.
+        public boolean agentFileApprovalAuto = false;
     }
 }
