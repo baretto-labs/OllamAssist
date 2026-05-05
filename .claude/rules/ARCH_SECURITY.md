@@ -120,13 +120,15 @@ independent guards must all be in place:
 
 | Layer | Guard | Reset point |
 |---|---|---|
-| Per-tool call count | `ToolRateLimiter` per-tool limit | start of execution |
-| Total tool invocations | `ToolRateLimiter.MAX_TOTAL_INVOCATIONS` | start of execution |
-| Destructive step count | `validatePlan` MAX_DELETE_STEPS + Critic blast-radius check | plan validation + every ADAPT |
+| Per-tool call count | `ToolRateLimiter` per-tool limit | `ToolRateLimiter.reset()` at execution start |
+| Total tool invocations | `FunctionCallingAgentService.MAX_TOOL_CALLS_PER_EXECUTION` (30) | `AgentToolProvider.resetAbort()` at execution start |
+| Human approval | `FileApprovalRequestNotifier` before every MUTATING/DESTRUCTIVE tool call | per-call |
 
-If you add a new tool that performs mutations (write, delete, network call), ensure it is
-counted by `countDestructiveSteps` in `AgentOrchestrator` and assigned the correct tier
-in `ToolRegistry`.
+If you add a new `@Tool` method that performs mutations (write, delete, network call):
+1. Call `rateLimiter.tryAcquire(toolId)` before executing (counted toward total limit).
+2. Call `checkAborted()` at the top of the method (respects the execution abort flag).
+3. Register the tool in `ToolRegistry` with the correct `CommandTier`.
+4. Publish `FileApprovalRequestNotifier` and await user Approval before writing to disk.
 
 ---
 
@@ -151,4 +153,6 @@ The following patterns are **never acceptable**. Cite the rule ID in the code re
 | `return projectRoot` as fallback when path escapes root | A3 |
 | `"Prompt: " + result.getOutput()` without `PromptSanitizer` | A4 |
 | `output.substring(0, MAX) + "..."` (head-only) | A5 |
-| New mutating tool not added to `countDestructiveSteps` | A6 |
+| New `@Tool` method without `checkAborted()` at top | A6 |
+| New mutating `@Tool` without `rateLimiter.tryAcquire()` | A6 |
+| New mutating `@Tool` without `FileApprovalRequestNotifier` | A6 |

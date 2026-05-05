@@ -43,11 +43,17 @@ langchain4jEasyRag      = 1.13.1-beta23
 - **Update at least every 8 weeks.** LangChain4j releases frequently; staying behind more
   than two minor versions means missing structured-output fixes that directly affect agent
   reliability on local models.
-- Before bumping, run `./gradlew test` and `./gradlew benchmark` to catch regressions in
-  `PlannerAgent` and `CriticAgent` structured-output parsing.
-- **Never use `@Tool` / function-calling APIs** (`dev.langchain4j.agent.tool.*`).
-  See `AGENT_ARCH.md` Rule 1. Use `AiServices` with `ResponseFormat.JSON` and structured
-  output classes instead.
+- Before bumping, run `./gradlew test` and `./gradlew benchmark` to catch regressions.
+- **`@Tool` / function-calling APIs** (`dev.langchain4j.agent.tool.*`) are used **only**
+  in `AgentToolProvider` for the ReAct agent loop. See `AGENT_ARCH.md` Rule 2.
+  All other AI services (`OllamaService`, `LightModelAssistant`) must NOT use `@Tool`.
+
+**`@Tool` method rules (AGENT_ARCH.md Rule 2):**
+- Parameters: only `String` or Java primitives — never `Map<String,Object>`.
+- Return type: `String` — success output or `"ERROR: <reason>"`.
+- Description: `@Tool("...")` must clearly state what the tool does and when to use it.
+- Body: delegate to the `AgentTool` implementation — no business logic in the adapter.
+- Order: `checkAborted()` → `rateLimiter.tryAcquire()` → delegate → `toObservation()`.
 - Always exclude `org.slf4j` and `org.apache.lucene` from every LangChain4j dependency
   to avoid conflicts with IntelliJ's bundled versions. Pattern:
   ```kotlin
