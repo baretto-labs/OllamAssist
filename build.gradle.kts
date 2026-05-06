@@ -105,6 +105,10 @@ dependencies {
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
     testImplementation("org.assertj:assertj-core:$assertjVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
+
+    // Testcontainers — used by platform tests to spin up a real Ollama instance
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
+    testImplementation("org.testcontainers:ollama:$testcontainersVersion")
 }
 
 
