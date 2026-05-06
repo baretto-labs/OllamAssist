@@ -34,6 +34,8 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3", useInstaller = true)
         bundledPlugins("Git4Idea", "com.intellij.java")
+        // Required for BasePlatformTestCase, CodeInsightTestFixture, etc.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
 
     implementation("org.apache.lucene:lucene-queryparser:9.10.0") {
@@ -132,6 +134,10 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
+        // Required for LangChain4j @Tool parameter name resolution at runtime.
+        // Without this flag, tool schemas use arg0/arg1 instead of the actual
+        // parameter names, causing the model to receive meaningless argument names.
+        options.compilerArgs.add("-parameters")
     }
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions.jvmTarget = "21"
@@ -146,6 +152,9 @@ tasks {
             includeEngines("junit-jupiter")
             excludeTags("benchmark")
         }
+        // Platform tests (BasePlatformTestCase) require the IntelliJ runtime —
+        // they run via the platformTest task, not here.
+        exclude("**/platform/**")
     }
 
     check {
@@ -179,6 +188,21 @@ intellijPlatformTesting {
                 systemProperties(
                     project.properties.filterKeys { it.startsWith("benchmark.") }
                 )
+            }
+        }
+
+        // Platform integration tests: run inside the IntelliJ runtime so BasePlatformTestCase
+        // has access to VirtualFile, WriteCommandAction, MessageBus, PsiManager, etc.
+        // Usage: ./gradlew platformTest
+        // Skips tests annotated with @RequiresOllama if Ollama is not reachable.
+        register("platformTest") {
+            task {
+                group = "verification"
+                description = "Runs IntelliJ Platform integration tests (BasePlatformTestCase)."
+                include("**/platform/**")
+                shouldRunAfter(tasks.test)
+                systemProperty("platformTest.ollamaUrl",
+                    project.properties.getOrDefault("platformTest.ollamaUrl", "http://localhost:11434").toString())
             }
         }
     }

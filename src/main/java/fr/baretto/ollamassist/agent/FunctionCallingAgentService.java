@@ -3,6 +3,7 @@ package fr.baretto.ollamassist.agent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
@@ -40,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public final class FunctionCallingAgentService implements Disposable {
 
-    static final int MAX_TOOL_CALLS_PER_EXECUTION = 30;
+    public static final int MAX_TOOL_CALLS_PER_EXECUTION = 30;
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
@@ -48,6 +49,8 @@ public final class FunctionCallingAgentService implements Disposable {
     private final ToolRateLimiter rateLimiter;
     final AgentToolProvider toolProvider;          // package-private for tests
     private volatile boolean disposed = false;
+    @org.jetbrains.annotations.Nullable
+    private final StreamingChatModel overrideModel; // injected in platform tests
 
     // -------------------------------------------------------------------------
     // Inner agent interface (ReAct system prompt — AGENT_ARCH.md Rule 3 + Rule 7)
@@ -109,8 +112,10 @@ public final class FunctionCallingAgentService implements Disposable {
         this.project = project;
         this.rateLimiter = new ToolRateLimiter();
         this.toolProvider = new AgentToolProvider(project, rateLimiter);
+        this.overrideModel = null;
     }
 
+    /** Used by unit tests that mock the ToolRateLimiter. */
     @TestOnly
     FunctionCallingAgentService(Project project,
                                 AgentToolProvider toolProvider,
@@ -118,6 +123,21 @@ public final class FunctionCallingAgentService implements Disposable {
         this.project = project;
         this.toolProvider = toolProvider;
         this.rateLimiter = rateLimiter;
+        this.overrideModel = null;
+    }
+
+    /**
+     * Used by IntelliJ Platform tests (BasePlatformTestCase) to inject a mock or
+     * real StreamingChatModel without needing OllamAssistSettings to be initialised.
+     */
+    @TestOnly
+    public FunctionCallingAgentService(Project project,
+                                       AgentToolProvider toolProvider,
+                                       StreamingChatModel model) {
+        this.project = project;
+        this.rateLimiter = new ToolRateLimiter();
+        this.toolProvider = toolProvider;
+        this.overrideModel = model;
     }
 
     // -------------------------------------------------------------------------
@@ -178,27 +198,32 @@ public final class FunctionCallingAgentService implements Disposable {
         try {
             Thread.currentThread().setContextClassLoader(FunctionCallingAgentService.class.getClassLoader());
 
-            OllamaStreamingChatModel.OllamaStreamingChatModelBuilder builder =
-                    OllamaStreamingChatModel.builder()
-                            .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
-                            .modelName(OllamAssistSettings.getInstance().getChatModelName())
-                            .temperature(0.3)        // low randomness for planning tasks
-                            .timeout(Duration.ofMinutes(5));
-
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> headers = new HashMap<>();
-                headers.put(AUTHORIZATION_HEADER,
-                        String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-                builder.customHeaders(headers);
-            }
+            StreamingChatModel model = overrideModel != null ? overrideModel : buildProductionModel();
 
             return AiServices.builder(ReactAgent.class)
-                    .streamingChatModel(builder.build())
+                    .streamingChatModel(model)
                     .tools(toolProvider)
                     .build();
         } finally {
             Thread.currentThread().setContextClassLoader(originalCl);
         }
+    }
+
+    private StreamingChatModel buildProductionModel() {
+        OllamaStreamingChatModel.OllamaStreamingChatModelBuilder builder =
+                OllamaStreamingChatModel.builder()
+                        .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl())
+                        .modelName(OllamAssistSettings.getInstance().getChatModelName())
+                        .temperature(0.3)
+                        .timeout(Duration.ofMinutes(5));
+
+        if (AuthenticationHelper.isAuthenticationConfigured()) {
+            Map<String, String> headers = new HashMap<>();
+            headers.put(AUTHORIZATION_HEADER,
+                    String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
+            builder.customHeaders(headers);
+        }
+        return builder.build();
     }
 
     @Override
