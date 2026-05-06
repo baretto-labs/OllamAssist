@@ -79,6 +79,7 @@ public final class FunctionCallingAgentService implements Disposable {
 
                 ## Available tools (use the exact function names below)
 
+                - readFile: read the full content of an existing file
                 - writeFile: create a new file (fails if file exists — use editFile instead)
                 - editFile: modify an existing file by replacing a text fragment
                 - searchWorkspace: keyword search across project files
@@ -89,9 +90,12 @@ public final class FunctionCallingAgentService implements Disposable {
 
                 - Never write files outside the project root.
                 - Never hard-code secrets (passwords, API keys, tokens) in files.
-                - When editing a file, always read it first to understand its current content.
-                - If a tool returns an ERROR, analyse it and try a different approach — do not retry \
-                  the exact same call.
+                - Always call readFile before editFile. You cannot construct a correct search/replace \
+                  without knowing the exact file content.
+                - If a tool returns an ERROR, analyse the error message and retry with corrected \
+                  parameters. NEVER display what the result "should look like" if the tool has not \
+                  confirmed success — that would mislead the user into thinking the task is done.
+                - After every editFile call, call readFile to verify the change was applied correctly.
                 - If you cannot complete the goal with the available tools, explain clearly what is \
                   missing and what the user should do manually.
                 - When the maximum number of tool calls is reached, summarise what you have accomplished \

@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.Tool;
 import fr.baretto.ollamassist.agent.tools.ToolRateLimiter;
 import fr.baretto.ollamassist.agent.tools.ToolResult;
 import fr.baretto.ollamassist.agent.tools.files.EditFileTool;
+import fr.baretto.ollamassist.agent.tools.files.ReadFileTool;
 import fr.baretto.ollamassist.agent.tools.files.WriteFileTool;
 import fr.baretto.ollamassist.agent.tools.navigation.SearchCodeTool;
 import fr.baretto.ollamassist.agent.tools.rag.SearchKnowledgeBaseTool;
@@ -27,6 +28,7 @@ import java.util.Map;
 @Slf4j
 public class AgentToolProvider {
 
+    private final ReadFileTool readFileTool;
     private final EditFileTool editFileTool;
     private final WriteFileTool writeFileTool;
     private final WebSearchAgentTool webSearchTool;
@@ -36,6 +38,7 @@ public class AgentToolProvider {
     private volatile boolean aborted = false;
 
     public AgentToolProvider(Project project, ToolRateLimiter rateLimiter) {
+        this.readFileTool = new ReadFileTool(project);
         this.editFileTool = new EditFileTool(project);
         this.writeFileTool = new WriteFileTool(project);
         this.webSearchTool = new WebSearchAgentTool();
@@ -53,6 +56,7 @@ public class AgentToolProvider {
                       SearchCodeTool searchCodeTool,
                       SearchKnowledgeBaseTool searchKnowledgeTool,
                       ToolRateLimiter rateLimiter) {
+        this.readFileTool = null; // not needed in unit tests that mock other tools
         this.editFileTool = editFileTool;
         this.writeFileTool = writeFileTool;
         this.webSearchTool = webSearchTool;
@@ -83,14 +87,33 @@ public class AgentToolProvider {
         return aborted ? ABORTED_MSG : null;
     }
 
+    @Tool("Read the full content of an existing file. " +
+          "Always call this before editFile so you know the exact current content. " +
+          "Returns an error if the file does not exist or the path escapes the project root.")
+    public String readFile(
+            @P("File path relative to the project root, e.g. src/main/java/com/example/Foo.java") String path) {
+        String abortMsg = checkAborted();
+        if (abortMsg != null) return abortMsg;
+        if (!rateLimiter.tryAcquire("FILE_READ")) {
+            return "ERROR: FILE_READ rate limit reached for this execution.";
+        }
+        ToolResult result = readFileTool.execute(Map.of("path", path != null ? path : ""));
+        return toObservation(result);
+    }
+
     @Tool("Edit an existing file by replacing a specific text fragment. " +
-          "The 'search' string must exactly match the content currently in the file (whitespace included). " +
-          "Use replaceAll=true to replace all occurrences; default replaces only the first. " +
-          "Returns an error if the file does not exist, the search string is not found, or the user rejects the change.")
+          "ALWAYS call readFile first to get the exact current content before constructing search/replace. " +
+          "The 'search' string must match the file content exactly (whitespace included). " +
+          "IMPORTANT — to INSERT content (e.g. add a method): include the surrounding anchor text in both " +
+          "'search' and 'replace'. Example: to add a method before the closing brace of a class, set " +
+          "search='\\n}' (last newline + closing brace) and replace='\\n\\n    // new method\\n    ...\\n}'. " +
+          "Never use a method signature as 'search' when you want to add a new method — that replaces the existing one. " +
+          "Returns an error if the file does not exist, the search string is not found, " +
+          "the resulting Java is syntactically invalid, or the user rejects the change.")
     public String editFile(
             @P("File path relative to the project root, e.g. src/main/java/com/example/Foo.java") String path,
             @P("Exact text to search for in the file — must match content character-for-character") String search,
-            @P("Text to replace the found content with") String replace,
+            @P("Text that replaces the matched search fragment — the rest of the file is unchanged") String replace,
             @P("If true, replace all occurrences; if false (default), replace only the first") String replaceAll) {
         String abortMsg = checkAborted();
         if (abortMsg != null) return abortMsg;
