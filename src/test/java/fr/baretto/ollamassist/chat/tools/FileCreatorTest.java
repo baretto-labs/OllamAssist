@@ -198,7 +198,7 @@ class FileCreatorTest {
             // Simulate user approval - complete immediately when requested
             doAnswer(invocation -> {
                 FileApprovalNotifier.ApprovalRequest request = invocation.getArgument(0);
-                request.getResponseFuture().complete(true); // User approves immediately
+                request.getResponseFuture().complete(FileApprovalNotifier.ApprovalDecision.allow()); // User approves immediately
                 return null;
             }).when(mockApprovalPublisher).requestApproval(any());
 
@@ -245,7 +245,7 @@ class FileCreatorTest {
             // Simulate user rejection - reject immediately when requested
             doAnswer(invocation -> {
                 FileApprovalNotifier.ApprovalRequest request = invocation.getArgument(0);
-                request.getResponseFuture().complete(false); // User rejects immediately
+                request.getResponseFuture().complete(FileApprovalNotifier.ApprovalDecision.deny(null)); // User rejects immediately
                 return null;
             }).when(mockApprovalPublisher).requestApproval(any());
 
@@ -326,7 +326,7 @@ class FileCreatorTest {
             // Simulate approval
             doAnswer(invocation -> {
                 FileApprovalNotifier.ApprovalRequest request = invocation.getArgument(0);
-                request.getResponseFuture().complete(true);
+                request.getResponseFuture().complete(FileApprovalNotifier.ApprovalDecision.allow());
                 return null;
             }).when(mockApprovalPublisher).requestApproval(any());
 

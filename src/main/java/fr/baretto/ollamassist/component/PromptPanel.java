@@ -24,6 +24,7 @@ import com.intellij.icons.AllIcons;
 import fr.baretto.ollamassist.agent.ui.AgentHistoryPopup;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.chat.ui.IconUtils;
+import fr.baretto.ollamassist.utils.FontUtils;
 import fr.baretto.ollamassist.events.StoreNotifier;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
@@ -59,9 +60,10 @@ public class PromptPanel extends JPanel implements Disposable {
     private EditorTextField editorTextField;
     private JButton sendButton;
     private ModelSelector modelSelector;
-    /** Compact label shown instead of the model selector when agent mode is active (U-6). */
-    private JLabel agentModelLabel;
+    /** Dedicated model selector shown when agent mode is active — can differ from the chat model. */
+    private ModelSelector agentModelSelector;
     private JButton stopButton;
+    private JLabel agentProgressLabel;
     private boolean isGenerating = false;
     private JToggleButton webSearchButton;
     private JToggleButton ragSearchhButton;
@@ -146,12 +148,20 @@ public class PromptPanel extends JPanel implements Disposable {
         modelSelector.setSelectedModel(OllamAssistSettings.getInstance().getChatModelName());
         modelSelector.setModelLoader(this::fetchAvailableModels);
 
-        // Compact label replacing the model selector when agent mode is active (U-6).
-        // Initialized here so it is ready before createAgentModeButton() calls updateModelSelectorForAgentMode().
-        agentModelLabel = new JLabel();
-        agentModelLabel.setFont(agentModelLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        agentModelLabel.setForeground(JBColor.namedColor("Component.infoForeground", JBColor.GRAY));
-        agentModelLabel.setVisible(false);
+        // Dedicated model selector for agent mode — defaults to the chat model but independently
+        // configurable so users can pick a function-calling-capable model without touching the chat model.
+        agentModelSelector = new ModelSelector();
+        agentModelSelector.setModelLoader(this::fetchAvailableModels);
+        agentModelSelector.reconfigure(
+                () -> fr.baretto.ollamassist.setting.OllamaSettings.getInstance().getAgentModelName(),
+                name -> fr.baretto.ollamassist.setting.OllamaSettings.getInstance().setAgentModelName(name)
+        );
+        agentModelSelector.setToolTipText(
+                "<html>Agent model — choose a model with function calling support.<br>" +
+                "Recommended: qwen3, qwen2.5:7b+, llama3.1:8b+<br>" +
+                "Defaults to the chat model when unchanged.</html>"
+        );
+        agentModelSelector.setVisible(false);
 
         sendButton = createSubmitButton();
         stopButton = createStopButton();
@@ -165,9 +175,15 @@ public class PromptPanel extends JPanel implements Disposable {
         controlPanel.setOpaque(false);
 
 
+        agentProgressLabel = new JLabel();
+        agentProgressLabel.setFont(FontUtils.getSmallFont());
+        agentProgressLabel.setForeground(JBColor.GRAY);
+        agentProgressLabel.setVisible(false);
+
         JPanel rightControlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightControlPanel.setOpaque(false);
-        rightControlPanel.add(agentModelLabel);
+        rightControlPanel.add(agentProgressLabel);
+        rightControlPanel.add(agentModelSelector);
         rightControlPanel.add(modelSelector);
         rightControlPanel.add(sendButton);
         rightControlPanel.add(stopButton);
@@ -348,25 +364,19 @@ public class PromptPanel extends JPanel implements Disposable {
     }
 
     /**
-     * Swaps the model selector for a compact label when agent mode is active (U-6).
-     * The selector is hidden — the agent uses its own dedicated model configured
-     * in Settings → Ollama → Agent, not the chat model shown in the selector.
+     * Swaps the chat model selector for the agent model selector when agent mode is active.
+     * Both selectors share the same list of available models (fetched from Ollama) but persist
+     * their selection independently — users can pick a function-calling-capable model for the
+     * agent without changing their preferred chat model.
      */
     private void updateModelSelectorForAgentMode(boolean agentActive) {
-        if (modelSelector == null) return;
+        if (modelSelector == null || agentModelSelector == null) return;
         if (agentActive) {
-            String agentModel = OllamaSettings.getInstance().getAgentPlannerModelName();
-            String displayModel = (agentModel != null && !agentModel.isBlank()) ? agentModel : "Agent model";
             modelSelector.setVisible(false);
-            if (agentModelLabel != null) {
-                agentModelLabel.setText(displayModel);
-                agentModelLabel.setToolTipText("Agent model — configure in Settings → Ollama → Agent");
-                agentModelLabel.setVisible(true);
-            }
+            agentModelSelector.setVisible(true);
         } else {
+            agentModelSelector.setVisible(false);
             modelSelector.setVisible(true);
-            modelSelector.setToolTipText(null);
-            if (agentModelLabel != null) agentModelLabel.setVisible(false);
         }
     }
 
@@ -453,6 +463,19 @@ public class PromptPanel extends JPanel implements Disposable {
             sendButton.setVisible(!isGenerating);
             stopButton.setVisible(isGenerating);
             editorTextField.setEnabled(!isGenerating);
+            if (!isGenerating && agentProgressLabel != null) {
+                agentProgressLabel.setVisible(false);
+                agentProgressLabel.setText("");
+            }
+        });
+    }
+
+    /** Updates the agent step counter label shown next to the stop button. */
+    public void setAgentProgress(int current, int total) {
+        if (agentProgressLabel == null) return;
+        SwingUtilities.invokeLater(() -> {
+            agentProgressLabel.setText("step " + current + "/" + total);
+            agentProgressLabel.setVisible(isGenerating);
         });
     }
 

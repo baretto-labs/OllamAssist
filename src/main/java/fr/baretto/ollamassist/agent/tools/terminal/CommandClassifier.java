@@ -164,10 +164,15 @@ public final class CommandClassifier {
             hasRedirection = withoutDoubleArrow.contains(">");
         }
 
+        // Shell chaining operators allow injecting arbitrary commands after a READ_ONLY prefix
+        // (e.g. "git status; cat ~/.aws/credentials"). Require confirmation for any chained command.
+        boolean hasChaining = normalized.contains(";")
+                || normalized.contains("&&")
+                || normalized.contains("||");
+
         for (Pattern p : READ_ONLY_PATTERNS) {
             if (p.matcher(normalized).find()) {
-                // A READ_ONLY command with output redirection becomes MUTATING
-                return hasRedirection ? CommandTier.MUTATING : CommandTier.READ_ONLY;
+                return (hasRedirection || hasChaining) ? CommandTier.MUTATING : CommandTier.READ_ONLY;
             }
         }
 

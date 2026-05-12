@@ -14,6 +14,53 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.12.0 - Agent Mode (Alpha)
+                Notification.builder()
+                        .id("v1.12.0-release")
+                        .version("1.12.0")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.HIGH)
+                        .title("OllamAssist 1.12.0 — Agent Mode (Alpha)")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>Agent Mode is here — Alpha</h3>
+
+                                <p>Give the agent a goal in plain English. It will explore your project, \
+                                generate a step-by-step plan and ask for your approval before touching any file.</p>
+
+                                <h4>What it can do</h4>
+                                <ul>
+                                  <li><b>Create, edit, delete and append</b> files</li>
+                                  <li><b>Discover context</b> — searches your codebase before planning</li>
+                                  <li><b>One approval</b> for the full plan — review everything before execution starts</li>
+                                  <li><b>Step progress</b> — counter shown next to the Stop button during execution</li>
+                                  <li><b>Execution history</b> — review past runs via the clock icon</li>
+                                </ul>
+
+                                <h4>Not yet supported</h4>
+                                <ul>
+                                  <li>Running build commands or tests (coming in a future release)</li>
+                                </ul>
+
+                                <h4>Model recommendation</h4>
+                                <p>Agent mode requires a model with reliable structured output (JSON).<br>
+                                <b>Recommended:</b> <code>qwen2.5:14b+</code>, <code>mistral-nemo</code>, <code>deepseek-coder:33b</code><br>
+                                <i>Small models (llama3.1:8b, llama3.2) may produce invalid plans.</i></p>
+
+                                <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+
+                                <p style='font-size: 0.9em; color: #888;'>
+                                Alpha release — always read the full plan before approving. \
+                                The Stop button cancels execution between steps.
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 5, 12, 0, 0))
+                        .build(),
+
                 // v1.11.0 - Conversation Management + RAG Sources + Hybrid Retrieval
                 Notification.builder()
                         .id("v1.11.0-release")

@@ -125,36 +125,62 @@ public final class EditFileTool implements AgentTool {
             }
 
             if (!effectiveOriginal.contains(effectiveSearch)) {
-                // Include the actual file content in the error so the step-level Critic can generate
-                // a correct search string without needing a separate FILE_READ round-trip.
-                String preview = original.length() > 3000
-                        ? original.substring(0, 1800) + "\n...[truncated]...\n"
-                          + original.substring(original.length() - 1200)
-                        : original;
-                return ToolResult.failure(
-                        "Search string not found in file: " + path + "\n"
-                        + "The 'search' param must match the file content exactly (whitespace included).\n"
-                        + (normalizeWhitespace ? "(normalizeWhitespace=true was applied but still no match)\n" : "")
-                        + "Actual file content:\n" + preview);
+                // Auto-retry with whitespace normalisation before giving up.
+                // Models often produce search strings with minor whitespace differences
+                // (tabs vs spaces, trailing spaces, CRLF vs LF) even after reading the file.
+                if (!normalizeWhitespace) {
+                    String normSearch   = search.replaceAll("\\s+", " ").strip();
+                    String normOriginal = original.replaceAll("\\s+", " ");
+                    if (normOriginal.contains(normSearch)) {
+                        // Whitespace mismatch — map back to actual substring and continue
+                        String actualSearch = findActualSubstring(original, normSearch);
+                        if (actualSearch != null) {
+                            effectiveSearch  = actualSearch;
+                            effectiveOriginal = original;
+                            log.debug("EditFileTool: whitespace-normalised fallback matched for '{}'", path);
+                            // fall through to the replacement logic below
+                        } else {
+                            effectiveSearch  = normSearch;
+                            effectiveOriginal = normOriginal;
+                        }
+                    } else {
+                        String preview = original.length() > 3000
+                                ? original.substring(0, 1800) + "\n...[truncated]...\n"
+                                  + original.substring(original.length() - 1200)
+                                : original;
+                        return ToolResult.failure(
+                                "Search string not found in file: " + path + "\n"
+                                + "The 'search' param must match the file content exactly. "
+                                + "Whitespace-normalised retry also failed.\n"
+                                + "Actual file content:\n" + preview);
+                    }
+                } else {
+                    String preview = original.length() > 3000
+                            ? original.substring(0, 1800) + "\n...[truncated]...\n"
+                              + original.substring(original.length() - 1200)
+                            : original;
+                    return ToolResult.failure(
+                            "Search string not found in file: " + path + "\n"
+                            + "The 'search' param must match the file content exactly "
+                            + "(normalizeWhitespace=true was applied but still no match).\n"
+                            + "Actual file content:\n" + preview);
+                }
             }
 
-            // When normalizeWhitespace, map the normalised match back to the actual substring in original.
+            // When normalizeWhitespace was requested, map the normalised match back to the actual
+            // substring in original. When !normalizeWhitespace, effectiveSearch is already correct:
+            // either the original search string (direct match) or the actual substring resolved by
+            // the auto-whitespace-fallback block above.
             if (normalizeWhitespace) {
                 String actualSearch = findActualSubstring(original, effectiveSearch);
                 if (actualSearch != null) {
                     effectiveSearch = actualSearch;
                 } else {
-                    // Fallback: proceed with the normalised search on the normalised content.
-                    // This path should be rare (only when reverse-mapping fails).
                     effectiveSearch = search;
                     effectiveOriginal = original;
                 }
-            } else {
-                effectiveSearch  = search;
-                effectiveOriginal = original;
             }
 
-            // Use effectiveSearch on original from here on.
             search = effectiveSearch;
             if (!original.contains(search)) {
                 return ToolResult.failure("Search string could not be mapped back to original content after whitespace normalisation.");
@@ -176,13 +202,13 @@ public final class EditFileTool implements AgentTool {
             final String finalModified = modified;
 
             String diff = buildDiff(path, search, replace, occurrences, replaceAll);
-            boolean approved = approvalHelper.requestApproval(
+            var decision = approvalHelper.requestApproval(
                     "Edit file?",
                     path,
                     diff
             );
-            if (!approved) {
-                return ToolResult.failure("User rejected file edit: " + path);
+            if (!decision.approved()) {
+                return ToolResult.failure(decision.toRejectionMessage("User rejected file edit: " + path));
             }
 
             final Charset writeCharset = charset;

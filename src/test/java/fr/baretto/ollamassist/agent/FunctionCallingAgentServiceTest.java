@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.agent;
 
 import fr.baretto.ollamassist.agent.tools.ToolRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -15,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+@Disabled("ReAct loop replaced by PlanAndExecuteAgentService")
 class FunctionCallingAgentServiceTest {
 
     @Mock AgentToolProvider toolProvider;

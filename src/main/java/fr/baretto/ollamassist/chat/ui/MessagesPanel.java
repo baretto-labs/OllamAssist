@@ -183,10 +183,29 @@ public class MessagesPanel extends JPanel implements Disposable {
         container.repaint();
     }
 
-    public void addApprovalRequest(String title, String filePath, String content, Consumer<Boolean> onDecision) {
+    /**
+     * Adds a collapsible tool-call indicator row between conversation components.
+     * Collapsed by default: shows tool name + primary argument.
+     * Expanded on click: shows all parameters.
+     * Thread-safe — may be called from any thread.
+     */
+    public void addToolCallIndicator(String toolName, String argsJson) {
+        SwingUtilities.invokeLater(() -> {
+            ToolCallIndicator indicator = new ToolCallIndicator(toolName, argsJson);
+            container.add(indicator, createGbc(container.getComponentCount()));
+            scrollToBottom();
+            container.revalidate();
+            container.repaint();
+        });
+    }
+
+    public void addApprovalRequest(String title, String filePath, String content,
+                                   Consumer<fr.baretto.ollamassist.events.FileApprovalNotifier.ApprovalDecision> onDecision) {
         SwingUtilities.invokeLater(() -> {
             ApprovalMessage approvalMessage = new ApprovalMessage(title, filePath, content, onDecision);
             container.add(approvalMessage, createGbc(container.getComponentCount()));
+            // Always scroll to approval — the user must see it regardless of scroll position.
+            autoScrollEnabled = true;
             scrollToBottom();
             container.revalidate();
             container.repaint();

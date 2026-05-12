@@ -13,7 +13,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
 import fr.baretto.ollamassist.agent.AgentStreamHandler;
-import fr.baretto.ollamassist.agent.FunctionCallingAgentService;
+import fr.baretto.ollamassist.agent.PlanAndExecuteAgentService;
 import fr.baretto.ollamassist.chat.rag.ContextRetriever;
 import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.chat.service.OllamaService;
@@ -69,6 +69,7 @@ public class OllamaContent {
     private volatile ChatThread currentChatThread;
     private volatile boolean agentRunning = false;
     private volatile boolean agentCancelled = false;
+    private boolean agentAlphaWarningShown = false;
 
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
@@ -155,7 +156,7 @@ public class OllamaContent {
                 request.getTitle(),
                 request.getFilePath(),
                 request.getContent(),
-                approved -> request.getResponseFuture().complete(approved)
+                decision -> request.getResponseFuture().complete(decision)
             ));
 
         connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
@@ -179,6 +180,12 @@ public class OllamaContent {
                 agentCancelled = false;
             }
 
+            if (!agentAlphaWarningShown) {
+                agentAlphaWarningShown = true;
+                SwingUtilities.invokeLater(() -> outputPanel.addInfoMessage(
+                        "Agent mode (alpha) — review every proposed change carefully before approving."));
+            }
+
             context.project().getService(ConversationService.class)
                     .addMessage(ConversationMessage.user("[Agent] " + goal));
             outputPanel.addUserMessage(goal);
@@ -186,10 +193,12 @@ public class OllamaContent {
             promptInput.clear();
             promptInput.toggleGenerationState(true);
 
-            FunctionCallingAgentService agentService =
-                    context.project().getService(FunctionCallingAgentService.class);
+            PlanAndExecuteAgentService agentService =
+                    context.project().getService(PlanAndExecuteAgentService.class);
 
-            agentService.execute(goal, new AgentStreamHandler() {
+            List<java.io.File> contextFiles = filesSelector.getSelectedFiles();
+
+            agentService.execute(goal, contextFiles, new AgentStreamHandler() {
                 // Accumulate full text for conversation persistence
                 private final StringBuilder fullResponse = new StringBuilder();
 
@@ -203,14 +212,19 @@ public class OllamaContent {
                 @Override
                 public void onToolCall(String toolName, String arguments) {
                     if (agentCancelled) return;
-                    String indicator = "\n> Using: **" + toolName + "**\n";
-                    outputPanel.appendToken(indicator);
+                    outputPanel.addToolCallIndicator(toolName, arguments);
                 }
 
                 @Override
                 public void onToolResult(String toolName, String result) {
                     // Tool results are not streamed to the UI to avoid flooding;
                     // the LLM will incorporate them into its next reasoning step.
+                }
+
+                @Override
+                public void onProgress(int current, int total) {
+                    // U-2: show step counter next to the stop button
+                    promptInput.setAgentProgress(current, total);
                 }
 
                 @Override
@@ -436,6 +450,8 @@ public class OllamaContent {
                 agentRunning = false;
             }
         }
+        // Cancel the agent's background execution so it stops at the next phase boundary (U-1)
+        context.project().getService(PlanAndExecuteAgentService.class).cancel();
         stopGeneration();
     }
 
@@ -579,7 +595,7 @@ public class OllamaContent {
                     log.info("Requesting approval for detected CreateFile call: {}", path);
 
                     // Request user approval with warning indicator
-                    java.util.concurrent.CompletableFuture<Boolean> approvalFuture = new java.util.concurrent.CompletableFuture<>();
+                    java.util.concurrent.CompletableFuture<FileApprovalNotifier.ApprovalDecision> approvalFuture = new java.util.concurrent.CompletableFuture<>();
 
                     FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
                             .title("⚠️ Tool Call Detected (via text parsing)")
@@ -595,9 +611,9 @@ public class OllamaContent {
                     // Wait for approval
                     ApplicationManager.getApplication().executeOnPooledThread(() -> {
                         try {
-                            boolean approved = approvalFuture.get(5, java.util.concurrent.TimeUnit.MINUTES);
+                            FileApprovalNotifier.ApprovalDecision decision = approvalFuture.get(5, java.util.concurrent.TimeUnit.MINUTES);
 
-                            if (approved) {
+                            if (decision.approved()) {
                                 log.info("User approved detected tool call");
                                 FileCreator fileCreator = new FileCreator(contextRef.project());
                                 String result = fileCreator.createFile(path, content);

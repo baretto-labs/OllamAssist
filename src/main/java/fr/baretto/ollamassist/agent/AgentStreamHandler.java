@@ -22,4 +22,11 @@ public interface AgentStreamHandler {
 
     /** Execution failed with an error. */
     void onError(Throwable error);
+
+    /**
+     * Optional progress update during the execute phase.
+     * @param current 1-based index of the step just started
+     * @param total   total number of steps in the plan
+     */
+    default void onProgress(int current, int total) {}
 }

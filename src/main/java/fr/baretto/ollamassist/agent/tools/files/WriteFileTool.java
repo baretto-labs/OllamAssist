@@ -95,13 +95,13 @@ public final class WriteFileTool implements AgentTool {
                     + "Fix the 'content' param so the file is syntactically valid.");
         }
 
-        boolean approved = approvalHelper.requestApproval(
+        var decision = approvalHelper.requestApproval(
                 "Create file?",
                 resolvedPath,
                 finalContent
         );
-        if (!approved) {
-            return ToolResult.failure("User rejected file creation: " + resolvedPath);
+        if (!decision.approved()) {
+            return ToolResult.failure(decision.toRejectionMessage("User rejected file creation: " + resolvedPath));
         }
 
         String groupId = (String) params.get("__correlationId");

@@ -201,6 +201,20 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     /**
+     * Model used by the function-calling agent.
+     * Falls back to {@link #getChatModelName()} when not set,
+     * so agent and chat share the same model by default.
+     */
+    public String getAgentModelName() {
+        String name = myState.agentModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentModelName(String name) {
+        myState.agentModelName = (name == null) ? "" : name.trim();
+    }
+
+    /**
      * Model name used by the PlannerAgent.
      * Empty string means "use chatModelName" (backward-compatible default).
      */
@@ -281,5 +295,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         // File approval mode for function-calling agent: false = MANUAL (show diff + buttons),
         // true = AUTO (apply mutations without asking). Default: MANUAL for safety.
         public boolean agentFileApprovalAuto = false;
+        // Model used by the function-calling agent. Empty = fall back to chatModelName.
+        public String agentModelName = "";
     }
 }

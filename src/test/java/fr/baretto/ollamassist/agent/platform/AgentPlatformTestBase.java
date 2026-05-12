@@ -31,7 +31,9 @@ public abstract class AgentPlatformTestBase extends BasePlatformTestCase {
         getProject().getMessageBus()
                 .connect(getTestRootDisposable())
                 .subscribe(FileApprovalNotifier.TOPIC,
-                        req -> req.getResponseFuture().complete(autoApprove));
+                        req -> req.getResponseFuture().complete(
+                                autoApprove ? FileApprovalNotifier.ApprovalDecision.allow()
+                                            : FileApprovalNotifier.ApprovalDecision.deny(null)));
     }
 
     /** Call in a test method to simulate user rejecting file changes. */

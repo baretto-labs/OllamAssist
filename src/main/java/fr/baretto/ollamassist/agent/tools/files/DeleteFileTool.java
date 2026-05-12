@@ -57,13 +57,13 @@ public final class DeleteFileTool implements AgentTool {
             return ToolResult.failure("File not found: " + path);
         }
 
-        boolean approved = approvalHelper.requestApproval(
+        var decision = approvalHelper.requestApproval(
                 "Delete file?",
                 path,
                 "This action will permanently delete: " + path
         );
-        if (!approved) {
-            return ToolResult.failure("User rejected file deletion: " + path);
+        if (!decision.approved()) {
+            return ToolResult.failure(decision.toRejectionMessage("User rejected file deletion: " + path));
         }
 
         String groupId = (String) params.get("__correlationId");

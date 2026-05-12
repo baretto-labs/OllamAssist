@@ -52,7 +52,7 @@ class RunCommandToolTest {
 
     @Test
     void mutatingCommand_requiresApproval_rejected() {
-        when(mockApprovalHelper.requestApproval(anyString(), anyString(), anyString())).thenReturn(false);
+        when(mockApprovalHelper.requestApproval(anyString(), anyString(), anyString())).thenReturn(fr.baretto.ollamassist.events.FileApprovalNotifier.ApprovalDecision.deny(null));
 
         ToolResult result = tool.execute(Map.of("command", "git commit -m 'test'"));
 
@@ -74,7 +74,7 @@ class RunCommandToolTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void mutatingCommand_approved_executes() {
-        when(mockApprovalHelper.requestApproval(anyString(), anyString(), anyString())).thenReturn(true);
+        when(mockApprovalHelper.requestApproval(anyString(), anyString(), anyString())).thenReturn(fr.baretto.ollamassist.events.FileApprovalNotifier.ApprovalDecision.allow());
 
         ToolResult result = tool.execute(Map.of("command", "mkdir -p /tmp/ollamassist-test-run"));
 

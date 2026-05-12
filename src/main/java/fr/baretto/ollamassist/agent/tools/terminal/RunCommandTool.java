@@ -86,13 +86,13 @@ public final class RunCommandTool implements AgentTool {
         }
 
         if (tier == CommandTier.MUTATING) {
-            boolean approved = approvalHelper.requestApproval(
+            var decision = approvalHelper.requestApproval(
                     "Run command?",
                     workingDir.getAbsolutePath(),
                     command
             );
-            if (!approved) {
-                return ToolResult.failure("User rejected command execution: " + command);
+            if (!decision.approved()) {
+                return ToolResult.failure(decision.toRejectionMessage("User rejected command execution: " + command));
             }
         }
 

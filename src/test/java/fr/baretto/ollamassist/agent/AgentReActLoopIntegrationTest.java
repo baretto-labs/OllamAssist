@@ -8,6 +8,7 @@ import fr.baretto.ollamassist.agent.tools.navigation.SearchCodeTool;
 import fr.baretto.ollamassist.agent.tools.rag.SearchKnowledgeBaseTool;
 import fr.baretto.ollamassist.agent.tools.web.WebSearchAgentTool;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.*;
  * They simulate the sequence of tool calls that the LLM would make during a
  * multi-step ReAct execution.
  */
+@Disabled("ReAct loop replaced by PlanAndExecuteAgentService")
 class AgentReActLoopIntegrationTest {
 
     @Mock SearchCodeTool searchCodeTool;

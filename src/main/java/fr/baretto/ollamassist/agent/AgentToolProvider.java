@@ -75,6 +75,10 @@ public class AgentToolProvider {
         this.aborted = false;
     }
 
+    public boolean isAborted() {
+        return this.aborted;
+    }
+
     // -------------------------------------------------------------------------
     // Tools
     // -------------------------------------------------------------------------
@@ -91,7 +95,7 @@ public class AgentToolProvider {
           "Always call this before editFile so you know the exact current content. " +
           "Returns an error if the file does not exist or the path escapes the project root.")
     public String readFile(
-            @P("File path relative to the project root, e.g. src/main/java/com/example/Foo.java") String path) {
+            @P("File path relative to the project root. Must be an actual path in this project — do NOT invent or guess a path.") String path) {
         String abortMsg = checkAborted();
         if (abortMsg != null) return abortMsg;
         if (!rateLimiter.tryAcquire("FILE_READ")) {
@@ -104,14 +108,16 @@ public class AgentToolProvider {
     @Tool("Edit an existing file by replacing a specific text fragment. " +
           "ALWAYS call readFile first to get the exact current content before constructing search/replace. " +
           "The 'search' string must match the file content exactly (whitespace included). " +
-          "IMPORTANT — to INSERT content (e.g. add a method): include the surrounding anchor text in both " +
-          "'search' and 'replace'. Example: to add a method before the closing brace of a class, set " +
-          "search='\\n}' (last newline + closing brace) and replace='\\n\\n    // new method\\n    ...\\n}'. " +
+          "IMPORTANT — to INSERT a method at the END of a class: " +
+          "use the LAST FEW LINES of the file as the search anchor (not just '}'). " +
+          "Copy the exact closing lines from readFile output, e.g. if the file ends with " +
+          "'    }\\n}' use that as search and append your new method before the final '}'. " +
+          "NEVER use a bare '}' or '\\n}' as search — it matches the FIRST brace, not the last. " +
           "Never use a method signature as 'search' when you want to add a new method — that replaces the existing one. " +
           "Returns an error if the file does not exist, the search string is not found, " +
           "the resulting Java is syntactically invalid, or the user rejects the change.")
     public String editFile(
-            @P("File path relative to the project root, e.g. src/main/java/com/example/Foo.java") String path,
+            @P("File path relative to the project root. Must be an actual path in this project — do NOT invent or guess a path.") String path,
             @P("Exact text to search for in the file — must match content character-for-character") String search,
             @P("Text that replaces the matched search fragment — the rest of the file is unchanged") String replace,
             @P("If true, replace all occurrences; if false (default), replace only the first") String replaceAll) {
@@ -134,7 +140,7 @@ public class AgentToolProvider {
           "Returns an error if the file already exists (use editFile to modify existing files), " +
           "if the path escapes the project root, or if the user rejects the creation.")
     public String writeFile(
-            @P("File path relative to the project root, e.g. src/main/java/com/example/Bar.java") String path,
+            @P("File path relative to the project root. Must be the intended new file path — do NOT copy from examples.") String path,
             @P("Full content to write into the new file") String content) {
         String abortMsg = checkAborted();
         if (abortMsg != null) return abortMsg;

@@ -106,9 +106,9 @@ public final class AppendFileTool implements AgentTool {
             String modified = original + appendText;
 
             String diff = "File: " + path + "\n\n+++ APPENDING:\n" + truncate(content, 600);
-            boolean approved = approvalHelper.requestApproval("Append to file?", path, diff);
-            if (!approved) {
-                return ToolResult.failure("User rejected file append: " + path);
+            var decision = approvalHelper.requestApproval("Append to file?", path, diff);
+            if (!decision.approved()) {
+                return ToolResult.failure(decision.toRejectionMessage("User rejected file append: " + path));
             }
 
             final String finalModified = modified;
