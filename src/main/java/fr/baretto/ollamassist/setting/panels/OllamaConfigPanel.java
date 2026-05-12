@@ -12,16 +12,21 @@ import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.OllamaSettings;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusEvent;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
 import java.util.*;
 import java.util.List;
 
 import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MODEL;
 import static fr.baretto.ollamassist.setting.OllamaSettings.DEFAULT_URL;
 
+@Slf4j
 public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -190,11 +195,11 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         return panel;
     }
 
-    /**
-     * Fetches available models from Ollama server synchronously.
-     * This is a simple synchronous method - the async handling is done by the caller.
-     */
     private List<OllamaModel> fetchAvailableModels(String url) {
+        if (!isOllamaReachable(url)) {
+            log.error("OLLAMA not reachable");
+            return Collections.emptyList();
+        }
         try {
             OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder().baseUrl(url);
 
@@ -207,6 +212,20 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
             return builder.build().availableModels().content();
         } catch (Exception e) {
             return Collections.emptyList();
+        }
+    }
+
+    private boolean isOllamaReachable(String url) {
+        try {
+            URI uri = URI.create(url);
+            String host = uri.getHost() != null ? uri.getHost() : "localhost";
+            int port = uri.getPort() != -1 ? uri.getPort() : 11434;
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), 1000);
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
         }
     }
 
