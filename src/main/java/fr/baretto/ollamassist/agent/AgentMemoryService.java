@@ -163,17 +163,21 @@ public final class AgentMemoryService {
             Instant cutoff = Instant.now().minus(TTL_DAYS, ChronoUnit.DAYS);
             List<ExecutionRecord> list = new ArrayList<>();
             for (ExecutionRecord r : records) {
-                // DEV-3: drop records older than TTL_DAYS to prevent stale context bias
-                try {
-                    if (Instant.parse(r.timestamp()).isAfter(cutoff)) list.add(r);
-                } catch (Exception ignored) {
-                    list.add(r); // keep records with unparseable timestamps
-                }
+                dropRecordOlderThanTTL(r, cutoff, list);
             }
             return list;
         } catch (IOException e) {
             log.debug("Could not load agent memory (will start fresh): {}", e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    private static void dropRecordOlderThanTTL(ExecutionRecord r, Instant cutoff, List<ExecutionRecord> list) {
+        // DEV-3: drop records older than TTL_DAYS to prevent stale context bias
+        try {
+            if (Instant.parse(r.timestamp()).isAfter(cutoff)) list.add(r);
+        } catch (Exception ignored) {
+            list.add(r); // keep records with unparseable timestamps
         }
     }
 
