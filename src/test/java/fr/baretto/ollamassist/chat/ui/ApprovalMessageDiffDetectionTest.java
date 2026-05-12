@@ -37,11 +37,14 @@ class ApprovalMessageDiffDetectionTest {
     @Test
     void realBuildDiffOutput_isDiff() {
         // Simulates what EditFileTool.buildDiff() actually produces
-        String content = "File: src/main/java/fr/baretto/ollamassist/agent/AgentOrchestrator.java\n"
-                + "\n--- BEFORE:\n"
-                + "private static final int MAX_PHASES = 5;\n"
-                + "\n+++ AFTER:\n"
-                + "private static final int MAX_PHASES = 10;";
+        String content = """
+                File: src/main/java/fr/baretto/ollamassist/agent/AgentOrchestrator.java
+
+                --- BEFORE:
+                private static final int MAX_PHASES = 5;
+
+                +++ AFTER:
+                private static final int MAX_PHASES = 10;""";
         assertThat(ApprovalMessage.isDiffContent(content)).isTrue();
     }
 

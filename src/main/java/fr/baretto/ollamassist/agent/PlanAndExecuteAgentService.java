@@ -77,6 +77,10 @@ public final class PlanAndExecuteAgentService implements Disposable {
     static final int WHOLE_FILE_MAX_LINES   = 150;  // show full file below this threshold
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String MSG_CANCELLED  = "Agent execution cancelled.\n";
+    private static final String ELLIPSIS_LINE  = "...\n";
+    private static final String TOOL_READ_FILE = "readFile";
+    private static final String TOOL_EDIT_FILE = "editFile";
 
     private static final String SYSTEM_PROMPT = """
             You are an expert software engineer. Given a goal and the content of relevant \
@@ -211,7 +215,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         DiscoveryResult discovery = discoverContext(goal, userContext, handler);
 
         if (executionCancelled) {
-            handler.onToken("Agent execution cancelled.\n");
+            handler.onToken(MSG_CANCELLED);
             handler.onComplete();
             return;
         }
@@ -226,7 +230,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         }
 
         if (executionCancelled) {
-            handler.onToken("Agent execution cancelled.\n");
+            handler.onToken(MSG_CANCELLED);
             handler.onComplete();
             return;
         }
@@ -306,11 +310,11 @@ public final class PlanAndExecuteAgentService implements Disposable {
             if (totalChars[0] >= MAX_CONTEXT_CHARS) break;
             try {
                 String content = java.nio.file.Files.readString(file.toPath());
-                String relPath = (basePath != null && file.getAbsolutePath().startsWith(basePath + "/"))
+                String relPath = (basePath != null && file.getAbsolutePath().startsWith(basePath + java.io.File.separator))
                         ? file.getAbsolutePath().substring(basePath.length() + 1)
                         : file.getAbsolutePath();
                 if (isInternalFile(relPath)) continue;
-                handler.onToolCall("readFile", "{\"path\":\"" + escapeJson(relPath) + "\"}");
+                handler.onToolCall(TOOL_READ_FILE, "{\"path\":\"" + escapeJson(relPath) + "\"}");
                 int remaining = MAX_CONTEXT_CHARS - totalChars[0];
                 String trimmed = content.length() > remaining ? content.substring(0, remaining) : content;
                 if (content.length() > remaining) truncatedPaths.add(relPath);
@@ -341,7 +345,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
                 if (fileContents.size() >= MAX_DISCOVERY_FILES || totalChars[0] >= MAX_CONTEXT_CHARS) break;
                 visitedPaths.add(fragment.relativePath());
 
-                handler.onToolCall("readFile", "{\"path\":\"" + escapeJson(fragment.relativePath()) + "\"}");
+                handler.onToolCall(TOOL_READ_FILE, "{\"path\":\"" + escapeJson(fragment.relativePath()) + "\"}");
 
                 int remaining = MAX_CONTEXT_CHARS - totalChars[0];
                 String content = fragment.content().length() > remaining
@@ -469,10 +473,10 @@ public final class PlanAndExecuteAgentService implements Disposable {
             int start = Math.max(0, matchLine - FRAGMENT_CONTEXT_LINES);
             int end   = Math.min(lines.length - 1, matchLine + FRAGMENT_CONTEXT_LINES);
 
-            if (sb.length() > 0) sb.append("\n...\n");
-            if (start > 0) sb.append("...\n");
+            if (!sb.isEmpty()) sb.append("\n...\n");
+            if (start > 0) sb.append(ELLIPSIS_LINE);
             for (int i = start; i <= end; i++) sb.append(lines[i]).append("\n");
-            if (end < lines.length - 1) sb.append("...\n");
+            if (end < lines.length - 1) sb.append(ELLIPSIS_LINE);
         }
         return sb.toString();
     }
@@ -570,7 +574,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         for (int i = 0; i < steps.size(); i++) {
             AgentStep step = steps.get(i);
             if (disposed || executionCancelled) {
-                handler.onToken("Agent execution cancelled.\n");
+                handler.onToken(MSG_CANCELLED);
                 handler.onComplete();
                 return;
             }
@@ -578,7 +582,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
             // For editFile, verify the path exists before showing the indicator.
             // If the LLM guessed a wrong path, search by filename and correct it.
-            AgentStep resolved = "editFile".equals(step.tool())
+            AgentStep resolved = TOOL_EDIT_FILE.equals(step.tool())
                     ? resolveEditFilePath(step, handler)
                     : step;
 
@@ -594,7 +598,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
                 // Syntax errors are self-correctable: re-ask the LLM to fix only this step.
                 if (isSyntaxError(result) && !disposed) {
                     handler.onToken("Syntax error — fixing...\n");
-                    AgentStep fixed = fixSyntaxError(resolved, result.getErrorMessage(), handler);
+                    AgentStep fixed = fixSyntaxError(resolved, result.getErrorMessage());
                     if (fixed != null) {
                         handler.onToolCall(fixed.tool(), fixed.toArgsJson());
                         ToolResult fixResult = dispatchStep(fixed);
@@ -629,7 +633,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
      *
      * @return a corrected {@link AgentStep}, or {@code null} if the fix call fails
      */
-    private AgentStep fixSyntaxError(AgentStep step, String errorMessage, AgentStreamHandler handler) {
+    private AgentStep fixSyntaxError(AgentStep step, String errorMessage) {
         if (step.path() == null) return null;
 
         ToolResult read = readFileTool.execute(Map.of("path", step.path()));
@@ -765,12 +769,12 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
     private ToolResult dispatchStep(AgentStep step) {
         return switch (step.tool()) {
-            case "writeFile"  -> writeFileTool.execute(step.toParams());
-            case "editFile"   -> lineEditTool.execute(step.toParams());
-            case "readFile"   -> readFileTool.execute(step.toParams());
-            case "deleteFile" -> deleteFileTool.execute(step.toParams());
-            case "appendFile" -> appendFileTool.execute(step.toParams());
-            default           -> ToolResult.failure("Unknown tool in plan: " + step.tool());
+            case "writeFile"    -> writeFileTool.execute(step.toParams());
+            case TOOL_EDIT_FILE -> lineEditTool.execute(step.toParams());
+            case TOOL_READ_FILE -> readFileTool.execute(step.toParams());
+            case "deleteFile"   -> deleteFileTool.execute(step.toParams());
+            case "appendFile"   -> appendFileTool.execute(step.toParams());
+            default             -> ToolResult.failure("Unknown tool in plan: " + step.tool());
         };
     }
 
@@ -798,7 +802,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         Matcher quoted = Pattern.compile("\"([^\"]{2,})\"").matcher(goal);
         while (quoted.find()) keywords.add(quoted.group(1));
 
-        return keywords.stream().distinct().collect(Collectors.toList());
+        return keywords.stream().distinct().toList();
     }
 
     // -------------------------------------------------------------------------
@@ -816,7 +820,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
                 .filter(p -> !p.startsWith(" ") && !p.startsWith("\t"))
                 .distinct()
                 .limit(3)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // -------------------------------------------------------------------------
@@ -838,9 +842,9 @@ public final class PlanAndExecuteAgentService implements Disposable {
             return raw.stream()
                     .map(AgentStep::fromMap)
                     .filter(Objects::nonNull)
-                    .filter(s -> s.tool().equals("writeFile") || s.tool().equals("editFile")
+                    .filter(s -> s.tool().equals("writeFile") || s.tool().equals(TOOL_EDIT_FILE)
                               || s.tool().equals("deleteFile") || s.tool().equals("appendFile"))
-                    .collect(Collectors.toList());
+                    .toList();
         } catch (Exception e) {
             log.warn("PlanAndExecute: failed to parse plan JSON: {}", e.getMessage());
             return List.of();
@@ -911,7 +915,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
         }

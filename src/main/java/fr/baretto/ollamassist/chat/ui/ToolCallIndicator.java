@@ -26,6 +26,7 @@ import java.util.Map;
 public class ToolCallIndicator extends JPanel {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String PARAM_QUERY = "query";
 
     private static final Map<String, String> LABELS = Map.of(
             "readFile",            "Read file",
@@ -44,9 +45,9 @@ public class ToolCallIndicator extends JPanel {
             "writeFile",           "path",
             "deleteFile",          "path",
             "appendFile",          "path",
-            "searchWorkspace",     "query",
-            "searchKnowledgeBase", "query",
-            "searchWeb",           "query"
+            "searchWorkspace",     PARAM_QUERY,
+            "searchKnowledgeBase", PARAM_QUERY,
+            "searchWeb",           PARAM_QUERY
     );
 
     private final JLabel arrowLabel;
@@ -115,7 +116,9 @@ public class ToolCallIndicator extends JPanel {
                 String val = node.get(key).asText();
                 return val.length() > 70 ? val.substring(0, 67) + "…" : val;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // malformed JSON node — return empty string
+        }
         return "";
     }
 

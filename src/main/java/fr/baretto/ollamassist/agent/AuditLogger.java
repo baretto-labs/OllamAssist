@@ -59,7 +59,7 @@ public final class AuditLogger implements Disposable {
      * @param success       whether the tool succeeded
      * @param errorSummary  first 200 chars of the error message, or null on success
      */
-    public synchronized void record(String correlationId, String toolId, String description,
+    public synchronized void append(String correlationId, String toolId, String description,
                                     Iterable<String> paramKeys, boolean success, String errorSummary) {
         if (auditPath == null) return;
         try {

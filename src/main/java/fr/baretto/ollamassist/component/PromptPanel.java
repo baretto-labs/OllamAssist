@@ -317,12 +317,15 @@ public class PromptPanel extends JPanel implements Disposable {
             PropertiesComponent.getInstance().setValue(AGENT_MODE_ENABLED_KEY, button.isSelected());
             if (button.isSelected() && !PropertiesComponent.getInstance().getBoolean(AGENT_PREVIEW_SHOWN_KEY, false)) {
                 Messages.showInfoMessage(
-                        "Agent mode is a Preview feature.\n\n" +
-                        "The agent can read, edit and create files, run commands, and search your codebase.\n" +
-                        "Always review the plan before validating execution.\n\n" +
-                        "Model requirement: agent mode uses structured output (JSON). Your chat model must\n" +
-                        "support it reliably. Recommended: qwen2.5:14b+, mistral-nemo, deepseek-coder:33b.\n" +
-                        "Models like llama3.1:8b or llama3.2 may produce invalid plans.",
+                        """
+                        Agent mode is a Preview feature.
+
+                        The agent can read, edit and create files, run commands, and search your codebase.
+                        Always review the plan before validating execution.
+
+                        Model requirement: agent mode uses structured output (JSON). Your chat model must
+                        support it reliably. Recommended: qwen2.5:14b+, mistral-nemo, deepseek-coder:33b.
+                        Models like llama3.1:8b or llama3.2 may produce invalid plans.""",
                         "Agent Mode — Preview"
                 );
                 PropertiesComponent.getInstance().setValue(AGENT_PREVIEW_SHOWN_KEY, true);

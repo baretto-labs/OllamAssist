@@ -228,7 +228,9 @@ public class ApprovalMessage extends JPanel {
             else style = normal;
             try {
                 doc.insertString(doc.getLength(), line + "\n", style);
-            } catch (BadLocationException ignored) {}
+            } catch (BadLocationException ignored) {
+                // ignored — doc.getLength() is always a valid offset
+            }
         }
         return pane;
     }

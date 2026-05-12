@@ -61,7 +61,7 @@ public final class SecretDetector {
             }
         }
         // Remove the trailing newline we added if the original did not end with one
-        if (!content.endsWith("\n") && sb.length() > 0) {
+        if (!content.endsWith("\n") && !sb.isEmpty()) {
             sb.setLength(sb.length() - 1);
         }
         return sb.toString();
@@ -79,7 +79,7 @@ public final class SecretDetector {
             Pattern.compile("(?i)(AKIA|ASIA|AROA|AIPA|ANPA|ANVA|APKA)[0-9A-Z]{16}")),
         // AWS secret key — all common naming variants (underscore, camelCase, uppercase)
         new SecretPattern("AWS secret key",
-            Pattern.compile("(?i)aws[_\\-.]?secret[_\\-.]?(access[_\\-.]?)?key\\s*[=:\"']\\s*[A-Za-z0-9/+=]{40}")),
+            Pattern.compile("(?i)aws[_\\-.]?secret[_\\-.]?(access[_\\-.]?)?key\\s*[=:\"']\\s*[a-z0-9/+=]{40}")),
         // Stripe live/test secret keys
         new SecretPattern("Stripe secret key",
             Pattern.compile("sk_(live|test)_[0-9a-zA-Z]{24,}")),
@@ -94,9 +94,9 @@ public final class SecretDetector {
             Pattern.compile("(?i)(mysql|postgres|postgresql|mongodb|redis|jdbc)://[^:@\\s\"']{1,128}:[^@\\s\"']{4,}@")),
         // Generic high-entropy API key (also covers OAuth client secrets, etc.)
         new SecretPattern("Generic high-entropy API key",
-            Pattern.compile("(?i)(api[_\\-.]?key|apikey|auth[_\\-.]?token|access[_\\-.]?token|secret[_\\-.]?key|client[_\\-.]?secret|app[_\\-.]?secret)\\s*[=:\"']\\s*[A-Za-z0-9\\-_]{32,}")),
+            Pattern.compile("(?i)(api[_\\-.]?key|auth[_\\-.]?token|access[_\\-.]?token|secret[_\\-.]?key|client[_\\-.]?secret|app[_\\-.]?secret)\\s*[=:\"']\\s*[\\w-]{32,}")),
         new SecretPattern("GitHub personal access token",
-            Pattern.compile("(?i)gh[pousr]_[A-Za-z0-9]{36,}")),
+            Pattern.compile("(?i)gh[pousr]_[a-z0-9]{36,}")),
         new SecretPattern("Google API key",
             Pattern.compile("AIza[0-9A-Za-z\\-_]{35}")),
         new SecretPattern("Slack token",

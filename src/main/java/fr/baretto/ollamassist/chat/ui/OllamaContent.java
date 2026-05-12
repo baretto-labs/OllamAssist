@@ -217,8 +217,7 @@ public class OllamaContent {
 
                 @Override
                 public void onToolResult(String toolName, String result) {
-                    // Tool results are not streamed to the UI to avoid flooding;
-                    // the LLM will incorporate them into its next reasoning step.
+                    // intentionally empty — tool results are not streamed to the UI
                 }
 
                 @Override

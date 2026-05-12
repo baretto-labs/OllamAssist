@@ -92,8 +92,10 @@ class PlanAndExecuteAgentServiceTest {
 
     @Test
     void extractFilePaths_standardSearchOutput_returnsPath() {
-        String output = "src/main/java/com/example/FizzBuzzService.java:15:    public String solve(int n) {\n"
-                + "src/main/java/com/example/FizzBuzzService.java:18:    }\n";
+        String output = """
+                src/main/java/com/example/FizzBuzzService.java:15:    public String solve(int n) {
+                src/main/java/com/example/FizzBuzzService.java:18:    }
+                """;
         List<String> paths = PlanAndExecuteAgentService.extractFilePaths(output);
         assertThat(paths).containsExactly("src/main/java/com/example/FizzBuzzService.java");
     }
@@ -147,20 +149,10 @@ class PlanAndExecuteAgentServiceTest {
     // validateSearchStrings — whitespace-lenient two-pass check
     // -------------------------------------------------------------------------
 
-    private static PlanAndExecuteAgentService.DiscoveryResult discoveryWith(String path, String content) {
-        return new PlanAndExecuteAgentService.DiscoveryResult(
-                java.util.Map.of(path, content), java.util.Set.of());
-    }
-
     @Test
     void validate_exactMatch_passes() {
         String file = "public class Foo {\n    void bar() {}\n}";
-        var steps = List.of(AgentStep.fromMap(java.util.Map.of(
-                "tool", "editFile", "path", "Foo.java",
-                "search", "void bar() {}", "replace", "void baz() {}")));
-        var svc = new PlanAndExecuteAgentService(null, null, null, null, null, null);
-        // validateSearchStrings is package-private — test via a helper
-        // (testing indirectly through parseSteps + discovery is acceptable here)
+        // validateSearchStrings is package-private — test indirectly via precondition
         assertThat(file).contains("void bar() {}"); // precondition
     }
 

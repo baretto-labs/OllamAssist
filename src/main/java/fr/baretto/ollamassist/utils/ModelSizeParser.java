@@ -16,7 +16,9 @@ public final class ModelSizeParser {
         if (m.find()) {
             try {
                 return Double.parseDouble(m.group(1));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+                return -1;
+            }
         }
         return -1;
     }

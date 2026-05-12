@@ -28,6 +28,8 @@ import java.util.Map;
 @Slf4j
 public class AgentToolProvider {
 
+    private static final String PARAM_QUERY = "query";
+
     private final ReadFileTool readFileTool;
     private final EditFileTool editFileTool;
     private final WriteFileTool writeFileTool;
@@ -165,7 +167,7 @@ public class AgentToolProvider {
         if (!rateLimiter.tryAcquire("WEB_SEARCH")) {
             return "ERROR: WEB_SEARCH rate limit reached for this execution.";
         }
-        ToolResult result = webSearchTool.execute(Map.of("query", query != null ? query : ""));
+        ToolResult result = webSearchTool.execute(Map.of(PARAM_QUERY, query != null ? query : ""));
         return toObservation(result);
     }
 
@@ -179,7 +181,7 @@ public class AgentToolProvider {
         if (!rateLimiter.tryAcquire("CODE_SEARCH")) {
             return "ERROR: CODE_SEARCH rate limit reached for this execution.";
         }
-        ToolResult result = searchCodeTool.execute(Map.of("query", query != null ? query : ""));
+        ToolResult result = searchCodeTool.execute(Map.of(PARAM_QUERY, query != null ? query : ""));
         return toObservation(result);
     }
 
@@ -193,7 +195,7 @@ public class AgentToolProvider {
         if (!rateLimiter.tryAcquire("SEARCH_KNOWLEDGE")) {
             return "ERROR: SEARCH_KNOWLEDGE rate limit reached for this execution.";
         }
-        ToolResult result = searchKnowledgeTool.execute(Map.of("query", query != null ? query : ""));
+        ToolResult result = searchKnowledgeTool.execute(Map.of(PARAM_QUERY, query != null ? query : ""));
         return toObservation(result);
     }
 

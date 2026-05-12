@@ -65,7 +65,7 @@ public record AgentStep(
 
     private static int toInt(Object v) {
         if (v instanceof Number n) return n.intValue();
-        if (v instanceof String s) { try { return Integer.parseInt(s); } catch (Exception ignored) {} }
+        if (v instanceof String s) { try { return Integer.parseInt(s); } catch (NumberFormatException ignored) { return 0; } }
         return 0;
     }
 

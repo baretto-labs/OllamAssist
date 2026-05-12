@@ -34,7 +34,7 @@ class AuditLoggerTest {
 
     @Test
     void record_singleEntry_writesJsonlLine() throws Exception {
-        logger.record("cid-test", "FILE_READ", "read Foo.java", Set.of("path"), true, null);
+        logger.append("cid-test", "FILE_READ", "read Foo.java", Set.of("path"), true, null);
         logger.dispose();
 
         Path auditFile = tempDir.resolve(".ollamassist/agent_audit.jsonl");
@@ -47,9 +47,9 @@ class AuditLoggerTest {
 
     @Test
     void record_multipleEntries_allAppearInFile() throws Exception {
-        logger.record("cid-test", "FILE_READ",   "read A.java",  Set.of("path"), true, null);
-        logger.record("cid-test", "CODE_SEARCH", "search main",  Set.of("query"), true, null);
-        logger.record("cid-test", "GIT_STATUS",  "check status", Set.of(), true, null);
+        logger.append("cid-test", "FILE_READ",   "read A.java",  Set.of("path"), true, null);
+        logger.append("cid-test", "CODE_SEARCH", "search main",  Set.of("query"), true, null);
+        logger.append("cid-test", "GIT_STATUS",  "check status", Set.of(), true, null);
         logger.dispose();
 
         Path auditFile = tempDir.resolve(".ollamassist/agent_audit.jsonl");
@@ -63,7 +63,7 @@ class AuditLoggerTest {
     @Test
     void record_immediatelyReadableAfterWrite() throws Exception {
         // Records must be flushed — readable without calling dispose()
-        logger.record("cid-test", "FILE_READ", "read Foo.java", Set.of("path"), true, null);
+        logger.append("cid-test", "FILE_READ", "read Foo.java", Set.of("path"), true, null);
 
         Path auditFile = tempDir.resolve(".ollamassist/agent_audit.jsonl");
         String content = Files.readString(auditFile);
@@ -72,7 +72,7 @@ class AuditLoggerTest {
 
     @Test
     void record_failureEntry_includesErrorSummary() throws Exception {
-        logger.record("cid-test", "FILE_EDIT", "edit Bar.java", Set.of("path"), false, "File not found");
+        logger.append("cid-test", "FILE_EDIT", "edit Bar.java", Set.of("path"), false, "File not found");
         logger.dispose();
 
         Path auditFile = tempDir.resolve(".ollamassist/agent_audit.jsonl");
@@ -91,7 +91,7 @@ class AuditLoggerTest {
         when(mockProject.getBasePath()).thenReturn(null);
         AuditLogger noPathLogger = new AuditLogger(mockProject);
 
-        noPathLogger.record("cid-test", "FILE_READ", "read", Set.of("path"), true, null);
+        noPathLogger.append("cid-test", "FILE_READ", "read", Set.of("path"), true, null);
         noPathLogger.dispose(); // must not throw
     }
 
@@ -109,7 +109,7 @@ class AuditLoggerTest {
         byte[] oversized = new byte[AuditLogger.MAX_FILE_SIZE_BYTES + 1];
         Files.write(auditFile, oversized);
 
-        logger.record("cid-test", "FILE_READ", "trigger rotation", Set.of("path"), true, null);
+        logger.append("cid-test", "FILE_READ", "trigger rotation", Set.of("path"), true, null);
         logger.dispose();
 
         Path level1 = tempDir.resolve(".ollamassist/agent_audit.jsonl.1");
@@ -132,7 +132,7 @@ class AuditLoggerTest {
 
         // First overflow: seeds level1
         Files.write(auditFile, oversized);
-        logger.record("cid-1", "FILE_READ", "first overflow", Set.of("path"), true, null);
+        logger.append("cid-1", "FILE_READ", "first overflow", Set.of("path"), true, null);
         logger.dispose();
         assertThat(level1).exists();
 
@@ -143,7 +143,7 @@ class AuditLoggerTest {
 
         // Bloat the current file again to trigger second rotation
         Files.write(auditFile, oversized);
-        logger2.record("cid-2", "FILE_READ", "second overflow", Set.of("path"), true, null);
+        logger2.append("cid-2", "FILE_READ", "second overflow", Set.of("path"), true, null);
         logger2.dispose();
 
         assertThat(level2).exists();
@@ -158,7 +158,7 @@ class AuditLoggerTest {
 
     @Test
     void dispose_calledTwice_doesNotThrow() {
-        logger.record("cid-test", "\1", "\2", Set.of(), true, null);
+        logger.append("cid-test", "\1", "\2", Set.of(), true, null);
         logger.dispose();
         logger.dispose(); // must not throw
     }

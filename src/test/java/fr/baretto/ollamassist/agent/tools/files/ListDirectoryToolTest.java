@@ -93,7 +93,7 @@ class ListDirectoryToolTest {
 
     @Test
     void emptyDirectory_returnsEmptyMessage() throws IOException {
-        Path empty = Files.createDirectory(tempDir.resolve("empty"));
+        Files.createDirectory(tempDir.resolve("empty"));
         ToolResult result = tool.execute(Map.of("path", "empty"));
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getOutput()).contains("empty directory");

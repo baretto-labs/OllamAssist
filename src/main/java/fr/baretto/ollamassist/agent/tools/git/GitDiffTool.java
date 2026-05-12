@@ -58,7 +58,7 @@ public final class GitDiffTool implements AgentTool {
     private static boolean isAllowedGitDiffArg(String arg) {
         if (ALLOWED_DIFF_FLAGS.contains(arg)) return true;
         // Allow HEAD, HEAD~1, HEAD~2, … HEAD~99
-        return arg.equals("HEAD") || arg.matches("HEAD~[1-9][0-9]?");
+        return arg.equals("HEAD") || arg.matches("HEAD~[1-9]\\d?");
     }
 
     @Override

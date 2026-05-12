@@ -71,6 +71,9 @@ public class DuckDuckGoContentRetriever {
         } catch (Exception e) {
             try {
                 return apiSearch(rawQuery);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return List.of();
             } catch (Exception ex) {
                 return List.of();
             }

@@ -216,8 +216,7 @@ public final class AgentHistoryPopup {
         // Convert to Execution list, most recent first, capped at MAX_EXECUTIONS
         List<Execution> result = new ArrayList<>();
         List<String> cids = new ArrayList<>(byCid.keySet());
-        Collections.reverse(cids);
-        for (String cid : cids) {
+        for (String cid : cids.reversed()) {
             if (result.size() >= MAX_EXECUTIONS) break;
             List<AuditEntry> entries = byCid.get(cid);
             result.add(new Execution(cid, entries));

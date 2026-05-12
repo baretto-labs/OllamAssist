@@ -48,6 +48,7 @@ public final class GoalContextResolver {
     /** Replacement used when the boundary string appears literally inside an injected file. */
     private static final String ESCAPED_BOUNDARY  = "--- (end of injected context [escaped]) ---";
 
+    private static final String JAVA_EXT   = ".java";
     private static final String[] SKIP_DIRS = {".git", "build", "out", ".ollamassist", "target"};
 
     /**
@@ -72,18 +73,18 @@ public final class GoalContextResolver {
                 break;
             }
 
-            String fileName = ref.endsWith(".java") ? ref : ref + ".java";
+            String fileName = ref.endsWith(JAVA_EXT) ? ref : ref + JAVA_EXT;
             String content = findAndRead(fileName, project.getBasePath());
             if (content == null) {
                 // Fall back to implementation-name search (A-5):
                 // @OrderService → try OrderServiceImpl.java, then any *OrderService*.java
-                String implName = ref.endsWith(".java")
-                        ? ref.replace(".java", "Impl.java")
+                String implName = ref.endsWith(JAVA_EXT)
+                        ? ref.replace(JAVA_EXT, "Impl.java")
                         : ref + "Impl.java";
                 content = findAndRead(implName, project.getBasePath());
                 if (content == null) {
                     // Broader fallback: any .java file whose stem contains the reference
-                    String stem = ref.endsWith(".java") ? ref.substring(0, ref.length() - 5) : ref;
+                    String stem = ref.endsWith(JAVA_EXT) ? ref.substring(0, ref.length() - 5) : ref;
                     content = findContaining(stem, project.getBasePath());
                 }
             }
@@ -112,16 +113,6 @@ public final class GoalContextResolver {
     }
 
     /**
-     * Walks the project file tree looking for the first {@code .java} file whose
-     * simple name (without extension) contains {@code stem} (case-insensitive).
-     *
-     * <p>Used as a broader fallback when neither the exact name ({@code XService.java})
-     * nor the implementation convention ({@code XServiceImpl.java}) yields a match (A-5).
-     * Matches: {@code AbstractOrderService}, {@code DefaultOrderService}, etc.
-     *
-     * @return the (possibly truncated) file content, or {@code null} if no match
-     */
-    /**
      * Resolves the project root to its canonical real path (following symlinks).
      * Required so that {@code realPath.startsWith(root)} works correctly on macOS/Linux
      * where temp directories may themselves be symlinks (e.g. {@code /var} → {@code /private/var}).
@@ -136,6 +127,16 @@ public final class GoalContextResolver {
         }
     }
 
+    /**
+     * Walks the project file tree looking for the first {@code .java} file whose
+     * simple name (without extension) contains {@code stem} (case-insensitive).
+     *
+     * <p>Used as a broader fallback when neither the exact name ({@code XService.java})
+     * nor the implementation convention ({@code XServiceImpl.java}) yields a match (A-5).
+     * Matches: {@code AbstractOrderService}, {@code DefaultOrderService}, etc.
+     *
+     * @return the (possibly truncated) file content, or {@code null} if no match
+     */
     private static String findContaining(String stem, String basePath) {
         if (stem == null || stem.isBlank()) return null;
         String lowerStem = stem.toLowerCase(java.util.Locale.ROOT);
@@ -156,7 +157,7 @@ public final class GoalContextResolver {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     String name = file.getFileName().toString();
-                    if (!name.endsWith(".java")) return FileVisitResult.CONTINUE;
+                    if (!name.endsWith(JAVA_EXT)) return FileVisitResult.CONTINUE;
                     String stemCandidate = name.substring(0, name.length() - 5).toLowerCase(java.util.Locale.ROOT);
                     if (stemCandidate.contains(lowerStem)) {
                         try {

@@ -137,16 +137,6 @@ public final class LineEditTool implements AgentTool {
         }
     }
 
-    private static String buildPreview(String operation, Map<String, Object> params, String code) {
-        return switch (operation) {
-            case "insertAfterLine" ->
-                    "Insert after line " + params.get("line") + ":\n" + code;
-            case "replaceLines" ->
-                    "Replace lines " + params.get("startLine") + "–" + params.get("endLine") + ":\n" + code;
-            default -> operation + ":\n" + code;
-        };
-    }
-
     private static String stripLeadingNewline(String s) {
         if (s.startsWith("\n"))  return s.substring(1);
         if (s.startsWith("\r\n")) return s.substring(2);
@@ -155,7 +145,7 @@ public final class LineEditTool implements AgentTool {
 
     private static int toInt(Object v) {
         if (v instanceof Number n) return n.intValue();
-        if (v instanceof String s) { try { return Integer.parseInt(s); } catch (Exception ignored) {} }
+        if (v instanceof String s) { try { return Integer.parseInt(s); } catch (NumberFormatException ignored) { return 0; } }
         return 0;
     }
 }

@@ -151,7 +151,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public void setAgentPlanTimeoutSeconds(int seconds) {
-        myState.agentPlanTimeoutSeconds = Math.max(10, Math.min(seconds, 3600));
+        myState.agentPlanTimeoutSeconds = Math.clamp(seconds, 10, 3600);
     }
 
     public int getRunCommandTimeoutSeconds() {
@@ -159,7 +159,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public void setRunCommandTimeoutSeconds(int seconds) {
-        myState.runCommandTimeoutSeconds = Math.max(5, Math.min(seconds, 3600));
+        myState.runCommandTimeoutSeconds = Math.clamp(seconds, 5, 3600);
     }
 
     public int getApprovalTimeoutMinutes() {
@@ -167,7 +167,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public void setApprovalTimeoutMinutes(int minutes) {
-        myState.approvalTimeoutMinutes = Math.max(1, Math.min(minutes, 60));
+        myState.approvalTimeoutMinutes = Math.clamp(minutes, 1, 60);
     }
 
     public boolean isAgentParanoidMode() {
@@ -188,7 +188,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public void setAgentToolTimeoutSeconds(int seconds) {
-        myState.agentToolTimeoutSeconds = Math.max(10, Math.min(seconds, 3600));
+        myState.agentToolTimeoutSeconds = Math.clamp(seconds, 10, 3600);
     }
 
     /** Returns true when file mutations are applied without asking the user (AUTO mode). */
@@ -263,7 +263,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
     }
 
     public void setAgentGlobalTimeoutMinutes(int minutes) {
-        myState.agentGlobalTimeoutMinutes = Math.max(0, Math.min(minutes, 120));
+        myState.agentGlobalTimeoutMinutes = Math.clamp(minutes, 0, 120);
     }
 
     @Getter

@@ -51,6 +51,8 @@ public final class AgentMemoryService {
     private static final String KEY_FILE    = ".ollamassist/memory.key";
     private static final String HMAC_ALGO   = "HmacSHA256";
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final Path memoryPath;
     private final Path hmacPath;
     private final Path keyPath;
@@ -83,11 +85,11 @@ public final class AgentMemoryService {
      * @param status        {@code "COMPLETED"} or {@code "ABORTED"}
      * @param reason        brief outcome summary (Critic reasoning or error message)
      */
-    public synchronized void record(String correlationId, String goal, String status, String reason) {
-        record(correlationId, goal, status, reason, "");
+    public synchronized void append(String correlationId, String goal, String status, String reason) {
+        append(correlationId, goal, status, reason, "");
     }
 
-    public synchronized void record(String correlationId, String goal, String status, String reason, String modelName) {
+    public synchronized void append(String correlationId, String goal, String status, String reason, String modelName) {
         if (memoryPath == null) return;
         List<ExecutionRecord> records = load();
         records.add(0, new ExecutionRecord(
@@ -200,7 +202,7 @@ public final class AgentMemoryService {
             }
             // Generate a new 256-bit key
             byte[] key = new byte[32];
-            new SecureRandom().nextBytes(key);
+            SECURE_RANDOM.nextBytes(key);
             Files.createDirectories(keyPath.getParent());
             Files.writeString(keyPath, HexFormat.of().formatHex(key), StandardCharsets.UTF_8);
             return key;
@@ -245,7 +247,7 @@ public final class AgentMemoryService {
         }
     }
 
-    private static String computeHmac(byte[] data, byte[] key) throws Exception {
+    private static String computeHmac(byte[] data, byte[] key) throws java.security.GeneralSecurityException {
         Mac mac = Mac.getInstance(HMAC_ALGO);
         mac.init(new SecretKeySpec(key, HMAC_ALGO));
         return HexFormat.of().formatHex(mac.doFinal(data));

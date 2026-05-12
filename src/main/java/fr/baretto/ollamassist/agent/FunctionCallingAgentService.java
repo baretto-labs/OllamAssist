@@ -70,6 +70,13 @@ public final class FunctionCallingAgentService implements Disposable {
     public static final int MAX_TOOL_CALLS_PER_EXECUTION = 30;
     static final int PROGRESS_CHECK_AT = 20;
 
+    private static final String TOOL_READ_FILE          = "readFile";
+    private static final String TOOL_EDIT_FILE          = "editFile";
+    private static final String TOOL_WRITE_FILE         = "writeFile";
+    private static final String TOOL_SEARCH_WEB         = "searchWeb";
+    private static final String TOOL_SEARCH_WORKSPACE   = "searchWorkspace";
+    private static final String TOOL_SEARCH_KNOWLEDGE   = "searchKnowledgeBase";
+    private static final String PARAM_QUERY             = "query";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
@@ -231,7 +238,7 @@ public final class FunctionCallingAgentService implements Disposable {
                     result = ctx.loopDetector().stuckMessage(req.name());
                     log.warn("Agent: loop detected on tool '{}' with arg '{}'", req.name(), primaryArg);
                 } else {
-                    ctx.loopDetector().record(req.name(), primaryArg);
+                    ctx.loopDetector().track(req.name(), primaryArg);
                     result = enrichError(req.name(), dispatchNative(req));
                 }
 
@@ -356,7 +363,7 @@ public final class FunctionCallingAgentService implements Disposable {
                 log.warn("Agent: loop detected (text fallback) on '{}' with arg '{}'",
                         call.name(), primaryArg);
             } else {
-                ctx.loopDetector().record(call.name(), primaryArg);
+                ctx.loopDetector().track(call.name(), primaryArg);
                 result = enrichError(call.name(), dispatchByName(call.name(), call.args()));
             }
 
@@ -384,12 +391,12 @@ public final class FunctionCallingAgentService implements Disposable {
 
     private String dispatchByName(String name, Map<String, String> args) {
         return switch (name) {
-            case "readFile"            -> toolProvider.readFile(args.get("path"));
-            case "editFile"            -> dispatchEditFile(args);
-            case "writeFile"           -> toolProvider.writeFile(args.get("path"), args.get("content"));
-            case "searchWeb"           -> toolProvider.searchWeb(args.get("query"));
-            case "searchWorkspace"     -> toolProvider.searchWorkspace(args.get("query"));
-            case "searchKnowledgeBase" -> toolProvider.searchKnowledgeBase(args.get("query"));
+            case TOOL_READ_FILE        -> toolProvider.readFile(args.get("path"));
+            case TOOL_EDIT_FILE        -> dispatchEditFile(args);
+            case TOOL_WRITE_FILE       -> toolProvider.writeFile(args.get("path"), args.get("content"));
+            case TOOL_SEARCH_WEB       -> toolProvider.searchWeb(args.get(PARAM_QUERY));
+            case TOOL_SEARCH_WORKSPACE -> toolProvider.searchWorkspace(args.get(PARAM_QUERY));
+            case TOOL_SEARCH_KNOWLEDGE -> toolProvider.searchKnowledgeBase(args.get(PARAM_QUERY));
             default                    -> "ERROR: Unknown tool: " + name;
         };
     }
@@ -412,13 +419,13 @@ public final class FunctionCallingAgentService implements Disposable {
         if (!result.startsWith("ERROR:")) return result;
         String lower = result.toLowerCase();
         String hint = switch (toolName) {
-            case "readFile" -> {
+            case TOOL_READ_FILE -> {
                 if (lower.contains("not found") || lower.contains("does not exist"))
                     yield "\nHINT: The file does not exist yet. Use writeFile to create it, " +
                           "or searchWorkspace to find the correct path.";
                 yield "";
             }
-            case "editFile" -> {
+            case TOOL_EDIT_FILE -> {
                 if (lower.contains("not found") || lower.contains("does not exist"))
                     yield "\nHINT: The file does not exist. Use writeFile to create a new file, not editFile.";
                 if (lower.contains("search") || lower.contains("not found in file"))
@@ -426,7 +433,7 @@ public final class FunctionCallingAgentService implements Disposable {
                           "current content, then copy the search fragment character-for-character.";
                 yield "";
             }
-            case "writeFile" -> {
+            case TOOL_WRITE_FILE -> {
                 if (lower.contains("already exist"))
                     yield "\nHINT: The file already exists. Use editFile to modify it.";
                 yield "";
@@ -442,9 +449,9 @@ public final class FunctionCallingAgentService implements Disposable {
 
     private static String extractPrimaryArg(String toolName, Map<String, String> args) {
         return switch (toolName) {
-            case "readFile", "editFile", "writeFile" -> args.getOrDefault("path", "");
-            case "searchWeb", "searchWorkspace", "searchKnowledgeBase" ->
-                    args.getOrDefault("query", "");
+            case TOOL_READ_FILE, TOOL_EDIT_FILE, TOOL_WRITE_FILE -> args.getOrDefault("path", "");
+            case TOOL_SEARCH_WEB, TOOL_SEARCH_WORKSPACE, TOOL_SEARCH_KNOWLEDGE ->
+                    args.getOrDefault(PARAM_QUERY, "");
             default -> args.values().stream().findFirst().orElse("");
         };
     }
@@ -505,7 +512,7 @@ public final class FunctionCallingAgentService implements Disposable {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
         }
@@ -553,11 +560,11 @@ public final class FunctionCallingAgentService implements Disposable {
         static final int STUCK_THRESHOLD_FILE   = 2; // block on 3rd identical file op
 
         private static final java.util.Set<String> SEARCH_TOOLS =
-                java.util.Set.of("searchKnowledgeBase", "searchWeb", "searchWorkspace");
+                java.util.Set.of(TOOL_SEARCH_KNOWLEDGE, TOOL_SEARCH_WEB, TOOL_SEARCH_WORKSPACE);
 
         private final Deque<String> recent = new ArrayDeque<>();
 
-        void record(String toolName, String primaryArg) {
+        void track(String toolName, String primaryArg) {
             recent.addLast(signature(toolName, primaryArg));
             if (recent.size() > WINDOW) recent.removeFirst();
         }

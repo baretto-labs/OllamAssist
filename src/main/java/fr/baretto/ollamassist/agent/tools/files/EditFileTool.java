@@ -71,7 +71,6 @@ public final class EditFileTool implements AgentTool {
                     + "Remove the secret before editing, or add '// ollamassist-nocheck' on the line if it is a test placeholder.");
         }
 
-        final Path absolutePath;
         final VirtualFile file;
         try {
             Path resolved = FilePathGuard.resolveConfined(path, project);
@@ -98,7 +97,6 @@ public final class EditFileTool implements AgentTool {
             if (found == null || !found.exists()) {
                 return ToolResult.failure("File not found: " + path);
             }
-            absolutePath = resolved;
             file = found;
         } catch (FilePathGuard.PathTraversalException e) {
             log.warn("Path traversal attempt blocked: {}", e.getMessage());

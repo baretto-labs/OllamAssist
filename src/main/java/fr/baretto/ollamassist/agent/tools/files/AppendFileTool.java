@@ -73,7 +73,6 @@ public final class AppendFileTool implements AgentTool {
                     + "Remove the secret before appending, or add '// ollamassist-nocheck' on the line if it is a test placeholder.");
         }
 
-        Path absolutePath;
         VirtualFile file;
         try {
             Path resolved = FilePathGuard.resolveConfined(path, project);
@@ -84,7 +83,6 @@ public final class AppendFileTool implements AgentTool {
             if (found.isDirectory()) {
                 return ToolResult.failure("Path is a directory, not a file: " + path);
             }
-            absolutePath = resolved;
             file = found;
         } catch (FilePathGuard.PathTraversalException e) {
             log.warn("Path traversal attempt blocked: {}", e.getMessage());
