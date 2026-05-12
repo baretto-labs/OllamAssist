@@ -56,6 +56,20 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.12.0 — Agent Mode (Alpha)</h2>
+        <UL>
+            <LI><b>[Alpha]</b> Agent mode — give a natural-language goal, the agent discovers relevant files, generates a plan and executes it step by step with your approval before any change.</LI>
+            <LI>feat: Discover → Plan → Execute pipeline — workspace search, single LLM planning call, deterministic Java execution.</LI>
+            <LI>feat: Supported operations — create file, edit file (line-based), delete file, append to file.</LI>
+            <LI>feat: One approval dialog for the full plan — review all steps before any file is touched.</LI>
+            <LI>feat: Dedicated agent model selector — pick a function-calling-capable model without changing your chat model.</LI>
+            <LI>feat: Agent execution history popup — view past executions with per-step success/failure status.</LI>
+            <LI>feat: Colored diff view in approval dialogs — removed/added lines highlighted in red/green.</LI>
+            <LI>feat: Stop button cancels agent execution between phases.</LI>
+            <LI>feat: Step progress counter shown next to the Stop button during execution.</LI>
+            <LI>security: SecretDetector blocks writing secrets to files; path traversal guards on all file operations.</LI>
+            <LI>security: Shell chaining operators (;, &amp;&amp;, ||) in commands always require user confirmation.</LI>
+        </UL>
         <h2>V1.11.0</h2>
         <UL>
             <LI>feat: Conversation management - Conversations are now persisted per project across IDE sessions.</LI>
@@ -270,6 +284,9 @@
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.askfromcode.OverlayPromptPanelFactory"/>
 
         <projectService serviceImplementation="fr.baretto.ollamassist.chat.tools.FileCreator"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.PlanAndExecuteAgentService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AgentMemoryService"/>
+        <projectService serviceImplementation="fr.baretto.ollamassist.agent.AuditLogger"/>
         <projectConfigurable instance="fr.baretto.ollamassist.setting.OllamassistSettingsConfigurable"
                              displayName="OllamAssist"/>
 

@@ -12,6 +12,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.TokenStream;
+import fr.baretto.ollamassist.agent.AgentStreamHandler;
+import fr.baretto.ollamassist.agent.PlanAndExecuteAgentService;
 import fr.baretto.ollamassist.chat.rag.ContextRetriever;
 import fr.baretto.ollamassist.chat.rag.RagSource;
 import fr.baretto.ollamassist.chat.service.OllamaService;
@@ -26,6 +28,7 @@ import fr.baretto.ollamassist.conversation.ConversationService;
 import fr.baretto.ollamassist.events.ConversationSwitchedNotifier;
 import fr.baretto.ollamassist.events.FileApprovalNotifier;
 import fr.baretto.ollamassist.events.ModelAvailableNotifier;
+import fr.baretto.ollamassist.events.NewAgentRequestNotifier;
 import fr.baretto.ollamassist.events.NewUserMessageNotifier;
 import fr.baretto.ollamassist.events.StopStreamingNotifier;
 import fr.baretto.ollamassist.prerequiste.PrerequisitesPanel;
@@ -64,6 +67,9 @@ public class OllamaContent {
     private final MessagesPanel outputPanel = new MessagesPanel();
     private boolean isAvailable = false;
     private volatile ChatThread currentChatThread;
+    private volatile boolean agentRunning = false;
+    private volatile boolean agentCancelled = false;
+    private boolean agentAlphaWarningShown = false;
 
 
     public OllamaContent(@NotNull ToolWindow toolWindow) {
@@ -80,7 +86,7 @@ public class OllamaContent {
                 .connect();
 
         subscribe(connection);
-        promptInput.addStopActionListener(e -> stopGeneration());
+        promptInput.addStopActionListener(e -> stopAll());
         Disposer.register(toolWindow.getDisposable(), connection);
     }
 
@@ -102,6 +108,10 @@ public class OllamaContent {
 
         connection.subscribe(NewUserMessageNotifier.TOPIC, (NewUserMessageNotifier) message -> {
             synchronized (this) {
+                if (agentRunning) {
+                    log.warn("Chat message received while agent is running — ignoring. Cancel the agent first.");
+                    return;
+                }
                 if (currentChatThread != null) {
                     currentChatThread.stop();
                 }
@@ -146,16 +156,105 @@ public class OllamaContent {
                 request.getTitle(),
                 request.getFilePath(),
                 request.getContent(),
-                approved -> request.getResponseFuture().complete(approved)
+                decision -> request.getResponseFuture().complete(decision)
             ));
 
         connection.subscribe(StopStreamingNotifier.TOPIC, (StopStreamingNotifier) () -> {
             log.info("Stopping LLM streaming silently due to file action completion");
             if (currentChatThread != null) {
                 currentChatThread.stop();
-                outputPanel.stopMessageSilently(); // Stop without "interrupted" message
+                outputPanel.stopMessageSilently();
             }
             promptInput.toggleGenerationState(false);
+        });
+
+        connection.subscribe(NewAgentRequestNotifier.TOPIC, (NewAgentRequestNotifier) goal -> {
+            synchronized (this) {
+                if (agentRunning) {
+                    log.warn("Agent request received while another agent is already running — ignoring.");
+                    SwingUtilities.invokeLater(() ->
+                            outputPanel.addInfoMessage("An agent is already running — cancel it before starting a new task."));
+                    return;
+                }
+                agentRunning = true;
+                agentCancelled = false;
+            }
+
+            if (!agentAlphaWarningShown) {
+                agentAlphaWarningShown = true;
+                SwingUtilities.invokeLater(() -> outputPanel.addInfoMessage(
+                        "Agent mode (alpha) — review every proposed change carefully before approving."));
+            }
+
+            context.project().getService(ConversationService.class)
+                    .addMessage(ConversationMessage.user("[Agent] " + goal));
+            outputPanel.addUserMessage(goal);
+            outputPanel.addNewAIMessage();
+            promptInput.clear();
+            promptInput.toggleGenerationState(true);
+
+            PlanAndExecuteAgentService agentService =
+                    context.project().getService(PlanAndExecuteAgentService.class);
+
+            List<java.io.File> contextFiles = filesSelector.getSelectedFiles();
+
+            agentService.execute(goal, contextFiles, new AgentStreamHandler() {
+                // Accumulate full text for conversation persistence
+                private final StringBuilder fullResponse = new StringBuilder();
+
+                @Override
+                public void onToken(String token) {
+                    if (agentCancelled) return;
+                    fullResponse.append(token);
+                    outputPanel.appendToken(token);
+                }
+
+                @Override
+                public void onToolCall(String toolName, String arguments) {
+                    if (agentCancelled) return;
+                    outputPanel.addToolCallIndicator(toolName, arguments);
+                }
+
+                @Override
+                public void onToolResult(String toolName, String result) {
+                    // intentionally empty — tool results are not streamed to the UI
+                }
+
+                @Override
+                public void onProgress(int current, int total) {
+                    // U-2: show step counter next to the stop button
+                    promptInput.setAgentProgress(current, total);
+                }
+
+                @Override
+                public void onComplete() {
+                    if (agentCancelled) return;
+                    String text = fullResponse.toString().trim();
+                    if (!text.isBlank()) {
+                        context.project().getService(ConversationService.class)
+                                .addMessage(ConversationMessage.assistant(text));
+                    }
+                    synchronized (OllamaContent.this) { agentRunning = false; }
+                    SwingUtilities.invokeLater(() -> {
+                        outputPanel.finalizeMessage(ChatResponse.builder()
+                                .finishReason(FinishReason.STOP)
+                                .aiMessage(AiMessage.from(text))
+                                .build());
+                        promptInput.toggleGenerationState(false);
+                    });
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    log.error("Agent execution failed", error);
+                    synchronized (OllamaContent.this) { agentRunning = false; }
+                    SwingUtilities.invokeLater(() -> {
+                        outputPanel.cancelMessage();
+                        outputPanel.addInfoMessage("Agent error: " + error.getMessage());
+                        promptInput.toggleGenerationState(false);
+                    });
+                }
+            });
         });
 
     }
@@ -343,12 +442,23 @@ public class OllamaContent {
         return conversationPanel;
     }
 
+    private void stopAll() {
+        synchronized (this) {
+            if (agentRunning) {
+                agentCancelled = true;
+                agentRunning = false;
+            }
+        }
+        // Cancel the agent's background execution so it stops at the next phase boundary (U-1)
+        context.project().getService(PlanAndExecuteAgentService.class).cancel();
+        stopGeneration();
+    }
+
     private void stopGeneration() {
         if (currentChatThread != null) {
             currentChatThread.stop();
             outputPanel.cancelMessage();
         }
-
         promptInput.toggleGenerationState(false);
     }
 
@@ -484,7 +594,7 @@ public class OllamaContent {
                     log.info("Requesting approval for detected CreateFile call: {}", path);
 
                     // Request user approval with warning indicator
-                    java.util.concurrent.CompletableFuture<Boolean> approvalFuture = new java.util.concurrent.CompletableFuture<>();
+                    java.util.concurrent.CompletableFuture<FileApprovalNotifier.ApprovalDecision> approvalFuture = new java.util.concurrent.CompletableFuture<>();
 
                     FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
                             .title("⚠️ Tool Call Detected (via text parsing)")
@@ -500,9 +610,9 @@ public class OllamaContent {
                     // Wait for approval
                     ApplicationManager.getApplication().executeOnPooledThread(() -> {
                         try {
-                            boolean approved = approvalFuture.get(5, java.util.concurrent.TimeUnit.MINUTES);
+                            FileApprovalNotifier.ApprovalDecision decision = approvalFuture.get(5, java.util.concurrent.TimeUnit.MINUTES);
 
-                            if (approved) {
+                            if (decision.approved()) {
                                 log.info("User approved detected tool call");
                                 FileCreator fileCreator = new FileCreator(contextRef.project());
                                 String result = fileCreator.createFile(path, content);

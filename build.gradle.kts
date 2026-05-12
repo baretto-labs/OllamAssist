@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.11.0"
+version = "1.12.0"
 
 repositories {
     mavenCentral()
@@ -14,8 +14,8 @@ repositories {
         defaultRepositories()
     }
 }
-val langchain4jEasyRag = "1.8.0-beta15"
-val langchain4jVersion = "1.9.1"
+val langchain4jEasyRag = "1.13.1-beta23"
+val langchain4jVersion = "1.13.1"
 val mockitoVersion = "5.19.0"
 val lombokVersion = "1.18.38"
 val junitJupiterVersion = "5.11.0-M2"
@@ -34,14 +34,20 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.3", useInstaller = true)
         bundledPlugins("Git4Idea", "com.intellij.java")
+        // Required for BasePlatformTestCase, CodeInsightTestFixture, etc.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
 
     implementation("org.apache.lucene:lucene-queryparser:9.10.0") {
         exclude(group = "org.apache.lucene")
     }
 
-    implementation("ai.djl:api:$djlVersion")
-    implementation("ai.djl.huggingface:tokenizers:$djlVersion")
+    implementation("ai.djl:api:$djlVersion") {
+        exclude(group = "org.slf4j")
+    }
+    implementation("ai.djl.huggingface:tokenizers:$djlVersion") {
+        exclude(group = "org.slf4j")
+    }
 
     implementation("dev.langchain4j:langchain4j-ollama:$langchain4jVersion"){
         exclude(group = "org.apache.lucene")
@@ -76,9 +82,12 @@ dependencies {
         exclude(group = "org.slf4j")
     }
 
-    implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag")
-    implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag")
-    runtimeOnly("org.slf4j:slf4j-jdk14:1.7.36")
+    implementation("dev.langchain4j:langchain4j-agentic:$langchain4jEasyRag") {
+        exclude(group = "org.slf4j")
+    }
+    implementation("dev.langchain4j:langchain4j-agentic-a2a:$langchain4jEasyRag") {
+        exclude(group = "org.slf4j")
+    }
     implementation("org.codehaus.plexus:plexus-utils:$plexusVersion")
     implementation("org.jsoup:jsoup:$jsoupVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
@@ -96,6 +105,10 @@ dependencies {
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
     testImplementation("org.assertj:assertj-core:$assertjVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
+
+    // Testcontainers — used by platform tests to spin up a real Ollama instance
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
+    testImplementation("org.testcontainers:ollama:$testcontainersVersion")
 }
 
 
@@ -125,6 +138,10 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
+        // Required for LangChain4j @Tool parameter name resolution at runtime.
+        // Without this flag, tool schemas use arg0/arg1 instead of the actual
+        // parameter names, causing the model to receive meaningless argument names.
+        options.compilerArgs.add("-parameters")
     }
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         kotlinOptions.jvmTarget = "21"
@@ -139,6 +156,9 @@ tasks {
             includeEngines("junit-jupiter")
             excludeTags("benchmark")
         }
+        // Platform tests (BasePlatformTestCase) require the IntelliJ runtime —
+        // they run via the platformTest task, not here.
+        exclude("**/platform/**")
     }
 
     check {
@@ -172,6 +192,21 @@ intellijPlatformTesting {
                 systemProperties(
                     project.properties.filterKeys { it.startsWith("benchmark.") }
                 )
+            }
+        }
+
+        // Platform integration tests: run inside the IntelliJ runtime so BasePlatformTestCase
+        // has access to VirtualFile, WriteCommandAction, MessageBus, PsiManager, etc.
+        // Usage: ./gradlew platformTest
+        // Skips tests annotated with @RequiresOllama if Ollama is not reachable.
+        register("platformTest") {
+            task {
+                group = "verification"
+                description = "Runs IntelliJ Platform integration tests (BasePlatformTestCase)."
+                include("**/platform/**")
+                shouldRunAfter(tasks.test)
+                systemProperty("platformTest.ollamaUrl",
+                    project.properties.getOrDefault("platformTest.ollamaUrl", "http://localhost:11434").toString())
             }
         }
     }

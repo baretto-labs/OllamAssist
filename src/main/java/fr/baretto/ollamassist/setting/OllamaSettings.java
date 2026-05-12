@@ -142,6 +142,130 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         myState.password = password;
     }
 
+    // -------------------------------------------------------------------------
+    // Agent timeouts
+    // -------------------------------------------------------------------------
+
+    public int getAgentPlanTimeoutSeconds() {
+        return myState.agentPlanTimeoutSeconds > 0 ? myState.agentPlanTimeoutSeconds : 120;
+    }
+
+    public void setAgentPlanTimeoutSeconds(int seconds) {
+        myState.agentPlanTimeoutSeconds = Math.clamp(seconds, 10, 3600);
+    }
+
+    public int getRunCommandTimeoutSeconds() {
+        return myState.runCommandTimeoutSeconds > 0 ? myState.runCommandTimeoutSeconds : 60;
+    }
+
+    public void setRunCommandTimeoutSeconds(int seconds) {
+        myState.runCommandTimeoutSeconds = Math.clamp(seconds, 5, 3600);
+    }
+
+    public int getApprovalTimeoutMinutes() {
+        return myState.approvalTimeoutMinutes > 0 ? myState.approvalTimeoutMinutes : 5;
+    }
+
+    public void setApprovalTimeoutMinutes(int minutes) {
+        myState.approvalTimeoutMinutes = Math.clamp(minutes, 1, 60);
+    }
+
+    public boolean isAgentParanoidMode() {
+        return myState.agentParanoidMode;
+    }
+
+    public void setAgentParanoidMode(boolean paranoidMode) {
+        myState.agentParanoidMode = paranoidMode;
+    }
+
+    /**
+     * Maximum wall-clock seconds for a single tool execution (safety net against hung tools).
+     * RunCommandTool has its own finer-grained timeout; this is the outer guard.
+     * Default: 120s.
+     */
+    public int getAgentToolTimeoutSeconds() {
+        return myState.agentToolTimeoutSeconds > 0 ? myState.agentToolTimeoutSeconds : 120;
+    }
+
+    public void setAgentToolTimeoutSeconds(int seconds) {
+        myState.agentToolTimeoutSeconds = Math.clamp(seconds, 10, 3600);
+    }
+
+    /** Returns true when file mutations are applied without asking the user (AUTO mode). */
+    public boolean isAgentFileApprovalAuto() {
+        return myState.agentFileApprovalAuto;
+    }
+
+    public void setAgentFileApprovalAuto(boolean auto) {
+        myState.agentFileApprovalAuto = auto;
+    }
+
+    /**
+     * Model used by the function-calling agent.
+     * Falls back to {@link #getChatModelName()} when not set,
+     * so agent and chat share the same model by default.
+     */
+    public String getAgentModelName() {
+        String name = myState.agentModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentModelName(String name) {
+        myState.agentModelName = (name == null) ? "" : name.trim();
+    }
+
+    /**
+     * Model name used by the PlannerAgent.
+     * Empty string means "use chatModelName" (backward-compatible default).
+     */
+    public String getAgentPlannerModelName() {
+        String name = myState.agentPlannerModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentPlannerModelName(String name) {
+        myState.agentPlannerModelName = name == null ? "" : name.trim();
+    }
+
+    /**
+     * Model name used by the CriticAgent.
+     * Empty string means "use chatModelName" (backward-compatible default).
+     */
+    public String getAgentCriticModelName() {
+        String name = myState.agentCriticModelName;
+        return (name == null || name.isBlank()) ? getChatModelName() : name;
+    }
+
+    public void setAgentCriticModelName(String name) {
+        myState.agentCriticModelName = name == null ? "" : name.trim();
+    }
+
+    /**
+     * Auto-validate mode for the agent plan panel.
+     * Values: "MANUAL" | "SMART" | "FULL_AUTO". Default: "MANUAL".
+     */
+    public String getAgentAutoValidateMode() {
+        String mode = myState.agentAutoValidateMode;
+        return (mode == null || mode.isBlank()) ? "MANUAL" : mode;
+    }
+
+    public void setAgentAutoValidateMode(String mode) {
+        myState.agentAutoValidateMode = mode;
+    }
+
+    /**
+     * Wall-clock timeout for the entire agent execution, in minutes.
+     * 0 means disabled (no global timeout).
+     * Default: 0.
+     */
+    public int getAgentGlobalTimeoutMinutes() {
+        return myState.agentGlobalTimeoutMinutes; // 0 = disabled
+    }
+
+    public void setAgentGlobalTimeoutMinutes(int minutes) {
+        myState.agentGlobalTimeoutMinutes = Math.clamp(minutes, 0, 120);
+    }
+
     @Getter
     public static class State {
         public String chatOllamaUrl = DEFAULT_URL;
@@ -153,5 +277,25 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public String timeout = "300";
         public String username = "";
         public String password = "";
+        // Agent-specific timeouts (0 = use default)
+        public int agentPlanTimeoutSeconds = 0;
+        public int runCommandTimeoutSeconds = 0;
+        public int approvalTimeoutMinutes = 0;
+        // Agent paranoid mode — triggers Critic after every step (not just per phase)
+        public boolean agentParanoidMode = false;
+        // Per-tool execution timeout (outer safety net — 0 = use default 120s)
+        public int agentToolTimeoutSeconds = 0;
+        // Separate model names for PlannerAgent and CriticAgent (empty = use chatModelName)
+        public String agentPlannerModelName = "";
+        public String agentCriticModelName = "";
+        // Auto-validate mode: MANUAL | SMART | FULL_AUTO
+        public String agentAutoValidateMode = "MANUAL";
+        // Global wall-clock timeout for the entire agent execution (0 = disabled)
+        public int agentGlobalTimeoutMinutes = 0;
+        // File approval mode for function-calling agent: false = MANUAL (show diff + buttons),
+        // true = AUTO (apply mutations without asking). Default: MANUAL for safety.
+        public boolean agentFileApprovalAuto = false;
+        // Model used by the function-calling agent. Empty = fall back to chatModelName.
+        public String agentModelName = "";
     }
 }

@@ -1,6 +1,8 @@
 package fr.baretto.ollamassist.chat.ui;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.messages.MessageBusConnection;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -15,9 +17,10 @@ import java.awt.event.AdjustmentListener;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class MessagesPanel extends JPanel {
+public class MessagesPanel extends JPanel implements Disposable {
     private final JPanel container = new JPanel(new GridBagLayout());
     private final JBScrollPane scrollPane;
+    private final MessageBusConnection messageBusConnection;
     private OllamaMessage latestOllamaMessage;
     private transient Context context;
     private PresentationPanel presentationPanel = new PresentationPanel();
@@ -52,9 +55,13 @@ public class MessagesPanel extends JPanel {
             }
         });
 
-        MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus()
-                .connect();
-        connection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) this::clearAll);
+        messageBusConnection = ApplicationManager.getApplication().getMessageBus().connect();
+        messageBusConnection.subscribe(ConversationNotifier.TOPIC, (ConversationNotifier) this::clearAll);
+    }
+
+    @Override
+    public void dispose() {
+        Disposer.dispose(messageBusConnection);
     }
 
     private void clearAll() {
@@ -161,10 +168,44 @@ public class MessagesPanel extends JPanel {
         }
     }
 
-    public void addApprovalRequest(String title, String filePath, String content, Consumer<Boolean> onDecision) {
+    /**
+     * Adds a transient informational message inline in the conversation (e.g. "agent already running").
+     * Must be called from the EDT.
+     */
+    public void addInfoMessage(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(label.getFont().deriveFont(java.awt.Font.ITALIC));
+        label.setForeground(com.intellij.ui.JBColor.namedColor("Component.infoForeground", com.intellij.ui.JBColor.GRAY));
+        label.setBorder(com.intellij.util.ui.JBUI.Borders.empty(4, 12));
+        container.add(label, createGbc(container.getComponentCount()));
+        scrollToBottom();
+        container.revalidate();
+        container.repaint();
+    }
+
+    /**
+     * Adds a collapsible tool-call indicator row between conversation components.
+     * Collapsed by default: shows tool name + primary argument.
+     * Expanded on click: shows all parameters.
+     * Thread-safe — may be called from any thread.
+     */
+    public void addToolCallIndicator(String toolName, String argsJson) {
+        SwingUtilities.invokeLater(() -> {
+            ToolCallIndicator indicator = new ToolCallIndicator(toolName, argsJson);
+            container.add(indicator, createGbc(container.getComponentCount()));
+            scrollToBottom();
+            container.revalidate();
+            container.repaint();
+        });
+    }
+
+    public void addApprovalRequest(String title, String filePath, String content,
+                                   Consumer<fr.baretto.ollamassist.events.FileApprovalNotifier.ApprovalDecision> onDecision) {
         SwingUtilities.invokeLater(() -> {
             ApprovalMessage approvalMessage = new ApprovalMessage(title, filePath, content, onDecision);
             container.add(approvalMessage, createGbc(container.getComponentCount()));
+            // Always scroll to approval — the user must see it regardless of scroll position.
+            autoScrollEnabled = true;
             scrollToBottom();
             container.revalidate();
             container.repaint();

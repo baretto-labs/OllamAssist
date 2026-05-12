@@ -149,11 +149,11 @@ public class FileCreator {
     }
 
     private String handleManualApprovalMode(String filePath, String content, Path absolutePath) {
-        CompletableFuture<Boolean> approvalFuture = new CompletableFuture<>();
+        CompletableFuture<FileApprovalNotifier.ApprovalDecision> approvalFuture = new CompletableFuture<>();
         requestApproval(filePath, content, approvalFuture);
 
-        boolean approved = waitForApproval(approvalFuture, filePath);
-        if (!approved) {
+        FileApprovalNotifier.ApprovalDecision decision = waitForApproval(approvalFuture, filePath);
+        if (!decision.approved()) {
             log.info("File creation rejected by user");
             stopLLMStreaming();
             return FILE_CREATION_CANCELLED;
@@ -164,7 +164,8 @@ public class FileCreator {
         return result;
     }
 
-    private boolean waitForApproval(CompletableFuture<Boolean> approvalFuture, String filePath) {
+    private FileApprovalNotifier.ApprovalDecision waitForApproval(
+            CompletableFuture<FileApprovalNotifier.ApprovalDecision> approvalFuture, String filePath) {
         try {
             return approvalFuture.get(5, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
@@ -194,7 +195,7 @@ public class FileCreator {
             .title(FILE_CREATED_AUTO_TITLE)
             .filePath(filePath)
             .content(content)
-            .responseFuture(CompletableFuture.completedFuture(true))
+            .responseFuture(CompletableFuture.completedFuture(FileApprovalNotifier.ApprovalDecision.allow()))
             .build();
 
         project.getMessageBus()
@@ -202,8 +203,8 @@ public class FileCreator {
             .requestApproval(request);
     }
 
-    private void requestApproval(String filePath, String content, CompletableFuture<Boolean> approvalFuture) {
-        // Publish approval request to chat UI via MessageBus
+    private void requestApproval(String filePath, String content,
+                                  CompletableFuture<FileApprovalNotifier.ApprovalDecision> approvalFuture) {
         FileApprovalNotifier.ApprovalRequest request = FileApprovalNotifier.ApprovalRequest.builder()
             .title(FILE_CREATION_REQUEST_TITLE)
             .filePath(filePath)

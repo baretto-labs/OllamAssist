@@ -187,7 +187,9 @@ public class OllamaMessage extends JPanel {
                 }
             } else {
                 currentHeaderPanel.setIcon(IconUtils.OLLAMASSIST_ICON);
-                currentHeaderPanel.setToolTipText("Input Tokens: %s<br/>Output Tokens: %s".formatted(chatResponse.tokenUsage().inputTokenCount(), chatResponse.tokenUsage().outputTokenCount()));
+                if (chatResponse.tokenUsage() != null) {
+                    currentHeaderPanel.setToolTipText("Input Tokens: %s<br/>Output Tokens: %s".formatted(chatResponse.tokenUsage().inputTokenCount(), chatResponse.tokenUsage().outputTokenCount()));
+                }
             }
         }
     }

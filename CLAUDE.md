@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@AGENT_ARCH.md
+
 ## Task Memory
 
 `MEMORY.md` (at the project root) is the persistent task log for this project.
