@@ -1,9 +1,6 @@
 package fr.baretto.ollamassist.notification.service;
 
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import fr.baretto.ollamassist.notification.core.Notification;
 import fr.baretto.ollamassist.notification.core.NotificationDisplayer;
@@ -150,11 +147,11 @@ public final class NotificationManagerImpl implements NotificationManager {
      */
     private String getCurrentPluginVersion() {
         try {
-            PluginId pluginId = PluginId.getId("fr.baretto.ollamassist");
-            IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
-            return plugin != null ? plugin.getVersion() : "0.0.0";
+            ClassLoader cl = getClass().getClassLoader();
+            Object descriptor = cl.getClass().getMethod("getPluginDescriptor").invoke(cl);
+            return (String) descriptor.getClass().getMethod("getVersion").invoke(descriptor);
         } catch (Exception e) {
-            log.error("Failed to retrieve plugin version", e);
+            log.warn("Could not resolve plugin version via classloader", e);
             return "0.0.0";
         }
     }
