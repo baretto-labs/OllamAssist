@@ -1,0 +1,4 @@
+<idea-plugin>
+    <!-- Extensions that require the com.intellij.java plugin (PSI-aware chunking, etc.)
+         This file is loaded only when com.intellij.java is available in the IDE. -->
+</idea-plugin>

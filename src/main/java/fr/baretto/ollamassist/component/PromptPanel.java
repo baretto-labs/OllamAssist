@@ -18,8 +18,8 @@ import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import dev.langchain4j.model.ollama.OllamaModel;
-import dev.langchain4j.model.ollama.OllamaModels;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.icons.AllIcons;
 import fr.baretto.ollamassist.agent.ui.AgentHistoryPopup;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
@@ -36,6 +36,11 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.List;
 
@@ -54,6 +59,7 @@ public class PromptPanel extends JPanel implements Disposable {
     private static final String RAG_SEARCH_ENABLED = "RAG search enabled";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private transient Project project;
     private transient ActionListener listener;
 
@@ -403,22 +409,30 @@ public class PromptPanel extends JPanel implements Disposable {
 
     private List<String> fetchAvailableModels() {
         try {
-            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder()
-                    .baseUrl(OllamAssistSettings.getInstance().getChatOllamaUrl());
-            
-            // Add authentication if configured
+            String baseUrl = OllamAssistSettings.getInstance().getChatOllamaUrl();
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(URI.create(baseUrl.replaceAll("/$", "") + "/api/tags"))
+                    .timeout(Duration.ofSeconds(10));
             if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-                builder.customHeaders(customHeaders);
+                requestBuilder.header(AUTHORIZATION_HEADER,
+                        String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
             }
-            
-            return new ArrayList<>(builder.build()
-                    .availableModels()
-                    .content()
-                    .stream()
-                    .map(OllamaModel::getName)
-                    .toList());
+            HttpResponse<String> response = httpClient.send(requestBuilder.build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return Collections.emptyList();
+            JsonNode root = OBJECT_MAPPER.readTree(response.body());
+            JsonNode models = root.path("models");
+            if (!models.isArray()) return Collections.emptyList();
+            List<String> names = new ArrayList<>();
+            for (JsonNode model : models) {
+                String name = model.path("name").asText(null);
+                if (name != null && !name.isBlank()) names.add(name);
+            }
+            return names;
         } catch (Exception e) {
             return Collections.emptyList();
         }

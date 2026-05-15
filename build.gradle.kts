@@ -132,6 +132,13 @@ intellijPlatform {
     }
 
     buildSearchableOptions.set(System.getenv("CI") != null || System.getenv("PUBLISH_TOKEN") != null)
+
+    pluginVerification {
+        ides {
+            ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2024.3.7")
+            ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2025.1.2")
+        }
+    }
 }
 
 tasks {

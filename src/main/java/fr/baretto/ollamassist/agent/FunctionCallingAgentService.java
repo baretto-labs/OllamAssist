@@ -85,6 +85,16 @@ public final class FunctionCallingAgentService implements Disposable {
             You have access to tools that let you read and modify the project, search the web, \
             and query the project knowledge base.
 
+            ## CRITICAL: When to use tools vs. when to answer directly
+
+            Tools are ONLY for tasks that require acting on the project: reading files, writing \
+            or editing code, searching the codebase or the web.
+
+            If the user asks a conversational or informational question — such as "what can you do?", \
+            "how does X work?", "explain Y", "can you help me with Z?", or any question that does \
+            not require touching files — answer directly in plain text. Do NOT invoke any tool. \
+            Calling a file-writing tool in response to a conversational question is WRONG.
+
             ## CRITICAL: How to invoke tools
 
             You MUST use the function-calling mechanism to invoke tools. NEVER output tool calls \

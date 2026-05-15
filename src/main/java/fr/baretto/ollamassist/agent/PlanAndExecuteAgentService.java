@@ -83,11 +83,19 @@ public final class PlanAndExecuteAgentService implements Disposable {
     private static final String TOOL_EDIT_FILE = "editFile";
 
     private static final String SYSTEM_PROMPT = """
-            You are an expert software engineer. Given a goal and the content of relevant \
-            project files (with line numbers), produce a minimal, concrete execution plan \
-            as a JSON array.
+            You are an expert software engineer assistant embedded in a JetBrains IDE.
 
-            Each step must be one of:
+            Analyse the goal and choose ONE of the two output formats below — never mix them.
+
+            ── FORMAT A — Conversational / informational ──────────────────────────────────
+            Use this when the goal is a question, an explanation request, or anything that \
+            does NOT require creating or modifying files.
+            Output a JSON array with a single "answer" step:
+              [{"tool":"answer","content":"your response here"}]
+
+            ── FORMAT B — File actions ────────────────────────────────────────────────────
+            Use this when the goal requires creating or modifying project files.
+            Output a JSON array where each step is one of:
 
             Create a NEW file (does not exist yet):
               {"tool":"writeFile","path":"src/main/java/...","content":"..."}
@@ -224,7 +232,16 @@ public final class PlanAndExecuteAgentService implements Disposable {
         handler.onToken("Generating plan...\n");
         List<AgentStep> steps = generatePlan(goal, discovery, handler);
         if (steps.isEmpty()) {
-            handler.onToken("Nothing to do — the plan is empty.\n");
+            handler.onComplete();
+            return;
+        }
+
+        // Conversational answer — display and exit without approval
+        if (steps.size() == 1 && "answer".equals(steps.get(0).tool())) {
+            String answer = steps.get(0).content();
+            if (answer != null && !answer.isBlank()) {
+                handler.onToken(answer + "\n");
+            }
             handler.onComplete();
             return;
         }
@@ -503,10 +520,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
         withPluginClassLoader(() -> {
             model.chat(ChatRequest.builder().messages(messages).build(),
                     new StreamingChatResponseHandler() {
-                        @Override public void onPartialResponse(String token) {
-                            buffer.append(token);
-                            handler.onToken(token); // visible progress during planning
-                        }
+                        @Override public void onPartialResponse(String token) { buffer.append(token); }
                         @Override public void onCompleteResponse(ChatResponse r) { latch.countDown(); }
                         @Override public void onError(Throwable e) { error.set(e); latch.countDown(); }
                     });
@@ -531,8 +545,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
         List<AgentStep> steps = parseSteps(buffer.toString());
         if (steps.isEmpty()) {
-            log.warn("PlanAndExecute: empty plan from LLM response: {}", buffer);
-            handler.onToken("Could not extract a plan from the model response.\n");
+            log.warn("PlanAndExecute: could not parse plan from LLM response: {}", buffer);
         }
         return steps;
     }
@@ -843,7 +856,8 @@ public final class PlanAndExecuteAgentService implements Disposable {
                     .map(AgentStep::fromMap)
                     .filter(Objects::nonNull)
                     .filter(s -> s.tool().equals("writeFile") || s.tool().equals(TOOL_EDIT_FILE)
-                              || s.tool().equals("deleteFile") || s.tool().equals("appendFile"))
+                              || s.tool().equals("deleteFile") || s.tool().equals("appendFile")
+                              || s.tool().equals("answer"))
                     .toList();
         } catch (Exception e) {
             log.warn("PlanAndExecute: failed to parse plan JSON: {}", e.getMessage());

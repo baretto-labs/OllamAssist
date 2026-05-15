@@ -8,8 +8,8 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.ui.components.fields.IntegerField;
 import com.intellij.util.ui.JBUI;
-import dev.langchain4j.model.ollama.OllamaModel;
-import dev.langchain4j.model.ollama.OllamaModels;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.OllamaSettings;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +20,10 @@ import java.awt.event.FocusEvent;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.List;
 
@@ -32,6 +36,7 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String LATEST_TAG = ":latest";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String COLON = ":";
     private static final String LOADING_MODELS_TEXT = "Loading models...";
 
@@ -100,13 +105,10 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         // Fetch models in background thread
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String url = urlField.getText().isEmpty() ? DEFAULT_URL : urlField.getText();
-            List<OllamaModel> models = fetchAvailableModels(url);
+            List<String> modelNames = fetchAvailableModels(url);
 
             // Update UI on EDT
             SwingUtilities.invokeLater(() -> {
-                List<String> modelNames = models.stream()
-                        .map(OllamaModel::getName)
-                        .toList();
 
                 List<String> allModels = new ArrayList<>(modelNames);
                 if (isEmbedding && !allModels.isEmpty()) {
@@ -195,22 +197,37 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
         return panel;
     }
 
-    private List<OllamaModel> fetchAvailableModels(String url) {
+    private List<String> fetchAvailableModels(String url) {
         if (!isOllamaReachable(url)) {
             log.error("OLLAMA not reachable");
             return Collections.emptyList();
         }
         try {
-            OllamaModels.OllamaModelsBuilder builder = OllamaModels.builder().baseUrl(url);
-
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(URI.create(url.replaceAll("/$", "") + "/api/tags"))
+                    .timeout(Duration.ofSeconds(10));
             if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-                builder.customHeaders(customHeaders);
+                requestBuilder.header(AUTHORIZATION_HEADER,
+                        String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
             }
-
-            return builder.build().availableModels().content();
+            HttpResponse<String> response = httpClient.send(requestBuilder.build(),
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return Collections.emptyList();
+            JsonNode root = OBJECT_MAPPER.readTree(response.body());
+            JsonNode models = root.path("models");
+            if (!models.isArray()) return Collections.emptyList();
+            List<String> names = new ArrayList<>();
+            for (JsonNode model : models) {
+                String name = model.path("name").asText(null);
+                if (name != null && !name.isBlank()) names.add(name);
+            }
+            return names;
         } catch (Exception e) {
+            log.error("Failed to fetch models from {}", url, e);
             return Collections.emptyList();
         }
     }
