@@ -57,8 +57,6 @@ public class PromptPanel extends JPanel implements Disposable {
     private static final String ENABLE_RAG = "Enable RAG search";
     private static final String WEB_SEARCH_ENABLED = "Web search enabled with DuckDuckGO";
     private static final String RAG_SEARCH_ENABLED = "RAG search enabled";
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private transient Project project;
     private transient ActionListener listener;
@@ -417,9 +415,9 @@ public class PromptPanel extends JPanel implements Disposable {
                     .GET()
                     .uri(URI.create(baseUrl.replaceAll("/$", "") + "/api/tags"))
                     .timeout(Duration.ofSeconds(10));
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                requestBuilder.header(AUTHORIZATION_HEADER,
-                        String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
+            String authHeaderValue = AuthenticationHelper.createAuthorizationHeaderValue();
+            if (authHeaderValue != null) {
+                requestBuilder.header(AuthenticationHelper.AUTHORIZATION_HEADER, authHeaderValue);
             }
             HttpResponse<String> response = httpClient.send(requestBuilder.build(),
                     HttpResponse.BodyHandlers.ofString());

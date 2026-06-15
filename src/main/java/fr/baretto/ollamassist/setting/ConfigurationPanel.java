@@ -91,6 +91,7 @@ public class ConfigurationPanel extends JPanel {
         ollamaPanel.getEmbeddingOllamaUrlField().getDocument().addDocumentListener(documentListener);
         ollamaPanel.getUsernameField().getDocument().addDocumentListener(documentListener);
         ollamaPanel.getPasswordField().getDocument().addDocumentListener(documentListener);
+        ollamaPanel.getApiKeyField().getDocument().addDocumentListener(documentListener);
         ollamaPanel.getTimeoutField().getDocument().addDocumentListener(documentListener);
 
         ItemListener itemListener = e -> {
@@ -101,6 +102,7 @@ public class ConfigurationPanel extends JPanel {
         ollamaPanel.getChatModelComboBox().addItemListener(itemListener);
         ollamaPanel.getCompletionModelComboBox().addItemListener(itemListener);
         ollamaPanel.getEmbeddingModelComboBox().addItemListener(itemListener);
+        ollamaPanel.getAuthModeComboBox().addItemListener(itemListener);
 
         // RAG panel listeners
         ragPanel.getSourcesField().getDocument().addDocumentListener(documentListener);
@@ -162,6 +164,22 @@ public class ConfigurationPanel extends JPanel {
 
     public void setPassword(String password) {
         ollamaPanel.setPassword(password);
+    }
+
+    public fr.baretto.ollamassist.auth.AuthMode getAuthMode() {
+        return ollamaPanel.getAuthMode();
+    }
+
+    public void setAuthMode(fr.baretto.ollamassist.auth.AuthMode authMode) {
+        ollamaPanel.setAuthMode(authMode);
+    }
+
+    public String getApiKey() {
+        return ollamaPanel.getApiKey();
+    }
+
+    public void setApiKey(String apiKey) {
+        ollamaPanel.setApiKey(apiKey);
     }
 
     public String getChatModel() {

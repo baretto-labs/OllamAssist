@@ -37,7 +37,6 @@ import org.jetbrains.annotations.TestOnly;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -912,11 +911,9 @@ public final class PlanAndExecuteAgentService implements Disposable {
                         .temperature(0.2)
                         .timeout(Duration.ofMinutes(5));
 
-        if (AuthenticationHelper.isAuthenticationConfigured()) {
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Authorization",
-                    String.format("Basic %s", AuthenticationHelper.createBasicAuthHeader()));
-            builder.customHeaders(headers);
+        Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+        if (!authHeaders.isEmpty()) {
+            builder.customHeaders(authHeaders);
         }
         return builder.build();
     }

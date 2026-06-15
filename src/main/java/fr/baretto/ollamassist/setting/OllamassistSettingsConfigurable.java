@@ -74,6 +74,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || !ollamaSettings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel())
                 || !ollamaSettings.getUsername().equals(configurationPanel.getUsername())
                 || !ollamaSettings.getPassword().equals(configurationPanel.getPassword())
+                || ollamaSettings.getAuthMode() != configurationPanel.getAuthMode()
+                || !ollamaSettings.getApiKey().equals(configurationPanel.getApiKey())
                 || !ollamaSettings.getTimeout().equals(configurationPanel.getTimeout())
                 || !ragSettings.getSources().equals(configurationPanel.getSources())
                 || ragSettings.getIndexationSize() != configurationPanel.getMaxDocuments()
@@ -111,6 +113,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ollamaSettings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
             ollamaSettings.setUsername(configurationPanel.getUsername());
             ollamaSettings.setPassword(configurationPanel.getPassword());
+            ollamaSettings.setAuthMode(configurationPanel.getAuthMode());
+            ollamaSettings.setApiKey(configurationPanel.getApiKey());
             ollamaSettings.setTimeout(configurationPanel.getTimeout());
 
             // Save to RAGSettings
@@ -193,6 +197,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setEmbeddingModelName(ollamaSettings.getEmbeddingModelName());
         configurationPanel.setUsername(ollamaSettings.getUsername());
         configurationPanel.setPassword(ollamaSettings.getPassword());
+        configurationPanel.setAuthMode(ollamaSettings.getAuthMode());
+        configurationPanel.setApiKey(ollamaSettings.getApiKey());
         configurationPanel.setTimeout(ollamaSettings.getTimeout());
 
         // Load from RAGSettings

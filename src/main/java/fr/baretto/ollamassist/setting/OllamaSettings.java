@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
+import fr.baretto.ollamassist.auth.AuthMode;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -142,6 +143,38 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         myState.password = password;
     }
 
+    public String getApiKey() {
+        return myState.apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        myState.apiKey = apiKey == null ? "" : apiKey;
+    }
+
+    /**
+     * Resolves the configured authentication mode.
+     *
+     * <p>Backward compatibility: configurations persisted before the auth-mode field existed
+     * have a blank {@code authMode}. In that case the mode is inferred from the legacy
+     * Basic-auth fields, so existing Basic-auth users keep working without reconfiguration.</p>
+     */
+    public AuthMode getAuthMode() {
+        String mode = myState.authMode;
+        if (mode == null || mode.isBlank()) {
+            boolean hasBasicCredentials = notBlank(myState.username) && notBlank(myState.password);
+            return hasBasicCredentials ? AuthMode.BASIC : AuthMode.NONE;
+        }
+        return AuthMode.fromString(mode);
+    }
+
+    public void setAuthMode(AuthMode authMode) {
+        myState.authMode = (authMode == null ? AuthMode.NONE : authMode).name();
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     // -------------------------------------------------------------------------
     // Agent timeouts
     // -------------------------------------------------------------------------
@@ -277,6 +310,10 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
         public String timeout = "300";
         public String username = "";
         public String password = "";
+        // Authentication mode: NONE | BASIC | BEARER (blank = inferred for backward compatibility)
+        public String authMode = "";
+        // API key / Bearer token (used when authMode = BEARER, e.g. OpenWebUI proxy)
+        public String apiKey = "";
         // Agent-specific timeouts (0 = use default)
         public int agentPlanTimeoutSeconds = 0;
         public int runCommandTimeoutSeconds = 0;

@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.codehaus.plexus.util.StringUtils;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,8 +26,6 @@ import static fr.baretto.ollamassist.chat.rag.RAGConstants.DEFAULT_EMBEDDING_MOD
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DocumentIngestFactory {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String FALLBACK_EMBEDDING_MODEL = "nomic-embed-text";
 
     public static EmbeddingStoreIngestor create(EmbeddingStore<TextSegment> store, Project project) {
@@ -80,11 +77,10 @@ public class DocumentIngestFactory {
                 .modelName(modelName)
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
 
-        // Add authentication if configured
-        if (AuthenticationHelper.isAuthenticationConfigured()) {
-            Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-            builder.customHeaders(customHeaders);
+        // Add authentication if configured (Basic or Bearer, resolved centrally)
+        Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+        if (!authHeaders.isEmpty()) {
+            builder.customHeaders(authHeaders);
         }
 
         return builder.build();
