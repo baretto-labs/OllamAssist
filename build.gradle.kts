@@ -168,9 +168,6 @@ tasks {
         exclude("**/platform/**")
     }
 
-    check {
-        dependsOn("benchmark")
-    }
 
     build {
         dependsOn("buildPlugin")

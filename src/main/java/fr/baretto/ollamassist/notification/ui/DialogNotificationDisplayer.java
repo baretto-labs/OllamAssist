@@ -21,6 +21,11 @@ public final class DialogNotificationDisplayer implements NotificationDisplayer 
             return;
         }
 
+        if (ApplicationManager.getApplication().isHeadlessEnvironment()) {
+            log.debug("Headless environment — skipping notification dialog");
+            return;
+        }
+
         log.info("Displaying {} notifications in dialog", notifications.size());
 
         ApplicationManager.getApplication().invokeLater(() -> {
