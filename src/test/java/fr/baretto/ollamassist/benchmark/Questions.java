@@ -44,7 +44,7 @@ public class Questions {
         new Question(
             "What authentication header does AuthenticationHelper generate?",
             Difficulty.LOCAL,
-            new String[]{"AuthenticationHelper", "createBasicAuthHeader", "Base64"}
+            new String[]{"AuthenticationHelper", "createAuthorizationHeaderValue", "Basic", "Bearer"}
         ),
         new Question(
             "How does SuggestionCache generate cache keys for completion requests?",

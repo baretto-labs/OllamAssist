@@ -10,7 +10,6 @@ import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.ModelListener;
 import fr.baretto.ollamassist.setting.OllamAssistSettings;
 
-import java.util.HashMap;
 import java.util.Map;
 
 
@@ -44,13 +43,12 @@ public class LightModelAssistant {
                 .modelName(OllamAssistSettings.getInstance().getCompletionModelName())
                 .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
         
-        // Add authentication if configured
-        if (AuthenticationHelper.isAuthenticationConfigured()) {
-            Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
-            builder.customHeaders(customHeaders);
+        // Add authentication if configured (Basic or Bearer, resolved centrally)
+        Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+        if (!authHeaders.isEmpty()) {
+            builder.customHeaders(authHeaders);
         }
-        
+
         OllamaChatModel model = builder.build();
 
         return AiServices.builder(Service.class)

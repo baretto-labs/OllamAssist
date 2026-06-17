@@ -21,7 +21,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -284,13 +283,12 @@ public class EnhancedContextProvider {
                 .modelName(settings.getEmbeddingModelName())
                 .timeout(Duration.ofSeconds(TIMEOUT_SECONDS));
             
-            // Add authentication if configured
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put("Authorization", "Basic " + AuthenticationHelper.createBasicAuthHeader());
-                builder.customHeaders(customHeaders);
+            // Add authentication if configured (Basic or Bearer, resolved centrally)
+            Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+            if (!authHeaders.isEmpty()) {
+                builder.customHeaders(authHeaders);
             }
-            
+
             this.embeddingModel = builder.build();
                 
         } catch (Exception e) {

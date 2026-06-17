@@ -10,14 +10,7 @@ import fr.baretto.ollamassist.setting.panels.RAGConfigPanel;
 import fr.baretto.ollamassist.setting.panels.UIConfigPanel;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 public class ConfigurationPanel extends JPanel {
 
@@ -28,7 +21,6 @@ public class ConfigurationPanel extends JPanel {
     private final transient UIConfigPanel uiPanel;
     private final transient AgentConfigPanel agentPanel;
     private final transient Project project;
-    private final List<Consumer<Boolean>> changeListeners = new ArrayList<>();
 
     public ConfigurationPanel(Project project) {
         this.project = project;
@@ -56,69 +48,12 @@ public class ConfigurationPanel extends JPanel {
         initializeListeners();
     }
 
-    public void addChangeListener(Consumer<Boolean> listener) {
-        changeListeners.add(listener);
-    }
-    public void removeChangeListener(Consumer<Boolean> listener){
-        changeListeners.remove(listener);
-    }
-
-    private void notifyChangeListeners() {
-        changeListeners.forEach(listener -> listener.accept(true));
-    }
-
     private void initializeListeners() {
-        DocumentListener documentListener = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                notifyChangeListeners();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                notifyChangeListeners();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                notifyChangeListeners();
-            }
-        };
-
-        // Ollama panel listeners
-        ollamaPanel.getChatOllamaUrlField().getDocument().addDocumentListener(documentListener);
-        ollamaPanel.getCompletionOllamaUrlField().getDocument().addDocumentListener(documentListener);
-        ollamaPanel.getEmbeddingOllamaUrlField().getDocument().addDocumentListener(documentListener);
-        ollamaPanel.getUsernameField().getDocument().addDocumentListener(documentListener);
-        ollamaPanel.getPasswordField().getDocument().addDocumentListener(documentListener);
-        ollamaPanel.getTimeoutField().getDocument().addDocumentListener(documentListener);
-
-        ItemListener itemListener = e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                notifyChangeListeners();
-            }
-        };
-        ollamaPanel.getChatModelComboBox().addItemListener(itemListener);
-        ollamaPanel.getCompletionModelComboBox().addItemListener(itemListener);
-        ollamaPanel.getEmbeddingModelComboBox().addItemListener(itemListener);
-
-        // RAG panel listeners
-        ragPanel.getSourcesField().getDocument().addDocumentListener(documentListener);
-        ragPanel.getMaxDocumentsField().getDocument().addDocumentListener(documentListener);
-
-        // Actions panel listeners
-        actionsPanel.getAutoApproveFileCreationCheckbox().addItemListener(e -> {
-            // Apply immediately without waiting for "Apply" button
-            ActionsSettings.getInstance().setAutoApproveFileCreation(actionsPanel.isAutoApproveFileCreation());
-            notifyChangeListeners();
-        });
-
-        // Prompt panel listeners
-        promptPanel.getChatSystemPromptArea().getDocument().addDocumentListener(documentListener);
-        promptPanel.getRefactorUserPromptArea().getDocument().addDocumentListener(documentListener);
-
-        // Agent panel listeners
-        agentPanel.getParanoidModeCheckbox().addItemListener(e -> notifyChangeListeners());
+        // The Settings dialog detects pending changes by polling isModified(), so no manual change
+        // notification is needed. Only the auto-approve toggle has a side effect: it is applied
+        // immediately, without waiting for the "Apply" button.
+        actionsPanel.getAutoApproveFileCreationCheckbox().addItemListener(e ->
+                ActionsSettings.getInstance().setAutoApproveFileCreation(actionsPanel.isAutoApproveFileCreation()));
     }
 
     // Delegation methods to sub-panels for backward compatibility with SettingsBindingHelper
@@ -162,6 +97,22 @@ public class ConfigurationPanel extends JPanel {
 
     public void setPassword(String password) {
         ollamaPanel.setPassword(password);
+    }
+
+    public fr.baretto.ollamassist.auth.AuthMode getAuthMode() {
+        return ollamaPanel.getAuthMode();
+    }
+
+    public void setAuthMode(fr.baretto.ollamassist.auth.AuthMode authMode) {
+        ollamaPanel.setAuthMode(authMode);
+    }
+
+    public String getApiKey() {
+        return ollamaPanel.getApiKey();
+    }
+
+    public void setApiKey(String apiKey) {
+        ollamaPanel.setApiKey(apiKey);
     }
 
     public String getChatModel() {

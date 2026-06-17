@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.12.0"
+version = "1.13.0"
 
 repositories {
     mavenCentral()
@@ -118,7 +118,9 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = "243"
         }
-        changeNotes = "Fix: Lucene IndexWriterConfig sharing violation"
+        changeNotes = "Bearer token / API key authentication (issue #166): connect to Ollama behind " +
+                "an authenticated proxy such as OpenWebUI, in addition to Basic Auth. " +
+                "Backward compatible with existing Basic Auth setups."
     }
 
     signing {

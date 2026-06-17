@@ -28,7 +28,6 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -77,8 +76,6 @@ public final class FunctionCallingAgentService implements Disposable {
     private static final String TOOL_SEARCH_WORKSPACE   = "searchWorkspace";
     private static final String TOOL_SEARCH_KNOWLEDGE   = "searchKnowledgeBase";
     private static final String PARAM_QUERY             = "query";
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
     private static final String SYSTEM_PROMPT = """
             You are an autonomous software development assistant operating inside a JetBrains IDE.
@@ -505,11 +502,9 @@ public final class FunctionCallingAgentService implements Disposable {
                         .temperature(0.3)
                         .timeout(Duration.ofMinutes(5));
 
-        if (AuthenticationHelper.isAuthenticationConfigured()) {
-            Map<String, String> headers = new HashMap<>();
-            headers.put(AUTHORIZATION_HEADER,
-                    String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-            builder.customHeaders(headers);
+        Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+        if (!authHeaders.isEmpty()) {
+            builder.customHeaders(authHeaders);
         }
         return builder.build();
     }

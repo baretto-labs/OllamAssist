@@ -45,3 +45,6 @@ bin/
 /.ollamassist/
 /benchmark-results/
 
+### Local dev helpers (not part of the plugin) ###
+/scripts/
+

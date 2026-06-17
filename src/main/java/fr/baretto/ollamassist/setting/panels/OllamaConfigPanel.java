@@ -10,6 +10,7 @@ import com.intellij.ui.components.fields.IntegerField;
 import com.intellij.util.ui.JBUI;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.baretto.ollamassist.auth.AuthMode;
 import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import fr.baretto.ollamassist.setting.OllamaSettings;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +34,6 @@ import static fr.baretto.ollamassist.setting.OllamaSettings.DEFAULT_URL;
 @Slf4j
 public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String LATEST_TAG = ":latest";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String COLON = ":";
@@ -43,8 +42,13 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
     private final JBTextField chatOllamaUrl = new JBTextField(OllamaSettings.getInstance().getChatOllamaUrl());
     private final JBTextField completionOllamaUrl = new JBTextField(OllamaSettings.getInstance().getCompletionOllamaUrl());
     private final JBTextField embeddingOllamaUrl = new JBTextField(OllamaSettings.getInstance().getEmbeddingOllamaUrl());
+    private final ComboBox<AuthMode> authMode = new ComboBox<>(new AuthMode[]{AuthMode.NONE, AuthMode.BASIC, AuthMode.BEARER});
     private final JBTextField username = new JBTextField(OllamaSettings.getInstance().getUsername());
     private final JBTextField password = new JBTextField(OllamaSettings.getInstance().getPassword());
+    private final JBTextField apiKey = new JBTextField(OllamaSettings.getInstance().getApiKey());
+    private JPanel usernamePanel;
+    private JPanel passwordPanel;
+    private JPanel apiKeyPanel;
     private final ComboBox<String> chatModel;
     private final ComboBox<String> completionModel;
     private final ComboBox<String> embeddingModel;
@@ -69,8 +73,25 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
                         "For example: nomic-embed-text. " +
                         "By default, the BgeSmallEnV15QuantizedEmbeddingModel embedded in the application is used."));
 
-        add(createLabeledField("Username:", username, "Username for basic authentication (optional)."));
-        add(createLabeledField("Password:", password, "Password for basic authentication (optional)."));
+        configureAuthModeComboBox();
+        add(createLabeledField("Authentication:", authMode,
+                "Authentication scheme for the Ollama backend. " +
+                        "Use 'API Key (Bearer)' for proxies such as OpenWebUI."));
+
+        usernamePanel = createLabeledField("Username:", username, "Username for basic authentication.");
+        passwordPanel = createLabeledField("Password:", password, "Password for basic authentication.");
+        apiKeyPanel = createLabeledField("API key:", apiKey,
+                "Bearer token / API key sent in the Authorization header.");
+        add(usernamePanel);
+        add(passwordPanel);
+        add(apiKeyPanel);
+
+        authMode.addItemListener(e -> {
+            if (e.getStateChange() == java.awt.event.ItemEvent.SELECTED) {
+                updateAuthFieldsVisibility();
+            }
+        });
+        updateAuthFieldsVisibility();
 
         add(createLabeledField("Response timeout:", timeout, "The total number of seconds allowed for a response."));
 
@@ -210,9 +231,9 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
                     .GET()
                     .uri(URI.create(url.replaceAll("/$", "") + "/api/tags"))
                     .timeout(Duration.ofSeconds(10));
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                requestBuilder.header(AUTHORIZATION_HEADER,
-                        String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
+            String authHeaderValue = AuthenticationHelper.createAuthorizationHeaderValue();
+            if (authHeaderValue != null) {
+                requestBuilder.header(AuthenticationHelper.AUTHORIZATION_HEADER, authHeaderValue);
             }
             HttpResponse<String> response = httpClient.send(requestBuilder.build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -276,6 +297,66 @@ public class OllamaConfigPanel extends JBPanel<OllamaConfigPanel> {
 
     public void setEmbeddingOllamaUrl(String url) {
         embeddingOllamaUrl.setText(url.trim());
+    }
+
+    private void configureAuthModeComboBox() {
+        authMode.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof AuthMode mode) {
+                    setText(authModeLabel(mode));
+                }
+                return this;
+            }
+        });
+        authMode.setSelectedItem(OllamaSettings.getInstance().getAuthMode());
+    }
+
+    private static String authModeLabel(AuthMode mode) {
+        return switch (mode) {
+            case NONE -> "None";
+            case BASIC -> "Basic Auth (username / password)";
+            case BEARER -> "API Key (Bearer)";
+        };
+    }
+
+    private void updateAuthFieldsVisibility() {
+        AuthMode selected = getAuthMode();
+        boolean basic = selected == AuthMode.BASIC;
+        boolean bearer = selected == AuthMode.BEARER;
+        if (usernamePanel != null) usernamePanel.setVisible(basic);
+        if (passwordPanel != null) passwordPanel.setVisible(basic);
+        if (apiKeyPanel != null) apiKeyPanel.setVisible(bearer);
+        revalidate();
+        repaint();
+    }
+
+    public AuthMode getAuthMode() {
+        Object selected = authMode.getSelectedItem();
+        return selected instanceof AuthMode mode ? mode : AuthMode.NONE;
+    }
+
+    public void setAuthMode(AuthMode mode) {
+        authMode.setSelectedItem(mode == null ? AuthMode.NONE : mode);
+        updateAuthFieldsVisibility();
+    }
+
+    public String getApiKey() {
+        return apiKey.getText().trim();
+    }
+
+    public void setApiKey(String value) {
+        apiKey.setText(value == null ? "" : value.trim());
+    }
+
+    public ComboBox<AuthMode> getAuthModeComboBox() {
+        return authMode;
+    }
+
+    public JBTextField getApiKeyField() {
+        return apiKey;
     }
 
     public String getUsername() {

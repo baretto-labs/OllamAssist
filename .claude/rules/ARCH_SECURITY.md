@@ -140,6 +140,29 @@ vulnerability with a missing test. Ship later, not unsafe.
 
 ---
 
+## Rule A8 — Every outbound Ollama call carries the configured Authorization header
+
+Any HTTP request that targets the Ollama endpoint must attach the credentials produced by
+`AuthenticationHelper` — regardless of which HTTP client is used. There are at least three
+distinct clients in this codebase and they are easy to miss one by one:
+
+| Client | How to attach auth |
+|---|---|
+| LangChain4j model builders | `builder.customHeaders(AuthenticationHelper.authHeaders())` |
+| JDK `java.net.http.HttpRequest` | `requestBuilder.header(AUTHORIZATION_HEADER, createAuthorizationHeaderValue())` |
+| IntelliJ `com.intellij.util.io.HttpRequests` | `.tuner(c -> c.setRequestProperty(AUTHORIZATION_HEADER, value))` |
+
+Why: when Ollama sits behind an authenticated proxy (e.g. OpenWebUI with an API key),
+a single unauthenticated call returns 401. The `PrerequisiteService` health checks
+(`/api/version`, `/api/tags`) were missed when Bearer support was added, so the plugin
+reported Ollama as unreachable even though the chat path was correctly authenticated.
+(Found 2026-06-17 during local testing: `Authorization: <MISSING>` on `GET /api/tags`.)
+
+Detection: `grep -rn "/api/" src/main/java` and verify every hit that targets the Ollama
+host goes through `AuthenticationHelper`. DuckDuckGo / non-Ollama hosts are exempt.
+
+---
+
 ## Anti-Patterns Reference
 
 The following patterns are **never acceptable**. Cite the rule ID in the code review.
@@ -156,3 +179,4 @@ The following patterns are **never acceptable**. Cite the rule ID in the code re
 | New `@Tool` method without `checkAborted()` at top | A6 |
 | New mutating `@Tool` without `rateLimiter.tryAcquire()` | A6 |
 | New mutating `@Tool` without `FileApprovalRequestNotifier` | A6 |
+| An Ollama HTTP call (any client) without `AuthenticationHelper` credentials | A8 |

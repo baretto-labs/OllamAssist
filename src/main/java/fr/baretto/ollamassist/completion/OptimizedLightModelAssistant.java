@@ -11,7 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,13 +105,12 @@ public class OptimizedLightModelAssistant {
             .logRequests(false)                 // Disable request logging for performance
             .logResponses(false);               // Disable response logging for performance
         
-        // Add authentication if configured
-        if (AuthenticationHelper.isAuthenticationConfigured()) {
-            Map<String, String> customHeaders = new HashMap<>();
-            customHeaders.put("Authorization", String.format("Basic %s", AuthenticationHelper.createBasicAuthHeader()));
-            builder.customHeaders(customHeaders);
+        // Add authentication if configured (Basic or Bearer, resolved centrally)
+        Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+        if (!authHeaders.isEmpty()) {
+            builder.customHeaders(authHeaders);
         }
-        
+
         OllamaChatModel model = builder.build();
         
         Service service = AiServices.builder(Service.class)

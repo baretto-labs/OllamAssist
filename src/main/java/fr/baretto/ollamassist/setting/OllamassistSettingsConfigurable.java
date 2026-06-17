@@ -9,16 +9,12 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.function.Consumer;
 
 @Slf4j
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
     private ConfigurationPanel configurationPanel;
     private final Project project;
-    private Consumer<Boolean> changeListener;
 
     public OllamassistSettingsConfigurable(Project project) {
         this.project = project;
@@ -33,20 +29,6 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Override
     public JComponent createComponent() {
         configurationPanel = new ConfigurationPanel(project);
-
-        changeListener = modified -> {
-            if (modified) {
-                try {
-                    Method method = Configurable.class.getDeclaredMethod("fireConfigurationChanged");
-                    method.setAccessible(true);
-                    method.invoke(this);
-                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                    log.error("Error during OllamassistSettingsConfigurable creation : ", e);
-                }
-            }
-        };
-
-        configurationPanel.addChangeListener(changeListener);
 
         // Load settings from new separated services
         loadAllSettings();
@@ -74,6 +56,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || !ollamaSettings.getEmbeddingModelName().equals(configurationPanel.getEmbeddingModel())
                 || !ollamaSettings.getUsername().equals(configurationPanel.getUsername())
                 || !ollamaSettings.getPassword().equals(configurationPanel.getPassword())
+                || ollamaSettings.getAuthMode() != configurationPanel.getAuthMode()
+                || !ollamaSettings.getApiKey().equals(configurationPanel.getApiKey())
                 || !ollamaSettings.getTimeout().equals(configurationPanel.getTimeout())
                 || !ragSettings.getSources().equals(configurationPanel.getSources())
                 || ragSettings.getIndexationSize() != configurationPanel.getMaxDocuments()
@@ -111,6 +95,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ollamaSettings.setEmbeddingModelName(configurationPanel.getEmbeddingModel());
             ollamaSettings.setUsername(configurationPanel.getUsername());
             ollamaSettings.setPassword(configurationPanel.getPassword());
+            ollamaSettings.setAuthMode(configurationPanel.getAuthMode());
+            ollamaSettings.setApiKey(configurationPanel.getApiKey());
             ollamaSettings.setTimeout(configurationPanel.getTimeout());
 
             // Save to RAGSettings
@@ -193,6 +179,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         configurationPanel.setEmbeddingModelName(ollamaSettings.getEmbeddingModelName());
         configurationPanel.setUsername(ollamaSettings.getUsername());
         configurationPanel.setPassword(ollamaSettings.getPassword());
+        configurationPanel.setAuthMode(ollamaSettings.getAuthMode());
+        configurationPanel.setApiKey(ollamaSettings.getApiKey());
         configurationPanel.setTimeout(ollamaSettings.getTimeout());
 
         // Load from RAGSettings
@@ -221,9 +209,6 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     @Override
     public void dispose() {
-        if (changeListener != null) {
-            configurationPanel.removeChangeListener(changeListener);
-        }
         configurationPanel = null;
     }
 }

@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
+import fr.baretto.ollamassist.auth.AuthMode;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -118,6 +119,22 @@ public class OllamAssistSettings implements PersistentStateComponent<OllamAssist
 
     public void setPassword(String password) {
         OllamaSettings.getInstance().setPassword(password);
+    }
+
+    public String getApiKey() {
+        return OllamaSettings.getInstance().getApiKey();
+    }
+
+    public void setApiKey(String apiKey) {
+        OllamaSettings.getInstance().setApiKey(apiKey);
+    }
+
+    public AuthMode getAuthMode() {
+        return OllamaSettings.getInstance().getAuthMode();
+    }
+
+    public void setAuthMode(AuthMode authMode) {
+        OllamaSettings.getInstance().setAuthMode(authMode);
     }
 
     // RAG settings - delegating to RAGSettings

@@ -15,6 +15,22 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Completed Tasks
 
+### Bearer Token / API Key Authentication (2026-06-15)
+Ajout du support d'authentification par API key (Bearer) en plus du Basic Auth existant
+(issue utilisateur : Ollama derrière un proxy OpenWebUI exigeant un Bearer token).
+
+**Décisions clés :**
+- Nouveau `AuthMode` (NONE / BASIC / BEARER) — mutuellement exclusifs car même header `Authorization`.
+- `AuthMode.fromString` fail-closed → NONE sur valeur inconnue/null.
+- Rétrocompatibilité : `OllamaSettings.getAuthMode()` infère BASIC si `authMode` vide mais username+password présents (utilisateurs Basic existants non impactés).
+- Centralisation : `AuthenticationHelper.buildAuthorizationHeaderValue(...)` (pur, testé) + `createAuthorizationHeaderValue()` / `authHeaders()`. Les 9 sites qui construisaient "Basic %s" en dur ont été refactorés pour passer par le helper (sinon le Bearer n'aurait marché qu'à moitié).
+- Persistance dans `OllamaSettings.xml` (champs `authMode`, `apiKey`).
+- UI : `OllamaConfigPanel` — combo "Authentication" + champs username/password (BASIC) ou API key (BEARER) affichés selon le mode.
+
+**Tests :** `AuthenticationHelperTest` (9, fail-closed inclus), `AuthModeTest` (4). Logique pure, sans plateforme.
+
+**Note :** effet de bord attendu — pointer l'URL chat vers OpenWebUI + Bearer donne accès aux outils OpenWebUI (SearXNG, etc.).
+
 ### Conversation Management Feature (2026-03-24)
 Implémentation complète de la gestion des conversations par projet.
 

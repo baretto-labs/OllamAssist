@@ -31,7 +31,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,9 +38,6 @@ import java.util.Map;
 @Service(Service.Level.PROJECT)
 @Slf4j
 public final class OllamaService implements Disposable, ModelListener {
-
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BASIC_AUTH_FORMAT = "Basic %s";
 
     private final Project project;
     private final ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(25);
@@ -98,11 +94,10 @@ public final class OllamaService implements Disposable, ModelListener {
                     .modelName(OllamAssistSettings.getInstance().getChatModelName())
                     .timeout(OllamAssistSettings.getInstance().getTimeoutDuration());
 
-            // Add authentication if configured
-            if (AuthenticationHelper.isAuthenticationConfigured()) {
-                Map<String, String> customHeaders = new HashMap<>();
-                customHeaders.put(AUTHORIZATION_HEADER, String.format(BASIC_AUTH_FORMAT, AuthenticationHelper.createBasicAuthHeader()));
-                builder.customHeaders(customHeaders);
+            // Add authentication if configured (Basic or Bearer, resolved centrally)
+            Map<String, String> authHeaders = AuthenticationHelper.authHeaders();
+            if (!authHeaders.isEmpty()) {
+                builder.customHeaders(authHeaders);
             }
 
             OllamaStreamingChatModel model = builder.build();
