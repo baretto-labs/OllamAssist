@@ -56,6 +56,14 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.13.0 — API Key / Bearer Authentication</h2>
+        <UL>
+            <LI>feat/issue-166: Bearer token / API key authentication — connect to an Ollama endpoint behind an authenticated proxy (e.g. OpenWebUI), in addition to Basic Auth.</LI>
+            <LI>feat: Authentication mode selector in Settings &gt; OllamAssist &gt; Ollama (None / Basic Auth / API Key).</LI>
+            <LI>feat: The Authorization header is now applied to every Ollama request, including the startup prerequisite health checks.</LI>
+            <LI>fix: Existing Basic Auth configurations remain fully backward compatible — no reconfiguration required.</LI>
+            <LI>fix: Remove a reflection error (NoSuchMethodException) logged on every keystroke in the settings panel.</LI>
+        </UL>
         <h2>V1.12.0 — Agent Mode (Alpha)</h2>
         <UL>
             <LI><b>[Alpha]</b> Agent mode — give a natural-language goal, the agent discovers relevant files, generates a plan and executes it step by step with your approval before any change.</LI>

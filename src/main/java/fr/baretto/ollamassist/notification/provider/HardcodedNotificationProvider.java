@@ -14,6 +14,38 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.13.0 - API Key / Bearer authentication
+                Notification.builder()
+                        .id("v1.13.0-release")
+                        .version("1.13.0")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.13.0 — API Key / Bearer Authentication")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>API Key / Bearer Authentication</h3>
+
+                                <p>You can now connect OllamAssist to an Ollama endpoint that sits behind an \
+                                authenticated proxy (e.g. <b>OpenWebUI</b>) using a <b>Bearer token / API key</b>, \
+                                in addition to the existing Basic Auth.</p>
+
+                                <h4>What's new</h4>
+                                <ul>
+                                  <li><b>Authentication mode selector</b> — choose <i>None</i>, <i>Basic Auth</i> or <i>API Key (Bearer)</i></li>
+                                  <li><b>Applied everywhere</b> — the Authorization header now travels on every Ollama request, including the startup health checks</li>
+                                  <li><b>Backward compatible</b> — existing Basic Auth setups keep working with no reconfiguration</li>
+                                </ul>
+
+                                <h4>How to access</h4>
+                                <p><b>Settings → OllamAssist → Ollama → Authentication</b></p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 6, 17, 0, 0))
+                        .build(),
+
                 // v1.12.0 - Agent Mode (Alpha)
                 Notification.builder()
                         .id("v1.12.0-release")
