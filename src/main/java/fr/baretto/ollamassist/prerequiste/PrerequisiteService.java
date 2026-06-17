@@ -2,6 +2,7 @@ package fr.baretto.ollamassist.prerequiste;
 
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.io.HttpRequests;
+import fr.baretto.ollamassist.auth.AuthenticationHelper;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -59,10 +60,7 @@ public class PrerequisiteService {
             // Case 2: Ollama model configured
             try {
                 String normalizedUrl = UrlHelper.buildApiUrl(url, PATH_TO_TAGS);
-                String response = HttpRequests.request(normalizedUrl)
-                        .connectTimeout(3000)
-                        .readTimeout(3000)
-                        .readString();
+                String response = readAuthenticated(normalizedUrl);
 
                 if (response.contains(modelName)) {
                     return EmbeddingModelCheckResult.ollamaAvailable();
@@ -132,10 +130,7 @@ public class PrerequisiteService {
     private boolean checkOllamaModelSync(String url, String modelName) {
         try {
             String normalizedUrl = UrlHelper.buildApiUrl(url, PATH_TO_TAGS);
-            String response = HttpRequests.request(normalizedUrl)
-                    .connectTimeout(3000)
-                    .readTimeout(3000)
-                    .readString();
+            String response = readAuthenticated(normalizedUrl);
             return response.contains(modelName);
         } catch (IllegalArgumentException e) {
             log.debug("Invalid URL for fallback check: {}", e.getMessage());
@@ -146,14 +141,31 @@ public class PrerequisiteService {
         }
     }
 
+    /**
+     * Builds a platform HTTP request to the Ollama endpoint, attaching the configured
+     * {@code Authorization} header (Basic or Bearer) when authentication is enabled.
+     * Required so that prerequisite checks succeed when Ollama sits behind an authenticated
+     * proxy (e.g. OpenWebUI).
+     */
+    private static String readAuthenticated(String url) throws IOException {
+        String authHeaderValue = AuthenticationHelper.createAuthorizationHeaderValue();
+        return HttpRequests.request(url)
+                .connectTimeout(3000)
+                .readTimeout(3000)
+                .tuner(connection -> {
+                    if (authHeaderValue != null) {
+                        connection.setRequestProperty(
+                                AuthenticationHelper.AUTHORIZATION_HEADER, authHeaderValue);
+                    }
+                })
+                .readString();
+    }
+
     private CompletableFuture<Boolean> isOllamaAttributeExists(String url, String endpoint, Predicate<String> check) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String normalizedUrl = UrlHelper.buildApiUrl(url, endpoint);
-                String response = HttpRequests.request(normalizedUrl)
-                        .connectTimeout(3000)
-                        .readTimeout(3000)
-                        .readString();
+                String response = readAuthenticated(normalizedUrl);
                 return check.test(response);
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid URL: {}", e.getMessage());
