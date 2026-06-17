@@ -9,16 +9,12 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.function.Consumer;
 
 @Slf4j
 public class OllamassistSettingsConfigurable implements Configurable, Disposable {
 
     private ConfigurationPanel configurationPanel;
     private final Project project;
-    private Consumer<Boolean> changeListener;
 
     public OllamassistSettingsConfigurable(Project project) {
         this.project = project;
@@ -33,20 +29,6 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
     @Override
     public JComponent createComponent() {
         configurationPanel = new ConfigurationPanel(project);
-
-        changeListener = modified -> {
-            if (modified) {
-                try {
-                    Method method = Configurable.class.getDeclaredMethod("fireConfigurationChanged");
-                    method.setAccessible(true);
-                    method.invoke(this);
-                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                    log.error("Error during OllamassistSettingsConfigurable creation : ", e);
-                }
-            }
-        };
-
-        configurationPanel.addChangeListener(changeListener);
 
         // Load settings from new separated services
         loadAllSettings();
@@ -227,9 +209,6 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
 
     @Override
     public void dispose() {
-        if (changeListener != null) {
-            configurationPanel.removeChangeListener(changeListener);
-        }
         configurationPanel = null;
     }
 }
