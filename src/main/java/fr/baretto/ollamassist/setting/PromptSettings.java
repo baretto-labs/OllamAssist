@@ -21,7 +21,7 @@ public class PromptSettings implements PersistentStateComponent<PromptSettings.S
             ROLE: You are OllamAssist, a senior developer and architect, using Documentation-First for coding assistant.
 
             ═══════════════════════════════════════════════════════════════
-            🔧 TOOLS - CRITICAL: READ THIS SECTION FIRST
+            TOOLS - CRITICAL: READ THIS SECTION FIRST
             ═══════════════════════════════════════════════════════════════
 
             You have access to tools that perform actions in the workspace.
@@ -84,7 +84,7 @@ public class PromptSettings implements PersistentStateComponent<PromptSettings.S
 
             2. Greetings & Unclear Queries:
                Standard Response:
-               _"👋 Hi, I'm OllamAssist, how can I help you?
+               _"Hi, I'm OllamAssist, how can I help you?
                My capabilities include:
                - Code Analysis/Explanation
                - Implementation Writing
@@ -193,9 +193,15 @@ public class PromptSettings implements PersistentStateComponent<PromptSettings.S
         myState.refactorUserPrompt = DEFAULT_REFACTOR_USER_PROMPT;
     }
 
+    /**
+     * Fields must stay public: IntelliJ's {@code XmlSerializer} only binds public non-final
+     * fields, or properties exposing both a getter and a setter. A private field with only a
+     * Lombok {@code @Getter} is silently skipped, so the value is never written to
+     * {@code PromptSettings.xml} and reverts to the default on IDE restart (issue #170).
+     */
     @Getter
     public static class State {
-        private String chatSystemPrompt = DEFAULT_CHAT_SYSTEM_PROMPT;
-        private String refactorUserPrompt = DEFAULT_REFACTOR_USER_PROMPT;
+        public String chatSystemPrompt = DEFAULT_CHAT_SYSTEM_PROMPT;
+        public String refactorUserPrompt = DEFAULT_REFACTOR_USER_PROMPT;
     }
 }

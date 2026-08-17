@@ -14,6 +14,40 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.13.1 - Custom prompts are persisted
+                Notification.builder()
+                        .id("v1.13.1-release")
+                        .version("1.13.1")
+                        .type(Notification.NotificationType.INFO)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.13.1 — Custom Prompts Are Persisted")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>Your customised prompts now survive a restart</h3>
+
+                                <p>A customised <b>Chat System Prompt</b> reverted to the default every time the \
+                                IDE was restarted. The prompt was never written to disk, so it was lost as soon as \
+                                the IDE closed.</p>
+
+                                <h4>What is fixed</h4>
+                                <ul>
+                                  <li><b>Chat System Prompt</b> and <b>Refactor User Prompt</b> are now saved and reloaded correctly</li>
+                                  <li><b>Actions settings</b> — <i>auto-approve file creation</i> and <i>tools enabled</i> were silently affected by the same defect and are persisted as well</li>
+                                  <li><b>Default chat prompt</b> — emoji were removed, as the settings format cannot store them and dropped them without warning</li>
+                                </ul>
+
+                                <h4>One last time</h4>
+                                <p>Prompts customised before this release cannot be recovered — they were never \
+                                stored. Re-enter yours once in <b>Settings → OllamAssist → Prompts</b> and it will \
+                                stay from now on.</p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 8, 17, 0, 0))
+                        .build(),
+
                 // v1.13.0 - API Key / Bearer authentication
                 Notification.builder()
                         .id("v1.13.0-release")
