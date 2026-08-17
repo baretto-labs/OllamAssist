@@ -15,6 +15,31 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Completed Tasks
 
+### Issue #170 — Chat System Prompt reset au redémarrage (2026-08-17, release 1.13.1)
+Le prompt personnalisé revenait au défaut à chaque redémarrage de l'IDE.
+
+**Cause :** `PromptSettings.State` déclarait ses champs `private` avec un simple Lombok
+`@Getter`. `XmlSerializer` d'IntelliJ ne lie que les champs publics, ou les propriétés
+ayant getter **et** setter (`PropertyCollector` configuré avec `COLLECT_PRIVATE_FIELDS = false`,
+`isAcceptableProperty` rejette un getter sans setter). Résultat : rien n'était jamais écrit
+dans `PromptSettings.xml` ni relu — l'état retombait sur les initialiseurs de champs.
+Confirmé en décompilant `util-8.jar` (2024.3), pas par déduction.
+
+**Décisions clés :**
+- Champs passés en `public` dans `PromptSettings.State` et `ActionsSettings.State`
+  (même bug latent : `autoApproveFileCreation` / `toolsEnabled` ne persistaient pas non plus).
+- `@Getter` conservé : `SettingsMigrationService.isDefaultActionsSettings` l'utilise, et la
+  propriété read-only est simplement ignorée par le collector — pas de doublon.
+- Bug secondaire découvert au passage : `XmlSerializer` supprime silencieusement les
+  caractères hors-BMP. `DEFAULT_CHAT_SYSTEM_PROMPT` contenait 🔧 et 👋 → retirés, sinon un
+  utilisateur qui édite le prompt autour récupère un texte mutilé.
+
+**Tests :** `SettingsStatePersistenceTest` (6) — round-trip `XmlSerializer` sur les deux
+classes d'état. 4 rouges avant le fix.
+
+**Règle persistée :** `.claude/rules/TECH_STACK.md` — section "PersistentStateComponent —
+state fields must be public" + corollaire BMP.
+
 ### Bearer Token / API Key Authentication (2026-06-15)
 Ajout du support d'authentification par API key (Bearer) en plus du Basic Auth existant
 (issue utilisateur : Ollama derrière un proxy OpenWebUI exigeant un Bearer token).

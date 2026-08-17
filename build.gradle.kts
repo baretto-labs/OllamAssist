@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.13.0"
+version = "1.13.1"
 
 repositories {
     mavenCentral()
@@ -118,9 +118,10 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = "243"
         }
-        changeNotes = "Bearer token / API key authentication (issue #166): connect to Ollama behind " +
-                "an authenticated proxy such as OpenWebUI, in addition to Basic Auth. " +
-                "Backward compatible with existing Basic Auth setups."
+        changeNotes = "Custom prompts are now persisted (issue #170): the Chat System Prompt and " +
+                "Refactor User Prompt no longer revert to their defaults when the IDE restarts. " +
+                "The Actions settings (auto-approve file creation, tools enabled) were affected by " +
+                "the same defect and are persisted as well."
     }
 
     signing {

@@ -56,6 +56,12 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.13.1 — Custom Prompts Are Persisted</h2>
+        <UL>
+            <LI>fix/issue-170: The Chat System Prompt and Refactor User Prompt no longer revert to their defaults when the IDE restarts — customised prompts are now written to disk.</LI>
+            <LI>fix: The Actions settings (auto-approve file creation, tools enabled) were silently affected by the same defect and are persisted as well.</LI>
+            <LI>fix: Removed emoji from the default chat prompt — the settings serializer cannot store characters outside the Basic Multilingual Plane and dropped them silently when the prompt was saved.</LI>
+        </UL>
         <h2>V1.13.0 — API Key / Bearer Authentication</h2>
         <UL>
             <LI>feat/issue-166: Bearer token / API key authentication — connect to an Ollama endpoint behind an authenticated proxy (e.g. OpenWebUI), in addition to Basic Auth.</LI>

@@ -53,12 +53,18 @@ public class ActionsSettings implements PersistentStateComponent<ActionsSettings
         myState.toolsEnabled = enabled;
     }
 
+    /**
+     * Fields must stay public: IntelliJ's {@code XmlSerializer} only binds public non-final
+     * fields, or properties exposing both a getter and a setter. A private field with only a
+     * Lombok {@code @Getter} is silently skipped, so the value is never persisted and reverts
+     * to the default on IDE restart (same root cause as issue #170).
+     */
     @Getter
     public static class State {
         // Auto-approve file creation without user confirmation
-        private boolean autoApproveFileCreation = false;
+        public boolean autoApproveFileCreation = false;
 
         // Enable/disable AI tools (function calling) - disabled by default (experimental)
-        private boolean toolsEnabled = false;
+        public boolean toolsEnabled = false;
     }
 }

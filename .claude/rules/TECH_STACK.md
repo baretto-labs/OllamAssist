@@ -167,6 +167,44 @@ Lombok is a compile-time convenience, not a design tool. Use it narrowly.
   breaks value-object semantics. Use `record` instead.
 - `@EqualsAndHashCode` on mutable classes — cache-poisoning risk.
 - `@SneakyThrows` — hides checked exceptions, violates the fail-closed rule (A1).
+- `@Getter` as the *only* accessor on a `PersistentStateComponent.State` class —
+  see the persistence rule below. It compiles, it reads fine, and it silently disables
+  persistence.
+
+---
+
+## PersistentStateComponent — state fields must be public
+
+Every field of a `PersistentStateComponent.State` class must be **public, non-final,
+non-static**. Do not make them private and expose them through Lombok `@Getter`.
+
+Why: IntelliJ's `XmlSerializer` binds a field only if it is public, or if the class exposes
+a matching getter **and** setter (`PropertyCollector` is configured with
+`COLLECT_PRIVATE_FIELDS = false`, and `isAcceptableProperty` rejects a getter with a null
+setter unless the return type is a `Collection`/`Map` carrying a store annotation).
+A private field with only a `@Getter` is bound by neither path: it is never written to the
+XML file and never read back, so the setting silently reverts to its field initializer on
+every IDE restart. This shipped as issue #170 — "Chat System Prompt resets to default on
+CLion restart" — and affected `PromptSettings` and `ActionsSettings` identically.
+
+Detection: for every class implementing `PersistentStateComponent`, its `State` class must
+have zero occurrences of `private ` among its field declarations. Public fields plus a
+`@Getter` is fine (the read-only property is discarded, the field binding wins) — that is
+what `RAGSettings` and `OllamaSettings` do.
+
+### Corollary — state values must be BMP-only
+
+`XmlSerializer` silently drops characters it cannot store in an XML attribute: ASCII control
+characters and everything outside the Basic Multilingual Plane (emoji are surrogate pairs).
+`"a🔧b"` round-trips as `"ab"`, with no error and no log line.
+
+Never put emoji in a default value that gets persisted — a user who edits the text around it
+persists the whole string and gets it back mangled. `DEFAULT_CHAT_SYSTEM_PROMPT` contained
+`🔧` and `👋`; both were removed in the #170 fix.
+
+Detection: the state round-trip test asserts the default values survive
+`XmlSerializer.serialize` → `deserialize` verbatim
+(`SettingsStatePersistenceTest`). Any new persisted default is covered by adding a case there.
 
 ---
 
