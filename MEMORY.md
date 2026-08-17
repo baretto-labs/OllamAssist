@@ -15,6 +15,23 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Completed Tasks
 
+### Rejet Marketplace — dialog modale au démarrage (2026-08-17)
+L'upload du plugin échouait sur la vérification automatique JetBrains
+(`InstallPluginTest.testTrialWidgetPresence`) : `Timeout(5m)` sur les indicateurs +
+"Plugin must not remove the IDE Trial widget".
+
+**Cause :** `DialogNotificationDisplayer` ouvrait une `NotificationDialog` **modale** depuis
+le `postStartupActivity` `NotificationApplicationStartup`. L'EDT restait parqué dans
+`Dialog.show()` (visible dans le thread dump) — personne pour cliquer OK dans l'IDE de test.
+
+**Correctif :** `BalloonNotificationDisplayer` (remplace `DialogNotificationDisplayer`,
+plugin.xml mis à jour) — balloon non bloquante dans le groupe `OllamAssist`, action
+"See what's new" qui ouvre la dialog uniquement sur clic utilisateur, garde
+`isUnitTestMode() || isHeadlessEnvironment()`, et `whenExpired` → `updateLastNotifiedVersion()`
+pour ne pas re-notifier au redémarrage suivant.
+
+Règle ajoutée dans `.claude/rules/TECH_STACK.md` (section IntelliJ Platform).
+
 ### Issue #170 — Chat System Prompt reset au redémarrage (2026-08-17, release 1.13.1)
 Le prompt personnalisé revenait au défaut à chaque redémarrage de l'IDE.
 

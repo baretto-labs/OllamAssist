@@ -282,7 +282,7 @@
         <applicationService serviceInterface="fr.baretto.ollamassist.notification.provider.NotificationProvider"
                             serviceImplementation="fr.baretto.ollamassist.notification.provider.HardcodedNotificationProvider"/>
         <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationDisplayer"
-                            serviceImplementation="fr.baretto.ollamassist.notification.ui.DialogNotificationDisplayer"/>
+                            serviceImplementation="fr.baretto.ollamassist.notification.ui.BalloonNotificationDisplayer"/>
         <applicationService serviceInterface="fr.baretto.ollamassist.notification.core.NotificationManager"
                             serviceImplementation="fr.baretto.ollamassist.notification.service.NotificationManagerImpl"/>
 

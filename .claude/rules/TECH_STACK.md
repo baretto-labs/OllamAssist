@@ -137,6 +137,27 @@ public class JsonConversationRepository implements ConversationRepository { ... 
   `ApplicationManager.getApplication().getService(Foo.class)` (application-scoped).
   Never `ServiceManager.getService(...)` (deprecated).
 
+### Never show a modal dialog from a startup activity
+
+A `ProjectActivity` / `postStartupActivity` must never open a `DialogWrapper` with
+`setModal(true)` or a `Messages.show*` dialog — not even through `invokeLater`.
+Startup UI must be a balloon (`NotificationGroupManager` + the `OllamAssist` group);
+a dialog is opened only from an explicit user action on that balloon.
+
+Why: a modal dialog shown at startup parks the EDT inside `Dialog.show()` until the user
+closes it. The JetBrains Marketplace automated verification (`InstallPluginTest`) opens the
+IDE headlessly with no one to click OK, so it times out after 5 minutes
+(`Timeout(5m): Failed: Indicators with waitSmartLongEnough=true`) and the upload is rejected
+with "Plugin must not remove the IDE Trial widget". Caused by
+`DialogNotificationDisplayer` on the 2026-08-17 upload.
+
+Any displayer that shows UI must also bail out early when
+`application.isUnitTestMode() || application.isHeadlessEnvironment()`.
+
+Detection: `grep -rn "postStartupActivity" src/main/resources/META-INF/plugin.xml`, then
+check that no transitive call from those classes reaches `DialogWrapper.show()` or
+`Messages.show*`.
+
 ---
 
 ## Test stack — versions are fixed
