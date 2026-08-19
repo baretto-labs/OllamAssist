@@ -5,8 +5,6 @@ import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import fr.baretto.ollamassist.notification.core.NotificationStorage;
-import lombok.Getter;
-import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,9 +45,20 @@ public final class PersistentNotificationStorage implements NotificationStorage,
     }
 
     @Override
+    public boolean isMuted() {
+        return state.muted;
+    }
+
+    @Override
+    public void setMuted(boolean muted) {
+        state.muted = muted;
+    }
+
+    @Override
     public void reset() {
         state.readNotificationIds.clear();
         state.lastNotifiedVersion = "0.0.0";
+        state.muted = false;
     }
 
     @Nullable
@@ -63,10 +72,14 @@ public final class PersistentNotificationStorage implements NotificationStorage,
         this.state = state;
     }
 
-    @Getter
-    @Setter
+    /**
+     * Fields are public on purpose: IntelliJ's {@code XmlSerializer} only binds public
+     * fields, or properties exposing both a getter and a setter. A private field behind a
+     * Lombok {@code @Getter} is never persisted (see issue #170).
+     */
     public static class State {
-        private Set<String> readNotificationIds = new HashSet<>();
-        private String lastNotifiedVersion = "0.0.0";
+        public Set<String> readNotificationIds = new HashSet<>();
+        public String lastNotifiedVersion = "0.0.0";
+        public boolean muted = false;
     }
 }

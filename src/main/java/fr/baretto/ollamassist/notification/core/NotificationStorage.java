@@ -37,6 +37,20 @@ public interface NotificationStorage {
     void updateLastNotifiedVersion(String version);
 
     /**
+     * Tells whether the user asked never to see release notifications again.
+     *
+     * @return true if notifications are muted
+     */
+    boolean isMuted();
+
+    /**
+     * Mutes or unmutes release notifications.
+     *
+     * @param muted true to never display release notifications again
+     */
+    void setMuted(boolean muted);
+
+    /**
      * Clears all notification state (for testing/debugging).
      */
     void reset();

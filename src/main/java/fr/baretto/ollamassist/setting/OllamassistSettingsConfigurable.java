@@ -46,7 +46,6 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         RAGSettings ragSettings = RAGSettings.getInstance();
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         PromptSettings promptSettings = PromptSettings.getInstance();
-        OllamAssistUISettings uiSettings = OllamAssistUISettings.getInstance();
 
         return !ollamaSettings.getChatOllamaUrl().equals(configurationPanel.getChatOllamaUrl())
                 || !ollamaSettings.getCompletionOllamaUrl().equals(configurationPanel.getCompletionOllamaUrl())
@@ -70,7 +69,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || ollamaSettings.getApprovalTimeoutMinutes() != configurationPanel.getApprovalTimeoutMinutes()
                 || ollamaSettings.getAgentToolTimeoutSeconds() != configurationPanel.getAgentToolTimeoutSeconds()
                 || ollamaSettings.getAgentGlobalTimeoutMinutes() != configurationPanel.getAgentGlobalTimeoutMinutes()
-                || ollamaSettings.isAgentParanoidMode() != configurationPanel.isAgentParanoidMode();
+                || ollamaSettings.isAgentParanoidMode() != configurationPanel.isAgentParanoidMode()
+                || configurationPanel.isUISettingsModified();
     }
 
 

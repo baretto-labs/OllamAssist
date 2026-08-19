@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Displays pending notifications as a non-blocking balloon.
@@ -27,6 +28,7 @@ public final class BalloonNotificationDisplayer implements NotificationDisplayer
     private static final String NOTIFICATION_GROUP = "OllamAssist";
     private static final String TITLE = "OllamAssist updates";
     private static final String OPEN_ACTION = "See what's new";
+    private static final String MUTE_ACTION = "Don't show again";
 
     @Override
     public void show(Project project, List<Notification> notifications) {
@@ -56,9 +58,18 @@ public final class BalloonNotificationDisplayer implements NotificationDisplayer
             }
         });
 
-        balloon.whenExpired(this::acknowledge);
+        balloon.addAction(new NotificationAction(MUTE_ACTION) {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent event,
+                                        @NotNull com.intellij.notification.Notification notification) {
+                notification.expire();
+                withNotificationManager(NotificationManager::muteNotifications);
+            }
+        });
 
         balloon.notify(project);
+
+        acknowledge();
     }
 
     private String buildContent(List<Notification> notifications) {
@@ -69,14 +80,19 @@ public final class BalloonNotificationDisplayer implements NotificationDisplayer
     }
 
     /**
-     * Once the balloon has been dismissed, the user has been informed: do not show the same
-     * notifications again on the next IDE start.
+     * The balloon has been shown: the user has been informed, so the same notifications must
+     * not come back on the next IDE start. Acknowledging on display rather than on balloon
+     * expiry matters — an ignored balloon never expires, and used to reappear at every start.
      */
     private void acknowledge() {
+        withNotificationManager(NotificationManager::updateLastNotifiedVersion);
+    }
+
+    private void withNotificationManager(Consumer<NotificationManager> action) {
         NotificationManager notificationManager = ApplicationManager.getApplication()
                 .getService(NotificationManager.class);
         if (notificationManager != null) {
-            notificationManager.updateLastNotifiedVersion();
+            action.accept(notificationManager);
         }
     }
 }
