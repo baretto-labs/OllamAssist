@@ -30,6 +30,28 @@ Conserves volontairement bien qu'inutilises pour l'instant, car necessaires aux 
 
 ## Completed Tasks
 
+### Release 1.14.0 (2026-08-19)
+Version prepare depuis main (1.13.1) : `build.gradle.kts`, `<change-notes>` de `plugin.xml`
+et entree `v1.14.0-release` dans `HardcodedNotificationProvider`.
+Contenu = uniquement l'opt-out des notifications ci-dessous. Decision : la branche
+`feat/agent-function-calling` (24 commits, 128 fichiers, 8 commits de retard sur main) reste
+hors de cette release, le fonctionnement du mode agent ayant change.
+
+### Opt-out des notifications de release (2026-08-19)
+Le balloon "OllamAssist updates" n'acquittait la version qu'au `whenExpired` du balloon :
+un utilisateur qui l'ignorait (le balloon reste dans la fenêtre Notifications sans expirer)
+le revoyait à chaque démarrage. Correction + opt-out explicite :
+- acquittement déplacé à l'affichage du balloon (`BalloonNotificationDisplayer.show`) ;
+- action "Don't show again" sur le balloon, et case `DoNotAskOption` dans `NotificationDialog`
+  (type qualifié `com.intellij.openapi.ui.DoNotAskOption` — le type imbriqué hérité de
+  `DialogWrapper` est deprecated for removal et masque un import simple) ;
+- flag `muted` persisté dans `PersistentNotificationStorage.State` (champs passés en `public`,
+  cf. issue #170), filtré en un seul point : `NotificationManagerImpl.getUnreadNotifications()` ;
+- réversible via Settings -> OllamAssist -> UI -> Notifications.
+
+Décision : le mute couvre toutes les priorités, y compris `BREAKING_CHANGE`. Une info critique
+devra passer par le tool window, pas par un popup.
+
 ### Rejet Marketplace — dialog modale au démarrage (2026-08-17)
 L'upload du plugin échouait sur la vérification automatique JetBrains
 (`InstallPluginTest.testTrialWidgetPresence`) : `Timeout(5m)` sur les indicateurs +
