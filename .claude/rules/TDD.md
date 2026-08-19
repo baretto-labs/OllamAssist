@@ -103,12 +103,12 @@ Never skip steps. Never write two behaviors in one cycle.
 
 | Area | Strategy |
 |------|----------|
-| Domain value objects (`ToolResult`, `CriticDecision`, `ConversationMessage`) | Pure unit tests, no mocks needed |
-| Services (`ConversationService`, `AgentOrchestrator`) | Unit tests with mocked repositories and notifiers |
-| Tools (`ReadFileTool`, `GitStatusTool`) | Integration tests with real temp filesystem or git repo |
+| Domain value objects (`ToolResult`, `AgentStep`, `ConversationMessage`) | Pure unit tests, no mocks needed |
+| Services (`ConversationService`, `PlanAndExecuteAgentService`) | Unit tests with mocked tools and an override `StreamingChatModel` |
+| Tools (`ReadFileTool`, `LineEditTool`) | Integration tests with a real temp filesystem |
 | RAG pipeline (`DocumentIndexingPipeline`, `HybridRetriever`) | Integration tests with real Lucene temp index |
 | UI components (`MessagesPanel`, `PromptPanel`) | Avoid; test the action/service they delegate to |
-| LLM responses (`PlannerAgent`, `CriticAgent`) | Unit tests with mocked `StreamingChatModel` |
+| LLM responses (plan generation, syntax repair) | Unit tests with a mocked `StreamingChatModel` |
 
 ---
 
@@ -120,7 +120,7 @@ considered done. A TDD cycle for a security-sensitive class is incomplete withou
 Write the adversarial test in RED before writing the guard in GREEN.
 
 ### Any class that accepts a file path as input
-(`ReadFileTool`, `WriteFileTool`, `EditFileTool`, `DeleteFileTool`, `RunCommandTool`, `GoalContextResolver`, …)
+(`ReadFileTool`, `WriteFileTool`, `EditFileTool`, `LineEditTool`, `DeleteFileTool`, `AppendFileTool`, …)
 
 | Required test | Input | Expected outcome |
 |---|---|---|
@@ -130,7 +130,7 @@ Write the adversarial test in RED before writing the guard in GREEN.
 | Null/blank path handled | `null` or `""` | graceful failure, no NPE |
 
 ### Any class that accepts external arguments fed to a subprocess
-(`GitDiffTool`, `GitStatusTool`, future shell-wrapper tools)
+(none today — applies to any shell-wrapper tool that is reintroduced)
 
 | Required test | Input | Expected outcome |
 |---|---|---|
@@ -140,7 +140,7 @@ Write the adversarial test in RED before writing the guard in GREEN.
 | Empty/null argument ignored | `null` or `""` | no argument appended |
 
 ### Any method that returns a boolean security decision
-(`SecretDetector.detect`, `verifyHmac`, `CommandClassifier.classify`, `FilePathGuard.*`)
+(`SecretDetector.detect`, `FilePathGuard.*`, `PlanAndExecuteAgentService.isInternalFile`)
 
 | Required test | Scenario | Expected outcome |
 |---|---|---|
@@ -150,7 +150,7 @@ Write the adversarial test in RED before writing the guard in GREEN.
 | Known-good input passes | normal source file | returns `null` / `false` |
 
 ### Any method that injects external content into an LLM prompt
-(`PromptSanitizer`, `GoalContextResolver`, `AgentMemoryService.recentContextSummary`)
+(`PromptSanitizer`, `PlanAndExecuteAgentService.buildPlanningMessage`)
 
 | Required test | Input | Expected outcome |
 |---|---|---|
@@ -160,12 +160,12 @@ Write the adversarial test in RED before writing the guard in GREEN.
 | Null input handled | `null` | returns safe empty placeholder, no NPE |
 
 ### Any class that manages shared mutable state across threads
-(`ToolRateLimiter`, `AgentMemoryService`, `AuditLogger`, `AgentOrchestrator`)
+(`AgentMemoryService`, `AuditLogger`, `PlanAndExecuteAgentService`)
 
 | Required test | Scenario | Expected outcome |
 |---|---|---|
-| Reset is atomic | `reset()` called during `tryAcquire()` | no stale count after reset |
-| Limit enforced under concurrent calls | N threads call `tryAcquire` past limit | exactly `limit` calls allowed |
+| State is per execution | a new run starts while a previous one is still active | the previous run's cancellation is not reset |
+| Concurrent appends are serialised | N threads append at once | every record is present, none interleaved |
 | Dispose is idempotent | `dispose()` called twice | no exception |
 
 ### Any new `AgentTool` implementation
@@ -175,6 +175,7 @@ Before merging a new tool, all of the following must have a failing test written
 1. Happy-path execution returns `ToolResult.success` with expected output.
 2. Missing required param returns `ToolResult.failure` (not NPE).
 3. At least one adversarial input test from the relevant category above.
-4. Tool is registered in `ToolRegistry` — test that `ToolRegistry.get(toolId)` is non-null.
+4. If the tool is reachable from a plan verb, the verb is in the `parseSteps` whitelist,
+   in `dispatchStep`, and rendered by the approval preview — test all three.
 
 If a tool falls into multiple categories above, all relevant adversarial tests are required.
