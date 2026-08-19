@@ -19,9 +19,9 @@ Audit complet du mode agent effectue le 2026-08-19. Decision : **on garde Plan-t
 `AGENT_ARCH.md` a ete cree a la racine : invariants SI-1 a SI-8 + tableau des ecarts ouverts.
 
 Ecarts a corriger, dans cet ordre (details dans `AGENT_ARCH.md` section "Known gaps") :
-C1 numeros de ligne fragment-locaux envoyes au planner (edits au mauvais endroit) —
-C2 prompt de planification non assaini — C3 `LineEditTool` sans approbation ni SecretDetector —
-puis M1 a M10.
+~~C1 numeros de ligne fragment-locaux envoyes au planner~~ (corrige le 2026-08-19,
+branche `fix/agent-absolute-line-numbers`) — C2 prompt de planification non assaini —
+C3 `LineEditTool` sans approbation ni SecretDetector — puis M1 a M10.
 
 Conserves volontairement bien qu'inutilises pour l'instant, car necessaires aux corrections :
 `PromptSanitizer` (C2), `AuditLogger` (M4), `EditFileTool` (candidat au remplacement de

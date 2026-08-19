@@ -186,10 +186,10 @@ class PlanAndExecuteAgentServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void extractFragment_smallFile_returnsWhole() {
+    void extractFragment_smallFile_returnsWholeFileNumbered() {
         String content = "line1\nline2\nline3\n";
         assertThat(PlanAndExecuteAgentService.extractFragment(content, "line2"))
-                .isEqualTo(content);
+                .isEqualTo("   1 | line1\n   2 | line2\n   3 | line3\n");
     }
 
     @Test
