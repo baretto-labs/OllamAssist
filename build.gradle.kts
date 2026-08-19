@@ -10,6 +10,8 @@ version = "1.14.0"
 
 repositories {
     mavenCentral()
+    // RAGUnit is published on JitPack. Test scope only — it never reaches the plugin runtime.
+    maven { url = uri("https://jitpack.io") }
     intellijPlatform {
         defaultRepositories()
     }
@@ -29,6 +31,8 @@ val plexusVersion = "4.0.2"
 val jsoupVersion = "1.22.2"
 val jacksonVersion = "2.20.1"
 val djlVersion = "0.28.0"
+// Pinned exactly: a version bump changes judge behaviour and invalidates the benchmark baseline.
+val ragunitVersion = "v0.2.1"
 
 dependencies {
     intellijPlatform {
@@ -105,6 +109,9 @@ dependencies {
     testImplementation("org.junit.vintage:junit-vintage-engine:$junitVintageVersion")
     testImplementation("org.assertj:assertj-core:$assertjVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitEngineVersion")
+
+    // RAGUnit — LLM-as-a-judge assertions for the benchmark suite
+    testImplementation("com.github.baretto-labs.ragunit:ragunit-core:$ragunitVersion")
 
     // Testcontainers — used by platform tests to spin up a real Ollama instance
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")

@@ -48,3 +48,5 @@ bin/
 ### Local dev helpers (not part of the plugin) ###
 /scripts/
 
+# RAGUnit's JSON reporter defaults to the Maven layout, even in a Gradle build
+target/
