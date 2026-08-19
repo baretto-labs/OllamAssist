@@ -1,7 +1,7 @@
 package fr.baretto.ollamassist.agent;
 
 /**
- * Receives streaming events from a {@link FunctionCallingAgentService} execution.
+ * Receives streaming events from a {@link PlanAndExecuteAgentService} execution.
  *
  * <p>Callbacks are invoked on a background thread — UI updates must be dispatched
  * to the EDT via {@code ApplicationManager.getApplication().invokeLater(...)}.

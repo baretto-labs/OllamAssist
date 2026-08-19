@@ -12,6 +12,21 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Active Tasks
 
+### Agent mode — nettoyage puis corrections (depuis 2026-08-19)
+Audit complet du mode agent effectue le 2026-08-19. Decision : **on garde Plan-then-Execute**
+(`PlanAndExecuteAgentService`), l'architecture function-calling est supprimee du repo
+(elle etait inatteignable : 19 classes / ~2500 LOC + ~2600 LOC de tests).
+`AGENT_ARCH.md` a ete cree a la racine : invariants SI-1 a SI-8 + tableau des ecarts ouverts.
+
+Ecarts a corriger, dans cet ordre (details dans `AGENT_ARCH.md` section "Known gaps") :
+C1 numeros de ligne fragment-locaux envoyes au planner (edits au mauvais endroit) —
+C2 prompt de planification non assaini — C3 `LineEditTool` sans approbation ni SecretDetector —
+puis M1 a M10.
+
+Conserves volontairement bien qu'inutilises pour l'instant, car necessaires aux corrections :
+`PromptSanitizer` (C2), `AuditLogger` (M4), `EditFileTool` (candidat au remplacement de
+`LineEditTool` pour C1/C3, edition par ancre de texte au lieu de numeros de ligne).
+
 
 ## Completed Tasks
 

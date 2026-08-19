@@ -37,8 +37,8 @@ public final class ToolApprovalHelper {
 
     /**
      * Thrown when the user does not respond to an approval request within the timeout.
-     * Callers (or {@link fr.baretto.ollamassist.agent.tools.ToolDispatcher}) should surface
-     * this as a visible step failure rather than silently skipping the operation.
+     * Callers must surface this as a visible step failure rather than silently skipping
+     * the operation.
      */
     public static final class ApprovalTimeoutException extends RuntimeException {
         public ApprovalTimeoutException(String filePath) {

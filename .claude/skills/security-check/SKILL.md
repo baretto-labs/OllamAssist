@@ -1,6 +1,6 @@
 ---
 name: security-check
-description: Pre-commit security review of agent subsystem changes against SI-1…SI-7 invariants (function-calling ReAct architecture)
+description: Pre-commit security review of agent subsystem changes against the SI-1…SI-8 invariants (plan-and-execute architecture)
 ---
 
 You are performing a **pre-commit security review** of the agent subsystem changes in this repository.
@@ -37,30 +37,35 @@ You are performing a **pre-commit security review** of the agent subsystem chang
 - [ ] No raw string concatenation of tool output into a prompt string.
 - Watch for: `"Context: " + result.getOutput()` in prompt or system-message builders without sanitization.
 
-### SI-5 — Blast radius bounded (function-calling architecture)
-- [ ] Every new `@Tool` method in `AgentToolProvider` calls `checkAborted()` as its first line.
-- [ ] Every new `@Tool` method calls `rateLimiter.tryAcquire(toolId)` before executing the underlying tool.
-- [ ] Every new MUTATING or DESTRUCTIVE `@Tool` method publishes `FileApprovalRequestNotifier` before writing to disk.
-- [ ] `FunctionCallingAgentService.MAX_TOOL_CALLS_PER_EXECUTION` has not been raised without justification.
-- Watch for: new `@Tool` methods missing `checkAborted()`, missing `tryAcquire`, or skipping approval.
+### SI-5 — Plan vocabulary is a closed whitelist
+- [ ] Every verb accepted by `PlanAndExecuteAgentService.parseSteps` is also handled by `dispatchStep`
+      and rendered by the approval preview in `requestPlanApproval`.
+- [ ] No new verb is executable without appearing in all three places plus the system prompt.
+- Watch for: a `case` added to `dispatchStep` without the matching whitelist and preview entry.
 
-### SI-6 — Rate limits reset per execution
-- [ ] `ToolRateLimiter.reset()` is called at the start of each `FunctionCallingAgentService.execute()` call.
-- [ ] `AgentToolProvider.resetAbort()` is called at the start of each execution.
-- [ ] Both resets happen BEFORE the agent starts, not at construction time.
-- Watch for: reset calls moved to constructors, or removed entirely.
+### SI-6 — Blast radius bounded per execution
+- [ ] The number of steps accepted from the LLM is capped.
+- [ ] Approval is obtained before the first mutation of the run.
+- [ ] Cancellation state belongs to one execution — a new run must not reset the flag of a running one.
+- Watch for: `executionCancelled` (or equivalent) as a field of the project-level service, reset in `execute()`.
 
 ### SI-7 — Truncation strategy
 - [ ] Any new truncation of tool output uses first + last strategy (never head-only).
 - [ ] The split ratio keeps at least 30% for the tail.
 - Watch for: `output.substring(0, MAX) + "..."` without preserving the tail.
 
+### SI-8 — Approval integrity
+- [ ] No step is retargeted, rewritten, or added after the user approved the plan — not by path
+      correction, source-root resolution, or an LLM repair call.
+- [ ] Every mutating step produces an `AuditLogger` record.
+- Watch for: `resolveEditFilePath`, `findInSourceRoots`, `fixSyntaxError` reaching a tool without re-approval.
+
 ---
 
 ## Additional checks (not invariants, but flag if found)
 
-- A new `@Tool` method has no unit test in `AgentToolProviderTest` → flag as WARNING.
-- A new `@Tool` method has no adversarial input test (path traversal, null param, rate limit) → flag as WARNING.
+- A new plan verb has no test covering whitelist + dispatch + approval preview → flag as WARNING.
+- A new tool has no adversarial input test (path traversal, null param) → flag as WARNING.
 - A new `AgentTool` implementation has no test for missing required params → flag as WARNING.
 - A security method has 0 test coverage for the failure path → flag as WARNING.
 

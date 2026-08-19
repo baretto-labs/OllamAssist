@@ -4,7 +4,7 @@ Cross-cutting security rules for the OllamAssist codebase.
 These rules are **binding**. They apply to every component that touches untrusted input,
 file paths, subprocess arguments, LLM prompts, or shared mutable state.
 
-For agent-specific invariants (SI-1…SI-7) see `AGENT_ARCH.md`.
+For agent-specific invariants (SI-1…SI-8) see `AGENT_ARCH.md`.
 For security test requirements per component category see `TDD.md`.
 
 ---
@@ -48,9 +48,10 @@ if (!ALLOWED.contains(arg)) return ToolResult.failure("Argument not allowed: " +
 command.add(arg);
 ```
 
-Applies to: subprocess arguments (`GitDiffTool`, `RunCommandTool`), LLM-provided tool IDs
-(validated against `ToolRegistry.KNOWN_TOOL_IDS`), user-supplied file paths (validated
-against project root), any future input that reaches an external boundary.
+Applies to: the plan verbs accepted from the LLM (validated against the whitelist in
+`PlanAndExecuteAgentService.parseSteps`), user-supplied file paths (validated against the
+project root), subprocess arguments if a process-spawning tool is ever reintroduced, and
+any future input that reaches an external boundary.
 
 ---
 
@@ -118,17 +119,17 @@ Minimum tail ratio: 30% of the allowed budget.
 A single agent execution must not be able to produce unbounded side effects. Three
 independent guards must all be in place:
 
-| Layer | Guard | Reset point |
+| Layer | Guard | Enforced in |
 |---|---|---|
-| Per-tool call count | `ToolRateLimiter` per-tool limit | `ToolRateLimiter.reset()` at execution start |
-| Total tool invocations | `FunctionCallingAgentService.MAX_TOOL_CALLS_PER_EXECUTION` (30) | `AgentToolProvider.resetAbort()` at execution start |
-| Human approval | `FileApprovalRequestNotifier` before every MUTATING/DESTRUCTIVE tool call | per-call |
+| Plan size | hard cap on the number of steps accepted from the LLM | `PlanAndExecuteAgentService.parseSteps` |
+| Mutation | user Approval before the first file is touched | `requestPlanApproval` |
+| Cancellation | cancel stops the run at the next step boundary, per execution | `executeSteps` |
 
-If you add a new `@Tool` method that performs mutations (write, delete, network call):
-1. Call `rateLimiter.tryAcquire(toolId)` before executing (counted toward total limit).
-2. Call `checkAborted()` at the top of the method (respects the execution abort flag).
-3. Register the tool in `ToolRegistry` with the correct `CommandTier`.
-4. Publish `FileApprovalRequestNotifier` and await user Approval before writing to disk.
+If you add a new verb to the plan vocabulary:
+1. Add it to the whitelist in `parseSteps` and to the system prompt.
+2. Add it to `dispatchStep` and to the approval preview in `requestPlanApproval`.
+3. If it mutates the workspace, implement the full tool contract (`AGENT_ARCH.md`) —
+   path guard, secret detection, approval, undo grouping.
 
 ---
 
@@ -176,7 +177,7 @@ The following patterns are **never acceptable**. Cite the rule ID in the code re
 | `return projectRoot` as fallback when path escapes root | A3 |
 | `"Prompt: " + result.getOutput()` without `PromptSanitizer` | A4 |
 | `output.substring(0, MAX) + "..."` (head-only) | A5 |
-| New `@Tool` method without `checkAborted()` at top | A6 |
-| New mutating `@Tool` without `rateLimiter.tryAcquire()` | A6 |
-| New mutating `@Tool` without `FileApprovalRequestNotifier` | A6 |
+| New plan verb executable but absent from the approval preview | A6 |
+| New mutating tool without `FilePathGuard` + approval | A6 |
+| A step retargeted or rewritten after the user approved the plan | A6 / SI-8 |
 | An Ollama HTTP call (any client) without `AuthenticationHelper` credentials | A8 |

@@ -19,11 +19,10 @@ method names, variable names, comments, commit messages, and documentation.
 | **Message** | A single exchange unit in a Conversation, authored by a Role | Line, Entry, Turn |
 | **Role** | The author of a Message: `USER` or `ASSISTANT` | Sender, Actor, Side |
 | **Goal** | The natural-language intent a user submits to the Agent | Task, Request, Command, Input |
-| **Tool** | A self-contained capability the Agent can invoke (file read, git status, etc.) | Function, Command, Handler |
+| **Tool** | A self-contained capability the Agent can invoke (read a file, write a file, edit a file) | Function, Command, Handler |
 | **ToolResult** | The outcome of a Tool execution: success flag, output, error message | Response, Output, Return |
-| **ToolCall** | A request emitted by the LLM to invoke a specific Tool with given parameters | FunctionCall, Invocation |
-| **Observation** | The ToolResult returned to the LLM after a ToolCall — feeds the next reasoning step | ToolOutput, Result, Feedback |
-| **ReActLoop** | The Reason + Act cycle: LLM reasons, calls a Tool, receives an Observation, repeats | AgentLoop, ExecutionLoop |
+| **AgentStep** | One entry of a Plan: a verb plus its parameters, produced by the planning LLM call | ToolCall, Action, Instruction |
+| **Plan** | The ordered list of AgentSteps produced by the single planning call, approved as a whole | Script, Sequence, Program |
 | **Suggestion** | An inline code completion proposed to the developer inside the editor | Completion, Hint, Proposal |
 | **CompletionContext** | The editor state snapshot used to generate a Suggestion | Context, EditorState, Snippet |
 | **RagSource** | A retrieved knowledge fragment with its origin: `INDEX`, `WORKSPACE`, or `WEB` | Result, Match, Document, Hit |
@@ -34,7 +33,6 @@ method names, variable names, comments, commit messages, and documentation.
 | **Assistant** | The LangChain4j-backed AI service that responds to chat messages | Bot, AI, Model, LLM |
 | **Prerequisite** | A runtime dependency that must be satisfied before the plugin operates (Ollama reachability, embedding model availability) | Requirement, Dependency, Check |
 | **Approval** | An explicit user confirmation required before a mutating or destructive operation | Confirmation, Permission, Consent |
-| **CommandTier** | The security classification of a terminal command: `READ_ONLY`, `MUTATING`, or `DESTRUCTIVE` | Level, Category, Risk |
 | **IndexingPipeline** | The async batch processor that ingests workspace files into the KnowledgeIndex | Indexer, Ingestion, Pipeline |
 | **Workspace** | The IntelliJ project directory and its files as seen by the plugin | Project, Repo, Codebase |
 
@@ -64,21 +62,23 @@ another context's internals.
 ---
 
 ### 2. Agent Context
-**Responsibility:** Autonomously execute a Goal via a ReAct loop, with human-in-the-loop approval for mutations.
+**Responsibility:** Turn a Goal into a Plan through one LLM call, then execute that Plan
+deterministically in Java, with human-in-the-loop approval before any mutation.
 
-**Owns:** `Goal`, `Tool`, `ToolResult`, `ToolCall`, `Observation`, `ReActLoop`, `CommandTier`
+**Owns:** `Goal`, `Plan`, `AgentStep`, `Tool`, `ToolResult`
 
-**Produces events:** `AgentProgressEvent`, `FileApprovalRequestNotifier`
+**Produces events:** `FileApprovalNotifier`, `NewAgentRequestNotifier`
 
-**Consumes:** Chat Context (streams ReAct output into `MessagesPanel`), RAG Context (`SearchKnowledgeBaseTool`)
+**Consumes:** Chat Context — plan progress and step output are streamed into `MessagesPanel`
+through `AgentStreamHandler`
 
 **Rules:**
-- The LLM decides which Tool to call and when. Java executes the call. See `AGENT_ARCH.md` Rule 1.
-- `CommandTier` classification is always performed by `CommandClassifier` (Java regex),
-  never inferred from LLM output.
-- Every Tool must be registered in `ToolRegistry` with its `CommandTier` before use.
-- Every MUTATING or DESTRUCTIVE Tool call must publish `FileApprovalRequestNotifier`
-  and wait for user Approval before executing. See `AGENT_ARCH.md` Rule 4.
+- The LLM decides what to do, once. Java decides whether and how it happens. There is no
+  open-ended loop and no LLM-driven tool dispatch. See `AGENT_ARCH.md`.
+- The plan vocabulary is a closed whitelist enforced in `parseSteps` (SI-5). A verb the
+  approval preview cannot render must not be executable.
+- The Plan is approved as a whole before the first mutation, and what was approved is what
+  runs — no step is retargeted or rewritten afterwards (SI-8).
 
 ---
 
@@ -162,17 +162,17 @@ another context's internals.
 
 | Concept | Suffix | Example |
 |---------|--------|---------|
-| Aggregate root or primary entity | none or domain noun | `Conversation`, `AgentPlan` |
-| Value object | none or domain noun | `CriticDecision`, `RagSource`, `ToolResult` |
+| Aggregate root or primary entity | none or domain noun | `Conversation`, `Plan` |
+| Value object | none or domain noun | `AgentStep`, `RagSource`, `ToolResult` |
 | Domain service | `Service` | `ConversationService`, `OllamaService` |
 | Repository (persistence) | `Repository` | `ConversationRepository` |
-| Application service / orchestrator | `Orchestrator` or `Pipeline` | `AgentOrchestrator`, `DocumentIndexingPipeline` |
-| IntelliJ Platform Tool | `Tool` | `ReadFileTool`, `GitStatusTool` |
+| Application service / orchestrator | `Service` or `Pipeline` | `PlanAndExecuteAgentService`, `DocumentIndexingPipeline` |
+| IntelliJ Platform Tool | `Tool` | `ReadFileTool`, `WriteFileTool` |
 | Event listener interface (MessageBus) | `Notifier` | `ChatModelModifiedNotifier` |
 | UI component (Swing) | `Panel`, `Renderer`, `Action` | `MessagesPanel`, `InlayRenderer`, `AskToChatAction` |
 | Background task | `Task` | `InitEmbeddingStoreTask` |
 | Factory | `Factory` | `DocumentIngestFactory` |
-| Registry | `Registry` | `ToolRegistry`, `IndexRegistry` |
+| Registry | `Registry` | `IndexRegistry` |
 
 ### Events (MessageBus Topics)
 
@@ -211,11 +211,12 @@ fr.baretto.ollamassist.
 
 **Entity** (has identity, mutable over time):
 - `Conversation` — identified by `id`, messages accumulate over time
-- `FunctionCallingAgentService` — stateful execution coordinator (holds loop state during execution)
+- `PlanAndExecuteAgentService` — stateful execution coordinator (holds run state during execution)
 
 **Value Object** (defined by its values, immutable):
 - `ConversationMessage` — immutable once created; use factory methods `user(content)` / `assistant(content)`
 - `ToolResult` — immutable execution result
+- `AgentStep` — immutable plan entry
 - `RagSource` — immutable retrieval fragment
 - `CompletionContext` — immutable snapshot of editor state
 
@@ -250,4 +251,6 @@ These boundaries prevent domain concepts from leaking across contexts:
 | `SuggestionManager` / `MultiSuggestionManager` naming inconsistency with `Completion` vocabulary | `completion/` | Low |
 | `ToolCallDetector` / `ToolCallParser` share the word "Tool" with agent tools | `chat/tools/` | Low (rename to `LlmToolCall*`) |
 | `PrerequisteAvailableNotifier` misspelling in Topic name | `events/` | Low (fix on next touch) |
-| `AgentOrchestrator`, `PlannerAgent`, `CriticAgent`, `Phase`, `Step`, `AgentPlan` still present | `agent/` | High (remove in T5.1 — superseded by `FunctionCallingAgentService`) |
+| `LineEditTool` mutates files with no approval, no secret detection, no syntax validation | `agent/tools/files/` | High (audit 2026-08-19, gap C3) |
+| Planning prompt built by raw concatenation, `PromptSanitizer` unused | `agent/` | High (audit 2026-08-19, gap C2) |
+| `AgentMemoryService` is only ever cleared — nothing writes or reads it | `agent/` | Medium (audit 2026-08-19, gap M5) |

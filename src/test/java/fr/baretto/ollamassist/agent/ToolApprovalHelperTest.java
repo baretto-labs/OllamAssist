@@ -65,28 +65,4 @@ class ToolApprovalHelperTest {
         assertThatThrownBy(() -> helper.requestApproval("title", "src/Foo.java", "content"))
                 .isNotInstanceOf(AssertionError.class); // any exception is fine — just not silent true
     }
-
-    // -------------------------------------------------------------------------
-    // AgentToolProvider abort has precedence over approval
-    // -------------------------------------------------------------------------
-
-    @Test
-    void abortedProvider_editFile_returnsBeforeApproval() {
-        // When the provider is aborted, editFile() must return the abort message
-        // without ever calling ToolApprovalHelper (no approval event published).
-        // We verify this by checking the returned message — if approval were attempted
-        // it would NPE on the null project.
-        fr.baretto.ollamassist.agent.tools.ToolRateLimiter limiter =
-                new fr.baretto.ollamassist.agent.tools.ToolRateLimiter();
-        fr.baretto.ollamassist.agent.AgentToolProvider provider =
-                new fr.baretto.ollamassist.agent.AgentToolProvider(
-                        null, null, null, null, null, limiter);
-
-        provider.abort();
-
-        String result = provider.editFile("src/Foo.java", "old", "new", "false");
-
-        // Must short-circuit with abort message, not an NPE from approval flow
-        assertThat(result).startsWith("ERROR:").contains("maximum tool calls");
-    }
 }

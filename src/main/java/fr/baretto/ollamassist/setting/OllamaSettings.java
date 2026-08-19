@@ -213,7 +213,7 @@ public class OllamaSettings implements PersistentStateComponent<OllamaSettings.S
 
     /**
      * Maximum wall-clock seconds for a single tool execution (safety net against hung tools).
-     * RunCommandTool has its own finer-grained timeout; this is the outer guard.
+     * Terminal command execution has its own finer-grained timeout; this is the outer guard.
      * Default: 120s.
      */
     public int getAgentToolTimeoutSeconds() {

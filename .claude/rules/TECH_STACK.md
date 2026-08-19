@@ -14,8 +14,8 @@ and improve correctness, not for style points.
 
 | Feature | Use for |
 |---|---|
-| `record` | Value objects (`ToolResult`, `CriticDecision`, `Step`, `Phase`, `RagSource`, …) |
-| Sealed classes + `switch` expression | Exhaustive matching on domain enums (`CommandTier`, `CriticDecision.Status`, …) |
+| `record` | Value objects (`ToolResult`, `AgentStep`, `RagSource`, …) |
+| Sealed classes + `switch` expression | Exhaustive matching on domain enums |
 | Pattern matching (`instanceof`) | Replace `if (x instanceof Foo) { Foo f = (Foo) x; }` |
 | Text blocks (`"""`) | Multi-line prompt strings, JSON fixtures in tests |
 | `var` | Local variables where the type is obvious from context — not on fields |
@@ -44,16 +44,9 @@ langchain4jEasyRag      = 1.13.1-beta23
   than two minor versions means missing structured-output fixes that directly affect agent
   reliability on local models.
 - Before bumping, run `./gradlew test` and `./gradlew benchmark` to catch regressions.
-- **`@Tool` / function-calling APIs** (`dev.langchain4j.agent.tool.*`) are used **only**
-  in `AgentToolProvider` for the ReAct agent loop. See `AGENT_ARCH.md` Rule 2.
-  All other AI services (`OllamaService`, `LightModelAssistant`) must NOT use `@Tool`.
-
-**`@Tool` method rules (AGENT_ARCH.md Rule 2):**
-- Parameters: only `String` or Java primitives — never `Map<String,Object>`.
-- Return type: `String` — success output or `"ERROR: <reason>"`.
-- Description: `@Tool("...")` must clearly state what the tool does and when to use it.
-- Body: delegate to the `AgentTool` implementation — no business logic in the adapter.
-- Order: `checkAborted()` → `rateLimiter.tryAcquire()` → delegate → `toObservation()`.
+- **`@Tool` / function-calling APIs** (`dev.langchain4j.agent.tool.*`) are **not used** in
+  this codebase. The agent is Plan-then-Execute: one planning call, Java dispatch. See
+  `AGENT_ARCH.md`. Do not reintroduce them to reach a tool.
 - Always exclude `org.slf4j` and `org.apache.lucene` from every LangChain4j dependency
   to avoid conflicts with IntelliJ's bundled versions. Pattern:
   ```kotlin
