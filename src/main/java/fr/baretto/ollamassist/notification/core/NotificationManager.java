@@ -39,6 +39,27 @@ public interface NotificationManager {
     void updateLastNotifiedVersion();
 
     /**
+     * Tells whether the user asked never to see release notifications again.
+     *
+     * @return true if notifications are muted
+     */
+    boolean areNotificationsMuted();
+
+    /**
+     * Mutes release notifications: nothing will be displayed again, whatever the
+     * version the user upgrades to.
+     */
+    void muteNotifications();
+
+    /**
+     * Mutes or unmutes release notifications. Called from the settings panel, so that a
+     * muted user has a way back.
+     *
+     * @param muted true to never display release notifications again
+     */
+    void setNotificationsMuted(boolean muted);
+
+    /**
      * Resets all notification state (for testing/debugging).
      */
     void resetNotificationState();

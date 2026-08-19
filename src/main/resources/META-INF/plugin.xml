@@ -56,6 +56,13 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.14.0 — Release Notifications, Under Control</h2>
+        <UL>
+            <LI>feat: "Don't show again" — mute release notifications for good, from the update balloon or from the What's New dialog.</LI>
+            <LI>feat: The decision is reversible in Settings &gt; OllamAssist &gt; UI &gt; Notifications ("Show release notifications after an update").</LI>
+            <LI>fix: The update balloon no longer reappears at every IDE start — it was only acknowledged when the balloon expired, which never happens for a balloon left untouched in the Notifications tool window.</LI>
+            <LI>fix: Changing a setting in the UI tab alone is now applied — the tab was missing from the settings modification check, so the font size multiplier could be silently discarded.</LI>
+        </UL>
         <h2>V1.13.1 — Custom Prompts Are Persisted</h2>
         <UL>
             <LI>fix/issue-170: The Chat System Prompt and Refactor User Prompt no longer revert to their defaults when the IDE restarts — customised prompts are now written to disk.</LI>

@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.util.ui.JBUI;
 import fr.baretto.ollamassist.events.FontSettingsNotifier;
+import fr.baretto.ollamassist.notification.core.NotificationManager;
 import fr.baretto.ollamassist.setting.OllamAssistUISettings;
 import fr.baretto.ollamassist.utils.FontUtils;
 
@@ -18,6 +19,7 @@ import java.awt.*;
 public class UIConfigPanel extends JBPanel<UIConfigPanel> {
 
     private final JSlider fontSizeSlider;
+    private final JCheckBox showReleaseNotificationsCheckBox;
     private final JLabel multiplierLabel;
     private final JPanel previewPanel;
     private boolean isInitializing = true;
@@ -81,6 +83,22 @@ public class UIConfigPanel extends JBPanel<UIConfigPanel> {
         fontSectionPanel.add(previewPanel);
 
         add(fontSectionPanel);
+
+        // Notifications section
+        JBPanel<?> notificationSectionPanel = new JBPanel<>();
+        notificationSectionPanel.setLayout(new BoxLayout(notificationSectionPanel, BoxLayout.Y_AXIS));
+        notificationSectionPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Notifications"),
+                JBUI.Borders.empty(10)
+        ));
+        notificationSectionPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        showReleaseNotificationsCheckBox = new JCheckBox("Show release notifications after an update");
+        showReleaseNotificationsCheckBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        notificationSectionPanel.add(showReleaseNotificationsCheckBox);
+
+        add(Box.createVerticalStrut(10));
+        add(notificationSectionPanel);
         add(Box.createVerticalGlue());
 
         // Initialize from settings
@@ -139,6 +157,25 @@ public class UIConfigPanel extends JBPanel<UIConfigPanel> {
         int sliderValue = (int) (multiplier * 10);
         fontSizeSlider.setValue(sliderValue);
         updateMultiplierLabel();
+        showReleaseNotificationsCheckBox.setSelected(!areNotificationsMuted());
+    }
+
+    /**
+     * Fail-safe: if the notification service is unavailable, the checkbox shows
+     * notifications as enabled, which is the default state of the plugin.
+     */
+    private boolean areNotificationsMuted() {
+        NotificationManager notificationManager = ApplicationManager.getApplication()
+                .getService(NotificationManager.class);
+        return notificationManager != null && notificationManager.areNotificationsMuted();
+    }
+
+    /**
+     * @return true if the user changed the release-notification preference
+     */
+    public boolean isModified() {
+        boolean currentlyShown = !areNotificationsMuted();
+        return showReleaseNotificationsCheckBox.isSelected() != currentlyShown;
     }
 
     private void updateMultiplierLabel() {
@@ -170,6 +207,12 @@ public class UIConfigPanel extends JBPanel<UIConfigPanel> {
     }
 
     public void applySettings() {
+        NotificationManager notificationManager = ApplicationManager.getApplication()
+                .getService(NotificationManager.class);
+        if (notificationManager != null) {
+            notificationManager.setNotificationsMuted(!showReleaseNotificationsCheckBox.isSelected());
+        }
+
         int sliderValue = fontSizeSlider.getValue();
         float multiplier = sliderValue / 10.0f;
         OllamAssistUISettings settings = OllamAssistUISettings.getInstance();

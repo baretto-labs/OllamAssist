@@ -42,8 +42,27 @@ public final class NotificationManagerImpl implements NotificationManager {
         log.info("NotificationManager initialized with plugin version: {}", currentPluginVersion);
     }
 
+    /**
+     * Test-only constructor: injects the collaborators instead of resolving them from the
+     * application container.
+     */
+    NotificationManagerImpl(NotificationStorage storage,
+                            NotificationProvider provider,
+                            NotificationDisplayer displayer,
+                            String currentPluginVersion) {
+        this.storage = storage;
+        this.provider = provider;
+        this.displayer = displayer;
+        this.currentPluginVersion = currentPluginVersion;
+    }
+
     @Override
     public List<Notification> getUnreadNotifications() {
+        if (storage.isMuted()) {
+            log.debug("Release notifications are muted by the user");
+            return List.of();
+        }
+
         String lastNotifiedVersion = storage.getLastNotifiedVersion();
         Set<String> readIds = storage.getReadNotificationIds();
 
@@ -90,6 +109,22 @@ public final class NotificationManagerImpl implements NotificationManager {
     public void updateLastNotifiedVersion() {
         storage.updateLastNotifiedVersion(currentPluginVersion);
         log.info("Updated last notified version to: {}", currentPluginVersion);
+    }
+
+    @Override
+    public boolean areNotificationsMuted() {
+        return storage.isMuted();
+    }
+
+    @Override
+    public void muteNotifications() {
+        setNotificationsMuted(true);
+    }
+
+    @Override
+    public void setNotificationsMuted(boolean muted) {
+        log.info("Setting release notifications muted: {}", muted);
+        storage.setMuted(muted);
     }
 
     @Override

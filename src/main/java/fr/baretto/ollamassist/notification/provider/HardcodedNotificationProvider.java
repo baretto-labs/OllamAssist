@@ -14,6 +14,41 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.14.0 - Release notifications can be muted
+                Notification.builder()
+                        .id("v1.14.0-release")
+                        .version("1.14.0")
+                        .type(Notification.NotificationType.FEATURE)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.14.0 — Release Notifications, Under Control")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>This is the last one you will see, if you want it to be</h3>
+
+                                <p>This panel used to be unavoidable, and the balloon announcing it came back at \
+                                every IDE start when it was left untouched. Both are fixed.</p>
+
+                                <h4>What's new</h4>
+                                <ul>
+                                  <li><b>Don't show again</b> — the checkbox below this panel mutes release notifications for good</li>
+                                  <li><b>Straight from the balloon</b> — the same choice is available without opening this dialog</li>
+                                  <li><b>Reversible</b> — turn them back on in <b>Settings &rarr; OllamAssist &rarr; UI &rarr; Notifications</b></li>
+                                </ul>
+
+                                <h4>What is fixed</h4>
+                                <ul>
+                                  <li>The update balloon was only acknowledged when it expired — a balloon left in the \
+                                  Notifications tool window never expires, so it reappeared at every start</li>
+                                  <li>Changing a setting in the <b>UI</b> tab alone is now applied instead of being silently discarded</li>
+                                </ul>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 8, 19, 0, 0))
+                        .build(),
+
                 // v1.13.1 - Custom prompts are persisted
                 Notification.builder()
                         .id("v1.13.1-release")

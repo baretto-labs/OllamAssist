@@ -10,6 +10,7 @@ import com.intellij.util.ui.UIUtil;
 import fr.baretto.ollamassist.notification.core.Notification;
 import fr.baretto.ollamassist.notification.core.NotificationManager;
 import fr.baretto.ollamassist.utils.FontUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
@@ -32,7 +33,29 @@ public class NotificationDialog extends DialogWrapper {
 
         setTitle("OllamAssist Updates");
         setModal(true);
+        setDoNotAskOption(muteReleaseNotificationsOption());
         init();
+    }
+
+    /**
+     * Checkbox rendered next to the OK button. Ticking it mutes every future release
+     * notification; the decision can be reverted from Settings -> OllamAssist -> UI.
+     * <p>
+     * The type is fully qualified on purpose: the inherited {@code DialogWrapper.DoNotAskOption}
+     * nested type is deprecated for removal and would shadow a plain import.
+     */
+    private com.intellij.openapi.ui.DoNotAskOption muteReleaseNotificationsOption() {
+        return new com.intellij.openapi.ui.DoNotAskOption.Adapter() {
+            @Override
+            public void rememberChoice(boolean isSelected, int exitCode) {
+                notificationManager.setNotificationsMuted(isSelected);
+            }
+
+            @Override
+            public @NotNull String getDoNotShowMessage() {
+                return "Don't show release notifications again";
+            }
+        };
     }
 
     @Nullable

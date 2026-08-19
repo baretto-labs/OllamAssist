@@ -219,6 +219,10 @@ public class ConfigurationPanel extends JPanel {
         uiPanel.resetSettings();
     }
 
+    public boolean isUISettingsModified() {
+        return uiPanel.isModified();
+    }
+
     // Agent settings delegation
     public int getAgentPlanTimeoutSeconds() {
         return agentPanel.getAgentPlanTimeoutSeconds();
