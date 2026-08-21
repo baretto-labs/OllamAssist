@@ -177,6 +177,13 @@ The plugin uses IntelliJ's `MessageBus` for loose coupling:
 - Tab: Next suggestion
 - Shift+Tab: Previous suggestion
 
+**Disabling it:** `ActionsSettings.codeCompletionEnabled` (Settings → OllamAssist → Actions).
+Read at every entry point — the action, and `SuggestionActionHandler`, which is installed on the
+IDE-wide Enter action and must stand down when the setting is off, including in sessions where it
+was installed before the change. The read is fail-safe in the opposite direction from usual: if
+the settings service cannot be reached, completion is treated as **disabled**, because the cost
+of being wrong is interfering with the typing of someone who never asked for suggestions.
+
 ### Settings System
 
 **OllamAssistSettings (PersistentStateComponent):**
@@ -236,10 +243,56 @@ Key libraries (see `build.gradle.kts` for versions):
 
 **Important:** Lucene and SLF4J are explicitly excluded from LangChain4j dependencies to avoid conflicts with IntelliJ's bundled versions.
 
+## Quality Measurement
+
+The plugin measures its own retrieval quality, and the results are versioned. A future session
+should not reinvent this.
+
+### Running the benchmark
+
+```bash
+./gradlew benchmark                                   # hand-rolled judge (default)
+./gradlew benchmark -Pbenchmark.judge.impl=ragunit    # RAGUnit judge
+./gradlew benchmark -Pbenchmark.judge.timeoutSeconds=300
+```
+
+**Use `-P`, not `-D`.** The Gradle task forwards `project.properties`, so a `-D` flag never
+reaches the test JVM. Some Javadoc in `ChunkingBenchmarkTest` still says `-D`; it is wrong.
+
+### What exists
+
+- `ChunkingBenchmarkTest` (`@Tag("benchmark")`) compares two chunking strategies on the real
+  pipeline: `LuceneEmbeddingStore` + `HybridRetriever` + `CodeAwareDocumentSplitter`.
+- Two metrics per question: `hintCoverage` (deterministic, no LLM, always available) and
+  `llmScore` (0-10, from a judge). A judge failure is recorded as **not judged**, never as `0` —
+  an outage is not a measurement, and averaging it in reads as a quality collapse.
+- Two interchangeable judges behind `ContextJudge`, sharing `ContextPreparation` so a comparison
+  measures the judge and not the preparation. Every result line records which judge produced it.
+- Results append to `benchmark-results/YYYY-MM-DD_chunking.jsonl`. Scores are only comparable
+  within one judge and one judge version.
+- `JudgedAnswerTest` shows the intended shape: an exact `contains(...)` check first, then a
+  judged assertion averaged over several runs. It skips when Ollama is unreachable.
+
+### RAGUnit dependency
+
+`ragunit-core` is `testImplementation` only — it never reaches the plugin runtime, and the built
+zip contains no trace of it. It comes from JitPack and is **pinned exactly** (a commit or a tag,
+never a branch or a snapshot): a version bump changes judge behaviour and invalidates the
+baseline, so it is treated as an event, like changing the judge model.
+
+### Known build wrinkle
+
+`check` depends on `benchmark`, and `build` depends on `check`, so CI runs the benchmark on every
+push. Without Ollama the judge is unavailable and only `hintCoverage` is computed, so it passes —
+but it is minutes of CI for a measurement nobody reads on a PR. Whether the judged run belongs in
+`check` is still open.
+
 ## Testing
 
 - Unit tests in `src/test/java/`
-- Benchmark tests in `src/benchmark/java/`
+- Benchmark tests in `src/test/java/fr/baretto/ollamassist/benchmark/`, marked `@Tag("benchmark")`
+  and excluded from `test`. There is no `src/benchmark/java` source set — believing there was one
+  already cost a session's worth of wrong conclusions.
 - Use JUnit Jupiter (v5) for new tests
 - Mockito for mocking
 - AssertJ for fluent assertions
