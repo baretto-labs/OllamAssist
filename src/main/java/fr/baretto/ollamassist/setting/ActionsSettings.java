@@ -45,6 +45,14 @@ public class ActionsSettings implements PersistentStateComponent<ActionsSettings
         myState.autoApproveFileCreation = autoApprove;
     }
 
+    public boolean isCodeCompletionEnabled() {
+        return myState.codeCompletionEnabled;
+    }
+
+    public void setCodeCompletionEnabled(boolean enabled) {
+        myState.codeCompletionEnabled = enabled;
+    }
+
     public boolean isToolsEnabled() {
         return myState.toolsEnabled;
     }
@@ -66,5 +74,9 @@ public class ActionsSettings implements PersistentStateComponent<ActionsSettings
 
         // Enable/disable AI tools (function calling) - disabled by default (experimental)
         public boolean toolsEnabled = false;
+
+        // Inline code completion in the editor. On by default; users whose workflow does not
+        // want suggestions must be able to switch it off without disabling the whole plugin.
+        public boolean codeCompletionEnabled = true;
     }
 }
