@@ -116,9 +116,12 @@ used anywhere in this codebase. Do not add them back to reach a tool.
 Open defects in the current implementation, to fix in this order. Each one is a violation
 of the invariant named next to it.
 
+Fixed since the audit: **C1** — the planning context now carries the real line numbers of
+each file, gaps name the lines they hide, and the phantom line a trailing newline used to
+produce is gone.
+
 | # | Gap | Invariant |
 |---|---|---|
-| C1 | Line numbers sent to the planner are fragment-local on files > 150 lines, but applied as absolute by `LineEditTool` — silent wrong-line edits | correctness |
 | C2 | `buildPlanningMessage` concatenates goal and file contents raw; `PromptSanitizer` is not called | SI-4 |
 | C3 | `LineEditTool` has no approval, no `SecretDetector`, no syntax validation | SI-8 / tool contract |
 | M1 | `resolveEditFilePath`, `SourceRootResolver.findInSourceRoots` and `fixSyntaxError` rewrite steps after approval | SI-8 |

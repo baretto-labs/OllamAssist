@@ -37,6 +37,7 @@ import org.jetbrains.annotations.TestOnly;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,7 +78,6 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String MSG_CANCELLED  = "Agent execution cancelled.\n";
-    private static final String ELLIPSIS_LINE  = "...\n";
     private static final String TOOL_READ_FILE = "readFile";
     private static final String TOOL_EDIT_FILE = "editFile";
 
@@ -117,7 +117,10 @@ public final class PlanAndExecuteAgentService implements Disposable {
               → Use to add entries (e.g. log lines, config blocks) without replacing anything.
 
             Rules for editFile:
-            - Line numbers are 1-indexed exactly as shown in the file context below.
+            - Line numbers are 1-indexed exactly as shown in the file context below — they are \
+              the real line numbers of the file, not an offset within the excerpt.
+            - A line reading "... (lines N-M omitted) ..." is not file content: those lines exist \
+              in the file but are not shown.
             - "code" must NOT repeat surrounding braces that already exist in the file.
             - Indentation must match the surrounding code.
             - For inserting a new method inside a class, insert BEFORE the final closing \
@@ -331,9 +334,10 @@ public final class PlanAndExecuteAgentService implements Disposable {
                         : file.getAbsolutePath();
                 if (isInternalFile(relPath)) continue;
                 handler.onToolCall(TOOL_READ_FILE, "{\"path\":\"" + escapeJson(relPath) + "\"}");
+                String numbered = numberWholeFile(content);
                 int remaining = MAX_CONTEXT_CHARS - totalChars[0];
-                String trimmed = content.length() > remaining ? content.substring(0, remaining) : content;
-                if (content.length() > remaining) truncatedPaths.add(relPath);
+                String trimmed = numbered.length() > remaining ? numbered.substring(0, remaining) : numbered;
+                if (numbered.length() > remaining) truncatedPaths.add(relPath);
                 fileContents.put(relPath, trimmed);
                 visitedPaths.add(relPath);
                 totalChars[0] += trimmed.length();
@@ -374,7 +378,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
                 // Merge if another keyword already added a fragment from this file
                 fileContents.merge(fragment.relativePath(), content,
-                        (existing, newFrag) -> existing + "\n...\n" + newFrag);
+                        (existing, newFrag) -> existing + newFrag);
                 totalChars[0] += content.length();
             }
         }
@@ -457,14 +461,19 @@ public final class PlanAndExecuteAgentService implements Disposable {
      * <ul>
      *   <li>Files ≤ {@value #WHOLE_FILE_MAX_LINES} lines: returned in full.</li>
      *   <li>Larger files: up to 3 non-overlapping windows of ±{@value #FRAGMENT_CONTEXT_LINES}
-     *       lines around each occurrence, separated by {@code ...}.</li>
+     *       lines around each occurrence.</li>
      * </ul>
+     *
+     * <p>Every line is prefixed with its line number <b>in the source file</b>, and every gap
+     * names the lines it hides. The planner is told these numbers are absolute and
+     * {@link fr.baretto.ollamassist.agent.tools.files.LineEditTool} applies them to the real
+     * document: numbering a window from 1 would place every edit at the wrong line, silently.
      */
     static String extractFragment(String fileContent, String keyword) {
         if (fileContent == null || fileContent.isBlank() || keyword == null) return "";
 
-        String[] lines = fileContent.split("\n", -1);
-        if (lines.length <= WHOLE_FILE_MAX_LINES) return fileContent;
+        String[] lines = splitLines(fileContent);
+        if (lines.length <= WHOLE_FILE_MAX_LINES) return numberLines(lines, 0, lines.length - 1);
 
         String lower = fileContent.toLowerCase();
         String lowerKw = keyword.toLowerCase();
@@ -485,16 +494,57 @@ public final class PlanAndExecuteAgentService implements Disposable {
         if (matchLines.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
+        int lastEmitted = -1;
         for (int matchLine : matchLines) {
             int start = Math.max(0, matchLine - FRAGMENT_CONTEXT_LINES);
             int end   = Math.min(lines.length - 1, matchLine + FRAGMENT_CONTEXT_LINES);
 
-            if (!sb.isEmpty()) sb.append("\n...\n");
-            if (start > 0) sb.append(ELLIPSIS_LINE);
-            for (int i = start; i <= end; i++) sb.append(lines[i]).append("\n");
-            if (end < lines.length - 1) sb.append(ELLIPSIS_LINE);
+            if (start > lastEmitted + 1) {
+                sb.append(omittedMarker(lastEmitted + 1, start - 1));
+            } else {
+                start = lastEmitted + 1;   // windows touch — do not repeat lines
+            }
+            sb.append(numberLines(lines, start, end));
+            lastEmitted = end;
+        }
+        if (lastEmitted < lines.length - 1) {
+            sb.append(omittedMarker(lastEmitted + 1, lines.length - 1));
         }
         return sb.toString();
+    }
+
+    /** Renders lines {@code fromIndex}..{@code toIndex} (0-based, inclusive) with their 1-based numbers. */
+    private static String numberLines(String[] lines, int fromIndex, int toIndex) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = fromIndex; i <= toIndex; i++) {
+            sb.append(String.format("%4d | %s", i + 1, lines[i])).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** Numbers a whole file from line 1 — used for files injected without keyword extraction. */
+    static String numberWholeFile(String fileContent) {
+        if (fileContent == null || fileContent.isEmpty()) return "";
+        String[] lines = splitLines(fileContent);
+        return numberLines(lines, 0, lines.length - 1);
+    }
+
+    /**
+     * Splits into lines, dropping the empty element a trailing newline produces. The IntelliJ
+     * {@code Document} does not count that phantom line either, so showing it to the planner
+     * would offer a line number that {@code LineEditTool} then rejects as out of range.
+     */
+    private static String[] splitLines(String content) {
+        String[] lines = content.split("\n", -1);
+        if (lines.length > 1 && lines[lines.length - 1].isEmpty()) {
+            return Arrays.copyOf(lines, lines.length - 1);
+        }
+        return lines;
+    }
+
+    /** Names the lines hidden by a gap, so the planner never mistakes a gap for adjacent lines. */
+    private static String omittedMarker(int fromIndex, int toIndex) {
+        return "     ... (lines %d-%d omitted) ...\n".formatted(fromIndex + 1, toIndex + 1);
     }
 
     // -------------------------------------------------------------------------
@@ -503,7 +553,7 @@ public final class PlanAndExecuteAgentService implements Disposable {
 
     private List<AgentStep> generatePlan(String goal, DiscoveryResult discovery,
                                           AgentStreamHandler handler) {
-        String userMessage = buildPlanningMessage(goal, discovery.fileContents(), discovery.truncatedPaths());
+        String userMessage = buildPlanningMessage(goal, discovery, SourceRootResolver.sourceRootRelativePaths(project));
 
         List<ChatMessage> messages = List.of(
                 SystemMessage.from(SYSTEM_PROMPT),
@@ -549,27 +599,23 @@ public final class PlanAndExecuteAgentService implements Disposable {
         return steps;
     }
 
-    private String buildPlanningMessage(String goal, Map<String, String> fileContents,
-                                         Set<String> truncatedPaths) {
+    static String buildPlanningMessage(String goal, DiscoveryResult discovery, List<String> sourceRoots) {
         StringBuilder sb = new StringBuilder();
         sb.append("Goal: ").append(goal).append("\n\n");
 
-        List<String> roots = SourceRootResolver.sourceRootRelativePaths(project);
-        if (!roots.isEmpty()) {
-            sb.append("Source roots: ").append(String.join(", ", roots)).append("\n\n");
+        if (!sourceRoots.isEmpty()) {
+            sb.append("Source roots: ").append(String.join(", ", sourceRoots)).append("\n\n");
         }
 
-        if (!fileContents.isEmpty()) {
-            sb.append("Project files (line numbers are 1-indexed and absolute):\n\n");
-            for (Map.Entry<String, String> e : fileContents.entrySet()) {
-                boolean truncated = truncatedPaths.contains(e.getKey());
-                String[] lines = e.getValue().split("\n", -1);
+        if (!discovery.fileContents().isEmpty()) {
+            sb.append("Project files — each line is prefixed with its line number in the real file:\n\n");
+            for (Map.Entry<String, String> e : discovery.fileContents().entrySet()) {
+                boolean truncated = discovery.truncatedPaths().contains(e.getKey());
                 sb.append("=== ").append(e.getKey())
-                  .append(truncated ? " [truncated — only first " + lines.length + " lines shown]" : "")
-                  .append(" ===\n");
-                for (int i = 0; i < lines.length; i++) {
-                    sb.append(String.format("%4d | %s%n", i + 1, lines[i]));
-                }
+                  .append(truncated ? " [truncated — the end of this file is not shown]" : "")
+                  .append(" ===\n")
+                  .append(e.getValue());
+                if (!e.getValue().endsWith("\n")) sb.append("\n");
                 sb.append("\n");
             }
         }
