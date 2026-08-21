@@ -14,6 +14,8 @@ import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15Quantize
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import fr.baretto.ollamassist.benchmark.judge.BenchmarkJudge;
+import fr.baretto.ollamassist.benchmark.judge.ContextJudge;
+import fr.baretto.ollamassist.benchmark.judge.RagUnitJudge;
 import fr.baretto.ollamassist.chat.rag.CodeAwareDocumentSplitter;
 import fr.baretto.ollamassist.chat.rag.HybridRetriever;
 import fr.baretto.ollamassist.chat.rag.LuceneEmbeddingStore;
@@ -78,7 +80,7 @@ class ChunkingBenchmarkTest {
     private static final int  SEARCH_TOP_K  = 5;
 
     private EmbeddingModel embeddingModel;
-    private BenchmarkJudge judge;
+    private ContextJudge     judge;
     private List<Path>     sourceFiles;
     private ObjectMapper   mapper;
     private Project        psiProject;
@@ -93,10 +95,22 @@ class ChunkingBenchmarkTest {
         sourceFiles = scanSourceFiles(SOURCE_DIR);
         log.info("Source files found: {}", sourceFiles.size());
 
-        judge  = new BenchmarkJudge();
+        judge  = selectJudge();
+        log.info("Judge: {} (available={})", judge.id(), judge.isAvailable());
         mapper = new ObjectMapper().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
 
         Files.createDirectories(RESULTS_DIR);
+    }
+
+    /**
+     * Picks the judging layer. Both rate the same contexts through the same preparation, so a
+     * run with one can be compared with a run with the other — the judge id is written to every
+     * result line. Default stays on the hand-rolled judge so the existing history keeps its
+     * meaning; pass {@code -Dbenchmark.judge.impl=ragunit} for the library-backed one.
+     */
+    private ContextJudge selectJudge() {
+        String impl = System.getProperty("benchmark.judge.impl", "legacy");
+        return "ragunit".equalsIgnoreCase(impl) ? new RagUnitJudge() : new BenchmarkJudge();
     }
 
     private Project resolveProject() {
@@ -219,7 +233,7 @@ class ChunkingBenchmarkTest {
                         .map(c -> c.textSegment().text())
                         .toList();
 
-                BenchmarkJudge.Result result = judge.judge(q.text(), contexts, q.expectedHints());
+                ContextJudge.Judgement result = judge.judge(q.text(), contexts, q.expectedHints());
 
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("ts",             runTs);
@@ -232,6 +246,7 @@ class ChunkingBenchmarkTest {
                 row.put("llmScore",       result.judged() ? result.score() : null);
                 row.put("rationale",      result.rationale());
                 row.put("suggestsUnknown", result.suggestsUnknown());
+                row.put("judge",          judge.id());
 
                 writer.write(mapper.writeValueAsString(row));
                 writer.newLine();

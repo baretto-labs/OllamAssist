@@ -9,8 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,7 +30,7 @@ import java.util.List;
  *   -Dbenchmark.judge.url=http://localhost:11434  (default)
  * </pre>
  */
-public class BenchmarkJudge {
+public class BenchmarkJudge implements ContextJudge {
 
     private static final Logger log = LoggerFactory.getLogger(BenchmarkJudge.class);
 
@@ -124,6 +122,12 @@ public class BenchmarkJudge {
         this.available    = true;
     }
 
+    @Override
+    public String id() {
+        return "legacy-aiservices/" + System.getProperty("benchmark.judge.model", DEFAULT_MODEL);
+    }
+
+    @Override
     public boolean isAvailable() {
         return available;
     }
@@ -136,60 +140,28 @@ public class BenchmarkJudge {
      * @param expectedHints FQN fragments expected to appear in a good context
      * @return judgement result with score, rationale, and hintCoverage
      */
-    public Result judge(String question, List<String> contexts, String[] expectedHints) {
+    @Override
+    public Judgement judge(String question, List<String> contexts, String[] expectedHints) {
         if (contexts.isEmpty()) {
-            return new Result(0, "No context retrieved", true, 0.0, false);
+            return Judgement.noContext();
         }
 
-        // Position bias mitigation: shuffle chunk order
-        List<String> shuffled = new ArrayList<>(contexts);
-        Collections.shuffle(shuffled);
-        String contextText = String.join("\n---\n", shuffled);
-        if (contextText.length() > 6000) {
-            contextText = contextText.substring(0, 6000) + "\n[... truncated ...]";
-        }
-
-        double hintCoverage = computeHintCoverage(contextText, expectedHints);
+        String contextText = ContextPreparation.shuffleAndJoin(contexts);
+        double hintCoverage = ContextPreparation.hintCoverage(contextText, expectedHints);
 
         if (!available || judgeService == null) {
-            return new Result(-1, "Judge not available", false, hintCoverage, false);
+            return Judgement.notJudged("Judge not available", hintCoverage);
         }
 
         try {
             JudgementOutput output = judgeService.evaluate(
                     "Question: %s\n\nRetrieved context:\n%s".formatted(question, contextText));
-            int score = Math.max(0, Math.min(10, output.score()));
-            return new Result(score, output.rationale(), output.suggestsUnknown(), hintCoverage, true);
+            int score = Math.clamp(output.score(), 0, 10);
+            return new Judgement(score, output.rationale(), output.suggestsUnknown(), hintCoverage, true);
         } catch (Exception e) {
             log.warn("Judge call failed for '{}': {}", question, e.getMessage());
-            return new Result(-1, "Judge error: " + e.getMessage(), false, hintCoverage, false);
+            return Judgement.notJudged("Judge error: " + e.getMessage(), hintCoverage);
         }
     }
 
-    private static double computeHintCoverage(String contextText, String[] hints) {
-        if (hints == null || hints.length == 0) return 1.0;
-        String lower = contextText.toLowerCase();
-        long found = 0;
-        for (String hint : hints) {
-            if (lower.contains(hint.toLowerCase())) found++;
-        }
-        return (double) found / hints.length;
-    }
-
-    /**
-     * Full judgement result.
-     *
-     * @param score           LLM relevance score 0-10 (-1 if judge unavailable)
-     * @param rationale       one-sentence explanation
-     * @param suggestsUnknown true if context is insufficient to answer
-     * @param hintCoverage    fraction of expected FQN hints found (deterministic, 0.0-1.0)
-     * @param judged          true if LLM judgement was performed
-     */
-    public record Result(
-            int     score,
-            String  rationale,
-            boolean suggestsUnknown,
-            double  hintCoverage,
-            boolean judged
-    ) {}
 }
