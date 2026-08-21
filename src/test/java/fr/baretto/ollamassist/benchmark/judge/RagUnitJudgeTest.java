@@ -101,6 +101,25 @@ class RagUnitJudgeTest {
     }
 
     @Test
+    @DisplayName("gives the judge three minutes by default")
+    void shouldDefaultToAThreeMinuteTimeout() {
+        assertThat(RagUnitJudge.timeoutFrom(null)).isEqualTo(java.time.Duration.ofMinutes(3));
+    }
+
+    @Test
+    @DisplayName("honours a timeout passed on the command line")
+    void shouldHonourConfiguredTimeout() {
+        assertThat(RagUnitJudge.timeoutFrom("300")).isEqualTo(java.time.Duration.ofSeconds(300));
+    }
+
+    @Test
+    @DisplayName("falls back to the default rather than failing on an unreadable timeout")
+    void shouldFallBackOnUnreadableTimeout() {
+        assertThat(RagUnitJudge.timeoutFrom("soon")).isEqualTo(java.time.Duration.ofMinutes(3));
+        assertThat(RagUnitJudge.timeoutFrom("0")).isEqualTo(java.time.Duration.ofMinutes(3));
+    }
+
+    @Test
     @DisplayName("names the judge implementation so runs stay comparable")
     void shouldExposeItsIdentity() {
         assertThat(judgeReturning(1.0, "ok").id()).startsWith("ragunit");

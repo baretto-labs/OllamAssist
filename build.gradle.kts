@@ -32,7 +32,9 @@ val jsoupVersion = "1.22.2"
 val jacksonVersion = "2.20.1"
 val djlVersion = "0.28.0"
 // Pinned exactly: a version bump changes judge behaviour and invalidates the benchmark baseline.
-val ragunitVersion = "v0.2.1"
+// Commit c325adc = v0.3.0 + the configurable request timeout (baretto-labs/ragunit#1).
+// Move to v0.3.1 once that release is tagged.
+val ragunitVersion = "c325adc"
 
 dependencies {
     intellijPlatform {
