@@ -21,6 +21,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class EnhancedCompletionService {
     
+    /** Guards the IDE-wide Enter handler against being wrapped once per completion request. */
+    private boolean enterHandlerInstalled;
+
     private final MultiSuggestionManager suggestionManager;
     private final EnhancedContextProvider contextProvider;
     private final SuggestionCache cache;
@@ -370,18 +373,26 @@ public class EnhancedCompletionService {
      */
     private void attachActionHandler(@NotNull Editor editor) {
         log.debug("attachActionHandler() called");
-        
+
+        // The Enter handler is IDE-wide and was never restored, so re-attaching wrapped our own
+        // wrapper: one extra layer per completion request, for the whole session. Install once.
+        if (enterHandlerInstalled) {
+            log.debug("Enter action handler already installed, keeping it");
+            return;
+        }
+
         EditorActionManager actionManager = EditorActionManager.getInstance();
-        
+
         // Get the current Enter action handler
         EditorActionHandler originalHandler = actionManager.getActionHandler(IdeActions.ACTION_EDITOR_ENTER);
-        
+
         // Create our custom handler that wraps the original
         SuggestionActionHandler suggestionHandler = new SuggestionActionHandler(suggestionManager, originalHandler);
-        
-        // Replace the Enter action handler temporarily
+
+        // Replace the Enter action handler
         actionManager.setActionHandler(IdeActions.ACTION_EDITOR_ENTER, suggestionHandler);
-        
+        enterHandlerInstalled = true;
+
         log.debug("Replaced Enter action handler with SuggestionActionHandler");
     }
     

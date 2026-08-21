@@ -11,12 +11,22 @@ import java.awt.*;
 
 public class ActionsConfigPanel extends JBPanel<ActionsConfigPanel> {
 
+    private final JCheckBox codeCompletionEnabled =
+            new JCheckBox("Enable inline code completion in the editor");
     private final JCheckBox toolsEnabled = new JCheckBox("Enable AI Tools (Function Calling)");
     private final JCheckBox autoApproveFileCreation = new JCheckBox("Auto-approve file creation");
 
     public ActionsConfigPanel() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(JBUI.Borders.empty(10));
+
+        // Inline code completion — first, because it is the setting users come here to find
+        codeCompletionEnabled.setSelected(ActionsSettings.getInstance().isCodeCompletionEnabled());
+        codeCompletionEnabled.setToolTipText("<html>Suggestions proposed in the editor, triggered with Shift+Space.<br/>"
+                + "Uncheck to stop OllamAssist from proposing code entirely — the chat and the other<br/>"
+                + "features keep working.</html>");
+        add(createCheckboxPanel(codeCompletionEnabled));
+        add(createCompletionDescriptionPanel());
 
         // Tools enabled checkbox
         toolsEnabled.setSelected(ActionsSettings.getInstance().isToolsEnabled());
@@ -37,6 +47,21 @@ public class ActionsConfigPanel extends JBPanel<ActionsConfigPanel> {
 
         // Add notification reset button
         add(createNotificationResetSection());
+    }
+
+    private JPanel createCompletionDescriptionPanel() {
+        JBPanel<JBPanel<?>> panel = new JBPanel<>();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(JBUI.Borders.empty(0, 20, 15, 10));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel description = new JLabel("<html><i>Off means no inlay, no suggestion, and Enter behaves "
+                + "exactly as it does<br/>without the plugin.</i></html>");
+        description.setForeground(com.intellij.ui.JBColor.GRAY);
+        description.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(description);
+
+        return panel;
     }
 
     private JPanel createModelRecommendationPanel() {
@@ -103,6 +128,14 @@ public class ActionsConfigPanel extends JBPanel<ActionsConfigPanel> {
     }
 
     // Getters and setters
+    public boolean isCodeCompletionEnabled() {
+        return codeCompletionEnabled.isSelected();
+    }
+
+    public void setCodeCompletionEnabled(boolean value) {
+        codeCompletionEnabled.setSelected(value);
+    }
+
     public boolean isToolsEnabled() {
         return toolsEnabled.isSelected();
     }

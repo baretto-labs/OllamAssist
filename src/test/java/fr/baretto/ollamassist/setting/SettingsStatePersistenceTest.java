@@ -74,6 +74,27 @@ class SettingsStatePersistenceTest {
     }
 
     @Test
+    @DisplayName("keeps inline code completion switched off across an IDE restart")
+    void shouldPersistDisabledCodeCompletion() {
+        ActionsSettings settings = new ActionsSettings();
+        settings.setCodeCompletionEnabled(false);
+
+        ActionsSettings restarted = new ActionsSettings();
+        restarted.loadState(roundTrip(settings.getState(), ActionsSettings.State.class));
+
+        assertThat(restarted.isCodeCompletionEnabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("leaves inline code completion on for users who never touched the setting")
+    void shouldKeepCodeCompletionEnabledByDefault() {
+        ActionsSettings restarted = new ActionsSettings();
+        restarted.loadState(roundTrip(new ActionsSettings.State(), ActionsSettings.State.class));
+
+        assertThat(restarted.isCodeCompletionEnabled()).isTrue();
+    }
+
+    @Test
     @DisplayName("keeps the auto-approve file creation flag across an IDE restart")
     void shouldPersistAutoApproveFileCreation() {
         ActionsSettings settings = new ActionsSettings();

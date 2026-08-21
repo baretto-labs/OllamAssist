@@ -56,8 +56,11 @@
   ]]></description>
 
     <change-notes><![CDATA[
-        <h2>V1.14.0 — Release Notifications, Under Control</h2>
+        <h2>V1.14.0 — Switch Off What You Don't Want</h2>
         <UL>
+            <LI>feat: Inline code completion can be turned off — <b>Settings &gt; OllamAssist &gt; Actions &gt; Enable inline code completion</b>. Off means no inlay, no suggestion, and Enter behaves exactly as it does without the plugin. The chat, RAG and the other features keep working.</LI>
+            <LI>fix: The Enter key handler was replaced IDE-wide and never restored, and each completion request wrapped the previous wrapper. Typing Enter could trigger the plugin long after the last suggestion, in every editor of the IDE.</LI>
+            <LI>fix: A key listener was attached to the editor on every completion request instead of once, so listeners accumulated for the whole session.</LI>
             <LI>feat: "Don't show again" — mute release notifications for good, from the update balloon or from the What's New dialog.</LI>
             <LI>feat: The decision is reversible in Settings &gt; OllamAssist &gt; UI &gt; Notifications ("Show release notifications after an update").</LI>
             <LI>fix: The update balloon no longer reappears at every IDE start — it was only acknowledged when the balloon expired, which never happens for a balloon left untouched in the Notifications tool window.</LI>

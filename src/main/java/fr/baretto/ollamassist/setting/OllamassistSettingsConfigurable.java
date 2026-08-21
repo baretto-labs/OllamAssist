@@ -62,6 +62,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                 || ragSettings.getIndexationSize() != configurationPanel.getMaxDocuments()
                 || actionsSettings.isAutoApproveFileCreation() != configurationPanel.isAutoApproveFileCreation()
                 || actionsSettings.isToolsEnabled() != configurationPanel.isToolsEnabled()
+                || actionsSettings.isCodeCompletionEnabled() != configurationPanel.isCodeCompletionEnabled()
                 || !promptSettings.getChatSystemPrompt().equals(configurationPanel.getChatSystemPrompt())
                 || !promptSettings.getRefactorUserPrompt().equals(configurationPanel.getRefactorUserPrompt())
                 || ollamaSettings.getAgentPlanTimeoutSeconds() != configurationPanel.getAgentPlanTimeoutSeconds()
@@ -108,6 +109,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             ActionsSettings actionsSettings = ActionsSettings.getInstance();
             actionsSettings.setAutoApproveFileCreation(configurationPanel.isAutoApproveFileCreation());
             actionsSettings.setToolsEnabled(configurationPanel.isToolsEnabled());
+            actionsSettings.setCodeCompletionEnabled(configurationPanel.isCodeCompletionEnabled());
 
             // Save to PromptSettings
             PromptSettings promptSettings = PromptSettings.getInstance();
@@ -192,6 +194,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         ActionsSettings actionsSettings = ActionsSettings.getInstance();
         configurationPanel.setAutoApproveFileCreation(actionsSettings.isAutoApproveFileCreation());
         configurationPanel.setToolsEnabled(actionsSettings.isToolsEnabled());
+        configurationPanel.setCodeCompletionEnabled(actionsSettings.isCodeCompletionEnabled());
 
         // Load from PromptSettings
         PromptSettings promptSettings = PromptSettings.getInstance();

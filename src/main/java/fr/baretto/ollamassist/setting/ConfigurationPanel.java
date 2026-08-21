@@ -185,8 +185,16 @@ public class ConfigurationPanel extends JPanel {
         return actionsPanel.isToolsEnabled();
     }
 
+    public boolean isCodeCompletionEnabled() {
+        return actionsPanel.isCodeCompletionEnabled();
+    }
+
     public void setToolsEnabled(boolean value) {
         actionsPanel.setToolsEnabled(value);
+    }
+
+    public void setCodeCompletionEnabled(boolean value) {
+        actionsPanel.setCodeCompletionEnabled(value);
     }
 
     // Prompt settings
