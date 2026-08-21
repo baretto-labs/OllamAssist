@@ -35,9 +35,18 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                                 Off means no inlay, no suggestion, and Enter behaves exactly as it does without \
                                 the plugin. Chat, RAG and everything else keep working.</p>
 
-                                <p>Two defects fed the problem: the Enter key handler was replaced IDE-wide and \
-                                never restored, and a key listener was added to the editor on every completion \
-                                request. Both are fixed.</p>
+                                <p>Three defects fed the problem: the Enter key handler was replaced IDE-wide and \
+                                never restored, a key listener was added to the editor on every completion request, \
+                                and the fallback path read the editor from a background thread — so the code meant \
+                                to survive a failure was the code that raised "Read access is allowed from inside \
+                                read-action only". All three are fixed, and completion no longer holds a read action \
+                                while it calls Ollama, which used to freeze typing until the call returned.</p>
+
+                                <h4>Agent mode (alpha)</h4>
+                                <p>Agent edits landed at the wrong line in any file longer than 150 lines: the \
+                                planner was shown excerpts numbered from 1 while being told the numbers were \
+                                absolute. The edit succeeded, so nothing surfaced — the file was simply wrong. \
+                                Fixed.</p>
 
                                 <h4>Release notifications</h4>
                                 <ul>
