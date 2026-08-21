@@ -57,7 +57,7 @@ public class EnhancedContextProvider {
     public CompletableFuture<CompletionContext> buildCompletionContextAsync(@NotNull Editor editor) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return ReadAction.compute(() -> buildCompletionContext(editor));
+                return buildCompletionContext(editor);
             } catch (Exception e) {
                 log.warn("Failed to build enhanced completion context, falling back to basic context", e);
                 return buildBasicContext(editor);
@@ -71,30 +71,45 @@ public class EnhancedContextProvider {
     
     /**
      * Synchronous version for immediate context building.
+     *
+     * <p>Takes its own read action: this reads the editor model, and it runs on a pool thread
+     * as often as on the EDT. Leaving the guard to the caller is what broke — the fallback
+     * paths of {@link #buildCompletionContextAsync} called into the model with none.
      */
     @NotNull
     public CompletionContext buildCompletionContext(@NotNull Editor editor) {
-        try {
-            String immediateContext = getImmediateContext(editor);
-            String projectContext = getProjectContext(editor);
-            String similarPatterns = getSimilarCodePatterns(immediateContext);
-            String fileExtension = getFileExtension(editor);
-            int cursorOffset = editor.getCaretModel().getOffset();
-            CompletionContext.FileMetadata metadata = buildFileMetadata(editor);
-            
-            return CompletionContext.builder()
-                .immediateContext(immediateContext)
-                .projectContext(projectContext)
+        EditorSnapshot snapshot = ReadAction.compute(() -> readEditorSnapshot(editor));
+
+        // Deliberately outside the read action: this embeds the context through Ollama and
+        // searches the Lucene index. Holding a read action across a network call blocks write
+        // actions, which freezes typing — the editor model is already captured above.
+        String similarPatterns = getSimilarCodePatterns(snapshot.immediateContext());
+
+        return CompletionContext.builder()
+                .immediateContext(snapshot.immediateContext())
+                .projectContext(snapshot.projectContext())
                 .similarPatterns(similarPatterns)
-                .fileExtension(fileExtension)
-                .cursorOffset(cursorOffset)
-                .fileMetadata(metadata)
+                .fileExtension(snapshot.fileExtension())
+                .cursorOffset(snapshot.cursorOffset())
+                .fileMetadata(snapshot.metadata())
                 .build();
-                
-        } catch (Exception e) {
-            log.warn("Error building completion context", e);
-            return buildBasicContext(editor);
-        }
+    }
+
+    /** Everything that reads the editor model, captured in one read action. */
+    private record EditorSnapshot(String immediateContext, String projectContext,
+                                  String fileExtension, int cursorOffset,
+                                  CompletionContext.FileMetadata metadata) {
+    }
+
+    private EditorSnapshot readEditorSnapshot(@NotNull Editor editor) {
+        // No catch here on purpose: buildCompletionContextAsync already falls back to the basic
+        // context. Swallowing the failure twice only hid which step actually broke.
+        return new EditorSnapshot(
+                getImmediateContext(editor),
+                getProjectContext(editor),
+                getFileExtension(editor),
+                editor.getCaretModel().getOffset(),
+                buildFileMetadata(editor));
     }
     
     /**
@@ -255,9 +270,18 @@ public class EnhancedContextProvider {
     
     /**
      * Creates a basic context when enhanced context building fails.
+     *
+     * <p>Read action included. This is the fallback: it is reached from a {@code catch} block
+     * and from {@code exceptionally}, both of which run on whatever thread completed the
+     * future — a pool worker, or the timer thread behind {@code orTimeout}. A fallback that
+     * throws is worse than no fallback at all.
      */
     @NotNull
     private CompletionContext buildBasicContext(@NotNull Editor editor) {
+        return ReadAction.compute(() -> doBuildBasicContext(editor));
+    }
+
+    private CompletionContext doBuildBasicContext(@NotNull Editor editor) {
         Document document = editor.getDocument();
         int offset = editor.getCaretModel().getOffset();
         
