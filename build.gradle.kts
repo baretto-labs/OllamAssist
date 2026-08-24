@@ -30,7 +30,7 @@ val rsyntaxtextareaVersion = "3.6.0"
 val plexusVersion = "4.0.2"
 val jsoupVersion = "1.22.2"
 val jacksonVersion = "2.20.1"
-val djlVersion = "0.28.0"
+val djlVersion = "0.36.0"
 // Pinned exactly: a version bump changes judge behaviour and invalidates the benchmark baseline.
 // Commit c325adc = v0.3.0 + the configurable request timeout (baretto-labs/ragunit#1).
 // Move to v0.3.1 once that release is tagged.
