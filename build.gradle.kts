@@ -171,13 +171,13 @@ tasks {
     }
 
     test {
+        // junit-vintage is required by IntelliJ platform tests: BasePlatformTestCase is a
+        // JUnit 3 TestCase, which the jupiter engine does not discover. Without it such a
+        // test is silently never run, and the task still reports success.
         useJUnitPlatform {
-            includeEngines("junit-jupiter")
+            includeEngines("junit-jupiter", "junit-vintage")
             excludeTags("benchmark")
         }
-        // Platform tests (BasePlatformTestCase) require the IntelliJ runtime —
-        // they run via the platformTest task, not here.
-        exclude("**/platform/**")
     }
 
     check {
@@ -214,19 +214,5 @@ intellijPlatformTesting {
             }
         }
 
-        // Platform integration tests: run inside the IntelliJ runtime so BasePlatformTestCase
-        // has access to VirtualFile, WriteCommandAction, MessageBus, PsiManager, etc.
-        // Usage: ./gradlew platformTest
-        // Skips tests annotated with @RequiresOllama if Ollama is not reachable.
-        register("platformTest") {
-            task {
-                group = "verification"
-                description = "Runs IntelliJ Platform integration tests (BasePlatformTestCase)."
-                include("**/platform/**")
-                shouldRunAfter(tasks.test)
-                systemProperty("platformTest.ollamaUrl",
-                    project.properties.getOrDefault("platformTest.ollamaUrl", "http://localhost:11434").toString())
-            }
-        }
     }
 }
