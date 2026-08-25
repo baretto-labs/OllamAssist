@@ -43,10 +43,12 @@ bin/
 /.idea/
 /.intellijPlatform/
 /.ollamassist/
-/benchmark-results/
+# benchmark-results/ is versioned on purpose: a baseline that lives on one laptop cannot
+# answer whether a change improved retrieval, which is the only reason the benchmark exists.
 
 ### Local dev helpers (not part of the plugin) ###
 /scripts/
+/tmp/
 
 # RAGUnit's JSON reporter defaults to the Maven layout, even in a Gradle build
 target/

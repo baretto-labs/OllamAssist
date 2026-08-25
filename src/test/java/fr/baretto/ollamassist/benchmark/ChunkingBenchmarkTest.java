@@ -237,6 +237,7 @@ class ChunkingBenchmarkTest {
 
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("ts",             runTs);
+                row.put("commit",         MeasuredRevision.of(Path.of(".")));
                 row.put("strategy",       strategyName);
                 row.put("difficulty",     q.difficulty().name());
                 row.put("question",       q.text());
