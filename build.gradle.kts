@@ -44,7 +44,12 @@ dependencies {
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
 
-    implementation("org.apache.lucene:lucene-queryparser:9.10.0") {
+    // Lucene 10: must match the version bundled in the IntelliJ Platform. The platform
+    // supplies lucene-core on the classpath (see the exclude below), so a queryparser
+    // compiled against Lucene 9 calls BooleanClause.getQuery(), which Lucene 10 removed
+    // (BooleanClause is now a record with query()). That produced a NoSuchMethodError in
+    // QueryParserBase.addMultiTermClauses() on IDE 2025.3+/2026.x.
+    implementation("org.apache.lucene:lucene-queryparser:10.1.0") {
         exclude(group = "org.apache.lucene")
     }
 
