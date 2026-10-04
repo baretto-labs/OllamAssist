@@ -32,6 +32,7 @@ class FileUtilTest {
         mockProject = mock(Project.class);
         mockFileIndex = mock(ProjectFileIndex.class);
         mockBaseDir = mock(VirtualFile.class);
+        when(mockBaseDir.getPath()).thenReturn("/");
         when(mockShouldBeIndexed.matches(any())).thenReturn(true);
         try (MockedStatic<ProjectFileIndex> mocked = mockStatic(ProjectFileIndex.class)) {
             mocked.when(() -> ProjectFileIndex.getInstance(mockProject)).thenReturn(mockFileIndex);
@@ -181,6 +182,7 @@ class FileUtilTest {
         FilesUtil filesUtilForTests = new FilesUtil(project, fileIndex, shouldBeIndexed, 10);
 
         VirtualFile baseDir = mock(VirtualFile.class);
+        when(baseDir.getPath()).thenReturn("/");
         when(project.getBaseDir()).thenReturn(baseDir);
 
         VirtualFile file1 = mockFile("/src/file1.java", false);
