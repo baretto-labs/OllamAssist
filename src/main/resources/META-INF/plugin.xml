@@ -56,7 +56,7 @@
   ]]></description>
 
     <change-notes><![CDATA[
-        <h2>V1.15.0 — Project Context Works on Every Supported IDE</h2>
+        <h2>V1.14.1 — Project Context Works on Every Supported IDE</h2>
         <UL>
             <LI>fix: On IDE 2025.3 and later, every chat message logged "Hybrid retrieval failed" and the answer came without any context from your project. The keyword search relied on a Lucene module compiled for a different Lucene version than the one the IDE ships. It now uses only what the IDE provides, so it works on Lucene 9 (up to 2025.2) and Lucene 10 (from 2025.3) alike. Thanks to Simon Farrant for the report and the diagnosis (#182).</LI>
         </UL>

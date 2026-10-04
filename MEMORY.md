@@ -19,7 +19,7 @@ de 9.10.0 à 10.1.0, ce qui répare les IDE 2025.3+ mais casse de la même mani�
 (`NoSuchMethodError` sur `BooleanClause`). Décision : aucune release tant que le correctif propre
 n'est pas mergé. Le correctif est sur la branche `fix/drop-lucene-queryparser` : la requête BM25
 est construite avec les classes de `lucene-core` uniquement, et la dépendance est supprimée.
-Livré en 1.15.0 (même PR : version, `plugin.xml`, notification). Lucene 10 n'est vérifié que par
+Livré en 1.14.1 (même PR : version, `plugin.xml`, notification). Lucene 10 n'est vérifié que par
 `javap`, jamais exécuté : un test manuel sur un IDE 2025.3+ reste à faire avant l'upload.
 
 Découvert en passant : le `changeNotes` de `build.gradle.kts` écrasait les notes de `plugin.xml`

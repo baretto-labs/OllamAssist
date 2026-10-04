@@ -14,13 +14,13 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
-                // v1.15.0 - RAG works again on IDE 2025.3+
+                // v1.14.1 - RAG works again on IDE 2025.3+
                 Notification.builder()
-                        .id("v1.15.0-release")
-                        .version("1.15.0")
+                        .id("v1.14.1-release")
+                        .version("1.14.1")
                         .type(Notification.NotificationType.INFO)
                         .priority(Notification.Priority.MEDIUM)
-                        .title("OllamAssist 1.15.0 — Project Context Is Back")
+                        .title("OllamAssist 1.14.1 — Project Context Is Back")
                         .message("""
                                 <html>
                                 <body style='font-family: sans-serif; padding: 10px;'>
