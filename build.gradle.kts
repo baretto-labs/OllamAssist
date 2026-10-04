@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "fr.baretto"
-version = "1.14.0"
+version = "1.14.1"
 
 repositories {
     mavenCentral()
@@ -44,14 +44,9 @@ dependencies {
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
 
-    // Lucene 10: must match the version bundled in the IntelliJ Platform. The platform
-    // supplies lucene-core on the classpath (see the exclude below), so a queryparser
-    // compiled against Lucene 9 calls BooleanClause.getQuery(), which Lucene 10 removed
-    // (BooleanClause is now a record with query()). That produced a NoSuchMethodError in
-    // QueryParserBase.addMultiTermClauses() on IDE 2025.3+/2026.x.
-    implementation("org.apache.lucene:lucene-queryparser:10.1.0") {
-        exclude(group = "org.apache.lucene")
-    }
+    // No Lucene artifact is bundled: lucene-core comes from the IDE, Lucene 9 up to 2025.2 and
+    // Lucene 10 from 2025.3. Any other Lucene module is compiled against one major version and
+    // throws NoSuchMethodError on the other (lucene-queryparser did, see #182).
 
     implementation("ai.djl:api:$djlVersion") {
         exclude(group = "org.slf4j")
@@ -132,10 +127,7 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = "243"
         }
-        changeNotes = "Custom prompts are now persisted (issue #170): the Chat System Prompt and " +
-                "Refactor User Prompt no longer revert to their defaults when the IDE restarts. " +
-                "The Actions settings (auto-approve file creation, tools enabled) were affected by " +
-                "the same defect and are persisted as well."
+        // No changeNotes here: set, it replaces the <change-notes> of plugin.xml in the built zip.
     }
 
     signing {
