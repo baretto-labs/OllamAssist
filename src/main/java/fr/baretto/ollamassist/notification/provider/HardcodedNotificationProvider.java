@@ -14,6 +14,38 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.15.0 - RAG works again on IDE 2025.3+
+                Notification.builder()
+                        .id("v1.15.0-release")
+                        .version("1.15.0")
+                        .type(Notification.NotificationType.INFO)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.15.0 — Project Context Is Back")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>Answers use your project again</h3>
+
+                                <p>On IDE 2025.3 and later, the chat kept answering, but without any context \
+                                from your project: the search that feeds it failed on every message, and only \
+                                the IDE log said so.</p>
+
+                                <p>The keyword search relied on a Lucene module built for a different Lucene \
+                                version than the one your IDE ships. It now uses only what the IDE provides, so \
+                                it works on every supported version, before and after 2025.3.</p>
+
+                                <p>Nothing to do on your side: the existing index is kept.</p>
+
+                                <p style='font-size: 0.9em; color: #888;'>
+                                Thanks to Simon Farrant for the report and the diagnosis.
+                                </p>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 10, 4, 0, 0))
+                        .build(),
+
                 // v1.14.0 - Release notifications can be muted
                 Notification.builder()
                         .id("v1.14.0-release")

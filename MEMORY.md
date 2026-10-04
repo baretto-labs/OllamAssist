@@ -12,6 +12,26 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Active Tasks
 
+### 0. RAG cassé selon la version de l'IDE — bloquant pour la prochaine release (2026-10-04)
+
+PR #182 (contributeur externe) mergée volontairement en l'état : elle passe `lucene-queryparser`
+de 9.10.0 à 10.1.0, ce qui répare les IDE 2025.3+ mais casse de la même manière 2024.3 → 2025.2
+(`NoSuchMethodError` sur `BooleanClause`). Décision : aucune release tant que le correctif propre
+n'est pas mergé. Le correctif est sur la branche `fix/drop-lucene-queryparser` : la requête BM25
+est construite avec les classes de `lucene-core` uniquement, et la dépendance est supprimée.
+Livré en 1.15.0 (même PR : version, `plugin.xml`, notification). Lucene 10 n'est vérifié que par
+`javap`, jamais exécuté : un test manuel sur un IDE 2025.3+ reste à faire avant l'upload.
+
+Découvert en passant : le `changeNotes` de `build.gradle.kts` écrasait les notes de `plugin.xml`
+dans le zip — la 1.14.0 a été construite avec le texte de la 1.13.1. Supprimé.
+
+Reporté : la version minimale (`sinceBuild = 243`) et la visibilité de Lucene dans les autres
+produits — en 2026.2, Lucene est un module optionnel de `libraries-misc-plugin`, sur lequel le
+plugin ne déclare aucune dépendance. À trancher avec les stats Marketplace et `verifyPlugin`
+étendu à 2025.3+ et à d'autres produits.
+
+---
+
 Cinq entrées : trois chantiers actifs (release, conférence, RAGUnit), le mode agent gelé,
 et l'état de la mesure. État au 2026-08-21.
 

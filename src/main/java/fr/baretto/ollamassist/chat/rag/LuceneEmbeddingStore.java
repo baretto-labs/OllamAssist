@@ -18,11 +18,11 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import fr.baretto.ollamassist.events.StoreNotifier;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
@@ -456,18 +456,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         rwLock.readLock().lock();
         try (DirectoryReader reader = DirectoryReader.open(directory)) {
             IndexSearcher searcher = new IndexSearcher(reader);
-            QueryParser parser = new QueryParser(CONTENT_BM25, analyzer);
-            parser.setDefaultOperator(QueryParser.Operator.OR);
-
-            Query query;
-            try {
-                query = parser.parse(QueryParser.escape(queryText));
-            } catch (ParseException e) {
-                log.warn("BM25 query parse failed for '{}': {}", queryText, e.getMessage());
-                return List.of();
-            }
-
-            TopDocs topDocs = searcher.search(query, topK);
+            TopDocs topDocs = searcher.search(bm25Query(queryText), topK);
             List<EmbeddingMatch<EMBEDDED>> results = new ArrayList<>();
 
             for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
@@ -485,6 +474,25 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
         } finally {
             rwLock.readLock().unlock();
         }
+    }
+
+    /**
+     * One SHOULD term clause per analyzed token: the user text is never parsed as query syntax.
+     * Built from lucene-core only, because the IDE supplies lucene-core and its major version
+     * differs across the supported range (9 up to 2025.2, 10 from 2025.3). A bundled
+     * lucene-queryparser is compiled against one of them and breaks on the other.
+     */
+    private Query bm25Query(String queryText) throws IOException {
+        BooleanQuery.Builder query = new BooleanQuery.Builder();
+        try (TokenStream tokens = analyzer.tokenStream(CONTENT_BM25, queryText)) {
+            CharTermAttribute term = tokens.addAttribute(CharTermAttribute.class);
+            tokens.reset();
+            while (tokens.incrementToken()) {
+                query.add(new TermQuery(new Term(CONTENT_BM25, term.toString())), BooleanClause.Occur.SHOULD);
+            }
+            tokens.end();
+        }
+        return query.build();
     }
 
     public List<EmbeddingMatch<EMBEDDED>> knnSearch(float[] queryVector, int topK) {
