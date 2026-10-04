@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class IndexRefreshPolicyTest {
 
@@ -19,6 +20,7 @@ class IndexRefreshPolicyTest {
     private IndexRegistry registry;
     private RecordingReporter reporter;
     private int reindexRequests;
+    private int catchUpRequests;
     private IndexRefreshPolicy policy;
 
     @BeforeEach
@@ -26,7 +28,8 @@ class IndexRefreshPolicyTest {
         registry = mock(IndexRegistry.class);
         reporter = new RecordingReporter();
         reindexRequests = 0;
-        policy = new IndexRefreshPolicy(PROJECT, registry, reporter, () -> reindexRequests++);
+        catchUpRequests = 0;
+        policy = new IndexRefreshPolicy(PROJECT, registry, reporter, () -> reindexRequests++, () -> catchUpRequests++);
     }
 
     @Test
@@ -45,10 +48,33 @@ class IndexRefreshPolicyTest {
     }
 
     @Test
-    void switchingRagOnRequestsIndexing() {
+    void switchingRagOnIndexesAProjectThatHasNoUpToDateIndex() {
+        when(registry.isIndexed(PROJECT)).thenReturn(false);
+
         policy.ragSwitchedOn();
 
         assertThat(reindexRequests).isEqualTo(1);
+        assertThat(catchUpRequests).isZero();
+    }
+
+    @Test
+    void switchingRagOnOnlyCatchesUpWhenTheProjectIsAlreadyIndexed() {
+        when(registry.isIndexed(PROJECT)).thenReturn(true);
+
+        policy.ragSwitchedOn();
+
+        assertThat(catchUpRequests).isEqualTo(1);
+        assertThat(reindexRequests).isZero();
+    }
+
+    @Test
+    void clearingTheIndexRebuildsThisProjectFromScratch() {
+        policy.clearRequested();
+
+        verify(registry).markAsCorrupted(PROJECT);
+        verify(registry, never()).markAllAsCorrupted();
+        assertThat(reindexRequests).isEqualTo(1);
+        assertThat(reporter.messages).isEmpty();
     }
 
     @Test
