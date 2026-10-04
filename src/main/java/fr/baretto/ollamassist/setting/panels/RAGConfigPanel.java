@@ -107,10 +107,10 @@ public class RAGConfigPanel extends JBPanel<RAGConfigPanel> {
                 .clear();
     }
 
-    public void triggerCleanAllDatabase() {
+    public void notifyEmbeddingModelChanged() {
         project.getMessageBus()
                 .syncPublisher(StoreNotifier.TOPIC)
-                .clearDatabaseAndRunIndexation();
+                .embeddingModelChanged();
     }
 
     // Getters and setters

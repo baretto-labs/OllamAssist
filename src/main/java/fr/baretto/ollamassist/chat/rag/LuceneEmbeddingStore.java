@@ -375,7 +375,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 recreateIndex();
                 project.getMessageBus()
                         .syncPublisher(StoreNotifier.TOPIC)
-                        .clearDatabaseAndRunIndexation();
+                        .indexCorrupted();
 
                 return new EmbeddingSearchResult<>(List.of());
             }
