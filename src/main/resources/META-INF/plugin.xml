@@ -64,6 +64,7 @@
             <LI>fix: Switching RAG back on keeps the existing index and only catches up with the files added, modified or deleted while it was off.</LI>
             <LI>fix: Modifying or deleting a file now removes its previous content from the index. Before, the old content stayed next to the new one and could still be retrieved.</LI>
             <LI>fix: "Index was corrupted" is shown only when the index really is, and only that project is rebuilt. Changing the embedding model now says so, instead of reporting a corruption. Related to #183.</LI>
+            <LI>fix: Only files of the project are indexed. A file changed in another open project was indexed into this one as soon as its path matched the RAG sources setting, and with an empty setting any file the IDE saw change triggered a call to the embedding model.</LI>
         </UL>
         <h2>V1.14.1 — Project Context Works on Every Supported IDE</h2>
         <UL>

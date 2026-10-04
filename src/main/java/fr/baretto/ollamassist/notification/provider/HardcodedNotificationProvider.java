@@ -36,6 +36,7 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                                   <li><b>Switching RAG back on</b> only indexes the files added, modified or deleted while it was off</li>
                                   <li><b>Edited files</b> — their previous content is now removed from the index instead of staying next to the new one</li>
                                   <li><b>Clear messages</b> — a corruption warning means a real corruption, and an embedding model change says so</li>
+                                  <li><b>Only your project</b> — files changed in another open project are no longer indexed into this one</li>
                                 </ul>
                                 </body>
                                 </html>
