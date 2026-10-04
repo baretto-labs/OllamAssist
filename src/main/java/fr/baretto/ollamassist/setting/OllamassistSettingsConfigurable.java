@@ -84,7 +84,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
             }
 
             boolean needIndexation = needIndexation();
-            boolean shouldCleanAllDatabase = shouldCleanAllDatabase();
+            boolean embeddingModelChanged = embeddingModelChanged();
 
             // Save to OllamaSettings
             OllamaSettings ollamaSettings = OllamaSettings.getInstance();
@@ -131,8 +131,8 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
                     .syncPublisher(ModelListener.TOPIC)
                     .reloadModel();
 
-            if (shouldCleanAllDatabase) {
-                configurationPanel.triggerCleanAllDatabase();
+            if (embeddingModelChanged) {
+                configurationPanel.notifyEmbeddingModelChanged();
                 return;
             }
 
@@ -147,7 +147,7 @@ public class OllamassistSettingsConfigurable implements Configurable, Disposable
         return configurationPanel.getMaxDocuments() != ragSettings.getIndexationSize();
     }
 
-    private boolean shouldCleanAllDatabase() {
+    private boolean embeddingModelChanged() {
         OllamaSettings ollamaSettings = OllamaSettings.getInstance();
 
         String panelEmbeddingModel = configurationPanel.getEmbeddingModel();

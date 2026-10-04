@@ -4,8 +4,8 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 
 /**
  * A filter to match documents with a specific ID.
@@ -19,10 +19,11 @@ public class IdStartWithFilter implements Filter {
     /**
      * Converts this filter into a Lucene query.
      *
-     * @return A Lucene {@link TermQuery} targeting the "id" field.
+     * @return A Lucene {@link PrefixQuery} on the "id" field: a segment id is the file path
+     * followed by a UUID, so an exact match on the path never matches anything.
      */
     public Query toLuceneQuery() {
-        return new TermQuery(new Term("id", id));
+        return new PrefixQuery(new Term("id", id));
     }
 
     @Override
