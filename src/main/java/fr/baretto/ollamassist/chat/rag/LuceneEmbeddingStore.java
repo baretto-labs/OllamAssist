@@ -27,6 +27,7 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.SingleInstanceLockFactory;
+import org.apache.lucene.util.Bits;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -34,6 +35,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -56,6 +58,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
     private static final String LAST_INDEXED_DATE = "last_indexed_date";
     private static final String METADATA = "metadata";
     private static final String ID = "id";
+    private static final int UUID_LENGTH = 36;
 
 
     private final Directory directory;
@@ -348,7 +351,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 if (indexWriter == null || !indexWriter.isOpen()) {
                     indexWriter = retrieveIndexWriter();
                 }
-                indexWriter.deleteDocuments(idStartWithFilter.toLuceneQuery());
+                indexWriter.deleteDocuments(segmentIdsOf(idStartWithFilter));
                 indexWriter.commit();
             } else {
                 throw new UnsupportedOperationException("Filter type not supported: " + filter.getClass());
@@ -357,6 +360,76 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
             log.error("Failed to remove documents matching the filter", e);
         } finally {
             rwLock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Every file that has segments in the index, with the time its oldest segment was indexed.
+     * An index that was never written to contains no file.
+     *
+     * @throws UncheckedIOException when the index cannot be read: an unreadable index is not an
+     *                              empty one, and treating it as such would re-index every file.
+     */
+    public Map<String, Instant> indexedFiles() {
+        rwLock.readLock().lock();
+        try (DirectoryReader reader = DirectoryReader.open(directory)) {
+            Map<String, Instant> files = new HashMap<>();
+            Bits liveDocs = MultiBits.getLiveDocs(reader);
+            StoredFields storedFields = reader.storedFields();
+            for (int doc = 0; doc < reader.maxDoc(); doc++) {
+                if (liveDocs != null && !liveDocs.get(doc)) {
+                    continue;
+                }
+                Document document = storedFields.document(doc);
+                String id = document.get(ID);
+                String indexedAt = document.get(LAST_INDEXED_DATE);
+                if (id == null || indexedAt == null || id.length() <= UUID_LENGTH) {
+                    continue;
+                }
+                String filePath = id.substring(0, id.length() - UUID_LENGTH);
+                if (isSegmentOf(id, filePath)) {
+                    files.merge(filePath, ZonedDateTime.parse(indexedAt).toInstant(),
+                            (first, second) -> first.isBefore(second) ? first : second);
+                }
+            }
+            return files;
+        } catch (IndexNotFoundException e) {
+            return Map.of();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    /**
+     * The ids of the segments of one file. A segment id is the file path followed by a UUID, so a
+     * prefix match alone would also catch "Foo.java.orig" when removing "Foo.java".
+     */
+    private Term[] segmentIdsOf(IdStartWithFilter file) throws IOException {
+        try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
+            IndexSearcher searcher = new IndexSearcher(reader);
+            TopDocs hits = searcher.search(file.toLuceneQuery(), Math.max(1, reader.maxDoc()));
+            List<Term> ids = new ArrayList<>();
+            for (ScoreDoc hit : hits.scoreDocs) {
+                String id = searcher.storedFields().document(hit.doc).get(ID);
+                if (isSegmentOf(id, file.getId())) {
+                    ids.add(new Term(ID, id));
+                }
+            }
+            return ids.toArray(Term[]::new);
+        }
+    }
+
+    private static boolean isSegmentOf(String id, String filePath) {
+        if (id == null || id.length() != filePath.length() + UUID_LENGTH || !id.startsWith(filePath)) {
+            return false;
+        }
+        try {
+            UUID.fromString(id.substring(filePath.length()));
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 
@@ -375,7 +448,7 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
                 recreateIndex();
                 project.getMessageBus()
                         .syncPublisher(StoreNotifier.TOPIC)
-                        .clearDatabaseAndRunIndexation();
+                        .indexCorrupted();
 
                 return new EmbeddingSearchResult<>(List.of());
             }
@@ -588,8 +661,9 @@ public final class LuceneEmbeddingStore<EMBEDDED> implements EmbeddingStore<EMBE
 
         if (embedded instanceof TextSegment textSegment) {
             try {
+                // Same separator as IDE paths, which removals and catch-up compare against.
                 return String.format("%s%s%s%s",
-                    textSegment.metadata().getString("absolute_directory_path"),
+                    textSegment.metadata().getString("absolute_directory_path").replace('\\', '/'),
                     PATH_SEPARATOR,
                     textSegment.metadata().getString("file_name"),
                     UUID.randomUUID());
