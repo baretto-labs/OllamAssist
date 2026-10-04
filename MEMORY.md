@@ -12,15 +12,36 @@ It is maintained by Claude Code across conversations to preserve task continuity
 
 ## Active Tasks
 
-### 0. RAG cassé selon la version de l'IDE — bloquant pour la prochaine release (2026-10-04)
+### 0a. 1.14.2 — stratégie de réindexation du RAG (issue #183, démarré le 2026-10-04)
+
+Cible de la 1.14.2. Un seul événement, `clearDatabaseAndRunIndexation`, servait à quatre cas :
+activation du RAG, création du panneau de chat (donc chaque démarrage), changement du modèle
+d'embedding, corruption réelle. Chaque fois : tous les projets marqués corrompus, index effacé,
+réindexation complète, et le message « Index was corrupted » à l'utilisateur.
+
+Découpage décidé, trois PR empilées, en TDD :
+1. `fix/issue-183-rag-rider` — le panneau ne publie plus rien à sa création (cas « démarrage »).
+2. Trois événements distincts (RAG activé / modèle d'embedding changé / corruption réelle), des
+   messages qui disent la vraie raison, corruption limitée au projet concerné.
+3. Rattrapage incrémental à l'activation (fichiers modifiés depuis `last_indexed_date`, ajoutés,
+   supprimés). Prérequis : `IdStartWithFilter.toLuceneQuery()` est une `TermQuery` exacte alors que
+   les ids valent `<chemin><UUID>` — la suppression par fichier ne supprimerait rien (à vérifier
+   par un test).
+
+#183 (Rider 2026.2) n'est pas diagnostiqué : la cause Lucene avancée dans le commentaire de
+l'issue n'est pas prouvée. Pistes ouvertes : réindexation complète qui repart de zéro à chaque
+bascule, Lucene invisible en 262, `project.getBaseDir()` dans Rider. Ne pas fermer #183 sur la
+seule foi de ces PR.
+
+---
+
+### 0b. RAG cassé selon la version de l'IDE — livré en 1.14.1 (2026-10-04)
 
 PR #182 (contributeur externe) mergée volontairement en l'état : elle passe `lucene-queryparser`
 de 9.10.0 à 10.1.0, ce qui répare les IDE 2025.3+ mais casse de la même manière 2024.3 → 2025.2
-(`NoSuchMethodError` sur `BooleanClause`). Décision : aucune release tant que le correctif propre
-n'est pas mergé. Le correctif est sur la branche `fix/drop-lucene-queryparser` : la requête BM25
-est construite avec les classes de `lucene-core` uniquement, et la dépendance est supprimée.
-Livré en 1.14.1 (même PR : version, `plugin.xml`, notification). Lucene 10 n'est vérifié que par
-`javap`, jamais exécuté : un test manuel sur un IDE 2025.3+ reste à faire avant l'upload.
+(`NoSuchMethodError` sur `BooleanClause`). Correctif propre en #185 : la requête BM25 est construite
+avec les classes de `lucene-core` uniquement, et la dépendance est supprimée. Livré en 1.14.1.
+Testé à la main sur PyCharm 2026.2 sur un projet indexé : pas d'exception.
 
 Découvert en passant : le `changeNotes` de `build.gradle.kts` écrasait les notes de `plugin.xml`
 dans le zip — la 1.14.0 a été construite avec le texte de la 1.13.1. Supprimé.
@@ -29,6 +50,9 @@ Reporté : la version minimale (`sinceBuild = 243`) et la visibilité de Lucene 
 produits — en 2026.2, Lucene est un module optionnel de `libraries-misc-plugin`, sur lequel le
 plugin ne déclare aucune dépendance. À trancher avec les stats Marketplace et `verifyPlugin`
 étendu à 2025.3+ et à d'autres produits.
+
+Suivi ouvert : issue #186 (index vide qui écrit une erreur dans le log, index créé pour l'écran
+d'accueil, dossiers laissés par les tests dans `~/.ollamassist`).
 
 ---
 

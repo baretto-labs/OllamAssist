@@ -250,24 +250,25 @@ public class PromptPanel extends JPanel implements Disposable {
 
         button.addActionListener(e -> {
             ragEnabled = button.isSelected();
-            updateRagSearchButtonState(button);
+            OllamAssistSettings.getInstance().setRAGEnabled(ragEnabled);
+            renderRagSearchButton(button);
+            if (ragEnabled) {
+                project.getMessageBus()
+                        .syncPublisher(StoreNotifier.TOPIC)
+                        .clearDatabaseAndRunIndexation();
+            }
         });
 
-        updateRagSearchButtonState(button);
+        // Rendering only: creating the panel is not a user action and must not reindex.
+        renderRagSearchButton(button);
 
         return button;
     }
 
-    private void updateRagSearchButtonState(JToggleButton button) {
-        OllamAssistSettings
-                .getInstance()
-                .setRAGEnabled(ragEnabled);
+    private void renderRagSearchButton(JToggleButton button) {
         if (ragEnabled) {
             button.setIcon(IconUtils.RAG_SEARCH_ENABLED);
             button.setToolTipText(RAG_SEARCH_ENABLED);
-            project.getMessageBus()
-                    .syncPublisher(StoreNotifier.TOPIC)
-                    .clearDatabaseAndRunIndexation();
         } else {
             button.setIcon(IconUtils.RAG_SEARCH_DISABLED);
             button.setToolTipText(ENABLE_RAG);
