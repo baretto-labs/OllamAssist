@@ -35,6 +35,11 @@ Corrigé aussi en PR 3 (demandé le 2026-10-04) : l'indexation complète passe p
 de rattrapage (`IndexSynchronizer`), donc un index de plus de 7 jours n'est plus réindexé en
 double ; le bouton « Clear Embedding Store » efface vraiment (il réindexait par-dessus).
 
+Les trois PR empilées ont été mergées dans leurs branches de base au lieu de `main` ; rattrapé
+par #190. Ajouté à la 1.14.2 : #191, seuls les fichiers du projet sont indexés (le listener reçoit
+les changements de tout l'IDE). Trouvé en enquêtant sur #184 (modèle qui reste en VRAM, même
+rapporteur que #183) : cause non confirmée, `ollama ps` et le log du serveur demandés.
+
 #183 (Rider 2026.2) n'est pas diagnostiqué : la cause Lucene avancée dans le commentaire de
 l'issue n'est pas prouvée. Pistes ouvertes : réindexation complète qui repart de zéro à chaque
 bascule, Lucene invisible en 262, `project.getBaseDir()` dans Rider. Ne pas fermer #183 sur la
