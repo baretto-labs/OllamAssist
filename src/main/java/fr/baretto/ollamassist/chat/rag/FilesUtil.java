@@ -144,9 +144,23 @@ public class FilesUtil {
 
     public boolean shouldBeIndexed(@NotNull VirtualFile file) {
         return file.isValid() &&
+                isInProject(file) &&
                 file.getLength() > 0 &&
                 !fileIndex.isExcluded(file) &&
                 !file.getFileType().isBinary() &&
                 shouldBeIndexed.matches(Path.of(file.getPath()));
+    }
+
+    /**
+     * File change events come from the whole IDE: without this check, a file of another open
+     * project, or any file the IDE sees change, would be indexed into this project's index.
+     * Same root as {@link #collectFilePaths()}: the project base directory.
+     */
+    private boolean isInProject(@NotNull VirtualFile file) {
+        VirtualFile baseDir = project.getBaseDir();
+        if (baseDir == null || baseDir.getPath() == null) {
+            return false;
+        }
+        return Path.of(file.getPath()).startsWith(Path.of(baseDir.getPath()));
     }
 }
