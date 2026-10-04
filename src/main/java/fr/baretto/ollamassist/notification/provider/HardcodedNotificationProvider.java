@@ -31,7 +31,8 @@ public final class HardcodedNotificationProvider implements NotificationProvider
                                 the index was corrupted when it was not.</p>
 
                                 <ul>
-                                  <li><b>Kept across restarts</b> — the index is rebuilt only when it is missing, older than seven days or unreadable</li>
+                                  <li><b>Kept across restarts</b> — the index is rebuilt only when it is missing or unreadable</li>
+                                  <li><b>Weekly refresh</b> — only indexes what changed, instead of adding every file a second time</li>
                                   <li><b>Switching RAG back on</b> only indexes the files added, modified or deleted while it was off</li>
                                   <li><b>Edited files</b> — their previous content is now removed from the index instead of staying next to the new one</li>
                                   <li><b>Clear messages</b> — a corruption warning means a real corruption, and an embedding model change says so</li>

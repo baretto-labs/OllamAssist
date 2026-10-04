@@ -45,6 +45,15 @@ public final class IndexRefreshPolicy {
     }
 
     /**
+     * The user asked for a clean index: this project's index is discarded and rebuilt. Nothing
+     * is reported, the user just asked for it.
+     */
+    public void clearRequested() {
+        registry.markAsCorrupted(projectId);
+        indexing.run();
+    }
+
+    /**
      * Vectors computed by another model are not comparable with the new ones, so every
      * project's index is invalid, not only this one.
      */

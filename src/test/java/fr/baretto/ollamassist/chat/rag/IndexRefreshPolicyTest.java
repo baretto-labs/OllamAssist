@@ -68,6 +68,16 @@ class IndexRefreshPolicyTest {
     }
 
     @Test
+    void clearingTheIndexRebuildsThisProjectFromScratch() {
+        policy.clearRequested();
+
+        verify(registry).markAsCorrupted(PROJECT);
+        verify(registry, never()).markAllAsCorrupted();
+        assertThat(reindexRequests).isEqualTo(1);
+        assertThat(reporter.messages).isEmpty();
+    }
+
+    @Test
     void anEmbeddingModelChangeRebuildsTheIndexOfEveryProject() {
         policy.embeddingModelChanged();
 

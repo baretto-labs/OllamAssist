@@ -7,18 +7,11 @@ import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Brings an existing KnowledgeIndex up to date with the Workspace: indexes new and modified
- * files, removes deleted ones, and leaves everything else as it is. The decision is made by
- * {@link IndexCatchUp}; this task only collects the inputs and applies the result.
+ * Brings an up-to-date KnowledgeIndex in line with the Workspace after RAG was switched back on:
+ * new and modified files are indexed, deleted ones removed, the rest left as it is.
  */
 @Slf4j
 public class IndexCatchUpTask extends Task.Backgroundable {
@@ -44,34 +37,19 @@ public class IndexCatchUpTask extends Task.Backgroundable {
 
             indicator.setText("Comparing the index with the workspace...");
             List<String> files = getProject().getService(FilesUtil.class).collectFilePaths();
-            IndexCatchUp catchUp = IndexCatchUp.plan(store.indexedFiles(), lastModified(files),
-                    file -> Files.exists(Path.of(file)));
+            IndexCatchUp catchUp = new IndexSynchronizer(store, pipeline::addAllDocuments).synchronize(files);
             if (catchUp.isEmpty()) {
                 return;
             }
 
-            log.info("Index catch-up: {} file(s) to remove, {} to index",
+            log.info("Index catch-up: {} file(s) removed, {} to index",
                     catchUp.toRemove().size(), catchUp.toIndex().size());
-            catchUp.toRemove().forEach(file -> store.removeAll(new IdStartWithFilter(file)));
             indicator.setText("Indexing changed files...");
-            pipeline.addAllDocuments(catchUp.toIndex());
             pipeline.flush(indicator::isCanceled, indexed -> { });
         } catch (Exception e) {
             log.warn("Index catch-up failed; the index is left as it was", e);
         } finally {
             registry.removeFromCurrentIndexation(projectId);
         }
-    }
-
-    private static Map<String, Instant> lastModified(List<String> files) {
-        Map<String, Instant> modified = new HashMap<>();
-        for (String file : files) {
-            try {
-                modified.put(file, Files.getLastModifiedTime(Path.of(file)).toInstant());
-            } catch (IOException e) {
-                log.debug("Skipping {} during catch-up: {}", file, e.getMessage());
-            }
-        }
-        return modified;
     }
 }

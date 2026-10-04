@@ -58,7 +58,9 @@
     <change-notes><![CDATA[
         <h2>V1.14.2 — The Index Is No Longer Rebuilt for Nothing</h2>
         <UL>
-            <LI>fix: With RAG enabled, opening the chat wiped the index and rebuilt it from scratch, so every IDE start re-indexed the whole project. The index is now kept, and rebuilt only when it is missing, older than seven days or unreadable.</LI>
+            <LI>fix: With RAG enabled, opening the chat wiped the index and rebuilt it from scratch, so every IDE start re-indexed the whole project. The index is now kept, and rebuilt only when it is missing or unreadable.</LI>
+            <LI>fix: The weekly refresh of an index older than seven days added every file a second time. It now only indexes what changed since.</LI>
+            <LI>fix: The "Clear Embedding Store" button in Settings &gt; OllamAssist &gt; RAG did not clear anything: it indexed the project again on top of the existing index. It now discards the index and rebuilds it.</LI>
             <LI>fix: Switching RAG back on keeps the existing index and only catches up with the files added, modified or deleted while it was off.</LI>
             <LI>fix: Modifying or deleting a file now removes its previous content from the index. Before, the old content stayed next to the new one and could still be retrieved.</LI>
             <LI>fix: "Index was corrupted" is shown only when the index really is, and only that project is rebuilt. Changing the embedding model now says so, instead of reporting a corruption. Related to #183.</LI>
