@@ -168,8 +168,8 @@ public class ConfigurationPanel extends JPanel {
         ragPanel.triggerClearLocalStorage();
     }
 
-    public void triggerCleanAllDatabase() {
-        ragPanel.triggerCleanAllDatabase();
+    public void notifyEmbeddingModelChanged() {
+        ragPanel.notifyEmbeddingModelChanged();
     }
 
     // Actions settings

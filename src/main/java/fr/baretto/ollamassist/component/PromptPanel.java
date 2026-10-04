@@ -255,7 +255,7 @@ public class PromptPanel extends JPanel implements Disposable {
             if (ragEnabled) {
                 project.getMessageBus()
                         .syncPublisher(StoreNotifier.TOPIC)
-                        .clearDatabaseAndRunIndexation();
+                        .ragSwitchedOn();
             }
         });
 
