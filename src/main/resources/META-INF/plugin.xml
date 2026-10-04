@@ -56,6 +56,13 @@
   ]]></description>
 
     <change-notes><![CDATA[
+        <h2>V1.14.2 — The Index Is No Longer Rebuilt for Nothing</h2>
+        <UL>
+            <LI>fix: With RAG enabled, opening the chat wiped the index and rebuilt it from scratch, so every IDE start re-indexed the whole project. The index is now kept, and rebuilt only when it is missing, older than seven days or unreadable.</LI>
+            <LI>fix: Switching RAG back on keeps the existing index and only catches up with the files added, modified or deleted while it was off.</LI>
+            <LI>fix: Modifying or deleting a file now removes its previous content from the index. Before, the old content stayed next to the new one and could still be retrieved.</LI>
+            <LI>fix: "Index was corrupted" is shown only when the index really is, and only that project is rebuilt. Changing the embedding model now says so, instead of reporting a corruption. Related to #183.</LI>
+        </UL>
         <h2>V1.14.1 — Project Context Works on Every Supported IDE</h2>
         <UL>
             <LI>fix: On IDE 2025.3 and later, every chat message logged "Hybrid retrieval failed" and the answer came without any context from your project. The keyword search relied on a Lucene module compiled for a different Lucene version than the one the IDE ships. It now uses only what the IDE provides, so it works on Lucene 9 (up to 2025.2) and Lucene 10 (from 2025.3) alike. Thanks to Simon Farrant for the report and the diagnosis (#182).</LI>

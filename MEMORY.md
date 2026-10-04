@@ -28,6 +28,13 @@ Découpage décidé, trois PR empilées, en TDD :
    les ids valent `<chemin><UUID>` — la suppression par fichier ne supprimerait rien (à vérifier
    par un test).
 
+État : PR #187 (1) → #188 (2) → PR 3 (`feat/rag-incremental-catch-up`, porte aussi la version
+1.14.2), empilées, à merger dans cet ordre. Le défaut d'`IdStartWithFilter` est confirmé par un
+test et corrigé en PR 3 : jusqu'ici, chaque fichier modifié gardait ses anciens segments.
+Reste ouvert après la PR 3 : un index de plus de 7 jours est réindexé par
+`InitEmbeddingStoreTask` sans retirer les anciens segments (doublons) — il devrait passer par le
+rattrapage.
+
 #183 (Rider 2026.2) n'est pas diagnostiqué : la cause Lucene avancée dans le commentaire de
 l'issue n'est pas prouvée. Pistes ouvertes : réindexation complète qui repart de zéro à chaque
 bascule, Lucene invisible en 262, `project.getBaseDir()` dans Rider. Ne pas fermer #183 sur la

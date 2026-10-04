@@ -14,6 +14,35 @@ public final class HardcodedNotificationProvider implements NotificationProvider
     @Override
     public List<Notification> getAllNotifications() {
         return List.of(
+                // v1.14.2 - The RAG index is kept instead of rebuilt
+                Notification.builder()
+                        .id("v1.14.2-release")
+                        .version("1.14.2")
+                        .type(Notification.NotificationType.INFO)
+                        .priority(Notification.Priority.MEDIUM)
+                        .title("OllamAssist 1.14.2 — The Index Is No Longer Rebuilt for Nothing")
+                        .message("""
+                                <html>
+                                <body style='font-family: sans-serif; padding: 10px;'>
+                                <h3>Your project index is kept</h3>
+
+                                <p>With RAG enabled, opening the chat wiped the index and rebuilt it from \
+                                scratch, so each IDE start re-indexed your whole project, and a message said \
+                                the index was corrupted when it was not.</p>
+
+                                <ul>
+                                  <li><b>Kept across restarts</b> — the index is rebuilt only when it is missing, older than seven days or unreadable</li>
+                                  <li><b>Switching RAG back on</b> only indexes the files added, modified or deleted while it was off</li>
+                                  <li><b>Edited files</b> — their previous content is now removed from the index instead of staying next to the new one</li>
+                                  <li><b>Clear messages</b> — a corruption warning means a real corruption, and an embedding model change says so</li>
+                                </ul>
+                                </body>
+                                </html>
+                                """)
+                        .dismissible(true)
+                        .createdAt(LocalDateTime.of(2026, 10, 4, 0, 0))
+                        .build(),
+
                 // v1.14.1 - RAG works again on IDE 2025.3+
                 Notification.builder()
                         .id("v1.14.1-release")
